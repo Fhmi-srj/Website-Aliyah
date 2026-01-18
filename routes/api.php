@@ -62,4 +62,28 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'index']);
     Route::get('search', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'search']);
     Route::get('profile', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'profile']);
+
+    // Absensi Mengajar
+    Route::get('jadwal-hari-ini', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'jadwalHariIni']);
+    Route::get('jadwal-seminggu', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'jadwalSeminggu']);
+    Route::get('jadwal/{id}/detail', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'detailJadwal']);
+    Route::post('absensi', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'simpanAbsensi']);
+
+    // Absensi Kegiatan
+    Route::get('kegiatan-hari-ini', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'kegiatanHariIni']);
+    Route::get('kegiatan/{id}/detail', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'detailKegiatan']);
+    Route::post('kegiatan/absensi', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'simpanAbsensi']);
+    Route::post('kegiatan/absensi-pendamping', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'absensiPendamping']);
+    Route::get('kegiatan/{id}/absensi-pendamping', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'getAbsensiPendamping']);
+    Route::get('kegiatan/{id}/check-pendamping-status', [\App\Http\Controllers\Api\Guru\GuruKegiatanController::class, 'checkPendampingStatus']);
+
+    // Absensi Rapat
+    Route::get('rapat-hari-ini', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'rapatHariIni']);
+    Route::get('rapat/{id}/detail', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'detailRapat']);
+    Route::post('rapat/absensi-pimpinan', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'absensiPimpinan']);
+    Route::post('rapat/absensi-peserta', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'absensiPeserta']);
+    Route::post('rapat/absensi-sekretaris', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'absensiSekretaris']);
+    Route::get('rapat/{id}/absensi-peserta', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'getAbsensiPeserta']);
+    Route::get('rapat/{id}/check-status', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'checkPesertaStatus']);
 });
+

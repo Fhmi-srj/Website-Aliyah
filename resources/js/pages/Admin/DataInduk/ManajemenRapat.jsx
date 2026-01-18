@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import Pagination from '../../../components/Pagination';
 
+const ITEMS_PER_PAGE = 10;
 function ManajemenRapat() {
     const [data, setData] = useState([]);
     const [guruList, setGuruList] = useState([]);
@@ -18,6 +20,9 @@ function ManajemenRapat() {
         jenis_rapat: 'Rutin',
         pimpinan: '',
         sekretaris: '',
+        pimpinan_id: null,
+        sekretaris_id: null,
+        peserta_rapat: [],
         tanggal: '',
         waktu_mulai: '09:00',
         waktu_selesai: '11:00',
@@ -28,6 +33,7 @@ function ManajemenRapat() {
     // Autocomplete state
     const [pimpinanSearch, setPimpinanSearch] = useState('');
     const [sekretarisSearch, setSekretarisSearch] = useState('');
+    const [pesertaSearch, setPesertaSearch] = useState('');
     const [showPimpinanDropdown, setShowPimpinanDropdown] = useState(false);
     const [showSekretarisDropdown, setShowSekretarisDropdown] = useState(false);
 
@@ -43,6 +49,9 @@ function ManajemenRapat() {
     // Mobile detection
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [expandedRows, setExpandedRows] = useState(new Set());
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
 
     // File input ref for import
     const fileInputRef = useRef(null);
@@ -132,6 +141,18 @@ function ManajemenRapat() {
         });
         return sortData(result, sortColumn, sortDirection);
     })();
+
+    // Pagination
+    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+    const paginatedData = filteredData.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filterJenis, filterStatus]);
 
     // Autocomplete filtered guru
     const filteredPimpinan = guruList.filter(g =>
@@ -242,6 +263,9 @@ function ManajemenRapat() {
             jenis_rapat: 'Rutin',
             pimpinan: '',
             sekretaris: '',
+            pimpinan_id: null,
+            sekretaris_id: null,
+            peserta_rapat: [],
             tanggal: '',
             waktu_mulai: '09:00',
             waktu_selesai: '11:00',
@@ -261,6 +285,9 @@ function ManajemenRapat() {
             jenis_rapat: item.jenis_rapat || 'Rutin',
             pimpinan: item.pimpinan || '',
             sekretaris: item.sekretaris || '',
+            pimpinan_id: item.pimpinan_id || null,
+            sekretaris_id: item.sekretaris_id || null,
+            peserta_rapat: item.peserta_rapat || [],
             tanggal: item.tanggal?.split('T')[0] || '',
             waktu_mulai: item.waktu_mulai ? item.waktu_mulai.substring(0, 5) : '09:00',
             waktu_selesai: item.waktu_selesai ? item.waktu_selesai.substring(0, 5) : '11:00',
@@ -462,6 +489,7 @@ function ManajemenRapat() {
                                 {!isMobile && <SortableHeader label="Tempat" column="tempat" />}
                                 {!isMobile && <SortableHeader label="Pimpinan" column="pimpinan" />}
                                 {!isMobile && <SortableHeader label="Sekretaris" column="sekretaris" />}
+                                {!isMobile && <th className="select-none py-2 px-2 whitespace-nowrap">Peserta</th>}
                                 <SortableHeader
                                     label="Status"
                                     column="status"
@@ -477,10 +505,10 @@ function ManajemenRapat() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredData.map((item, idx) => (
+                            {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
                                     <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{idx + 1}</td>
+                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                                         {isMobile && (
                                             <td
                                                 className="py-2 px-2 align-middle select-none text-center cursor-pointer"
@@ -496,6 +524,34 @@ function ManajemenRapat() {
                                         {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.tempat || '-'}</td>}
                                         {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.pimpinan || '-'}</td>}
                                         {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.sekretaris || '-'}</td>}
+                                        {!isMobile && (
+                                            <td className="py-2 px-2 align-middle select-none whitespace-nowrap">
+                                                {(() => {
+                                                    const peserta = item.peserta_rapat || [];
+                                                    const count = peserta.length;
+                                                    if (count === 0) return <span className="text-gray-400">-</span>;
+                                                    const pesertaNames = peserta.map(id => {
+                                                        const guru = guruList.find(g => g.id === id);
+                                                        return guru ? guru.nama : `ID:${id}`;
+                                                    });
+                                                    return (
+                                                        <span className="relative group">
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 cursor-default">
+                                                                <i className="fas fa-users mr-1"></i>{count} peserta
+                                                            </span>
+                                                            <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-20">
+                                                                <div className="bg-gray-800 text-white text-xs rounded-lg px-3 py-2 max-w-[200px] shadow-lg">
+                                                                    <p className="font-semibold mb-1">Peserta Rapat:</p>
+                                                                    {pesertaNames.map((name, i) => (
+                                                                        <p key={i} className="text-gray-200">{i + 1}. {name}</p>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </td>
+                                        )}
                                         <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
                                         <td className="py-2 px-2 align-middle text-center select-none whitespace-nowrap">
                                             <button onClick={() => openEditModal(item)} className="text-green-700 hover:text-green-900 mr-2 cursor-pointer" title="Ubah">
@@ -515,6 +571,22 @@ function ManajemenRapat() {
                                                     <div><strong>Tempat:</strong> {item.tempat || '-'}</div>
                                                     <div><strong>Pimpinan:</strong> {item.pimpinan || '-'}</div>
                                                     <div><strong>Sekretaris:</strong> {item.sekretaris || '-'}</div>
+                                                    <div className="col-span-2">
+                                                        <strong>Peserta:</strong>{' '}
+                                                        {(() => {
+                                                            const peserta = item.peserta_rapat || [];
+                                                            if (peserta.length === 0) return '-';
+                                                            const pesertaNames = peserta.map(id => {
+                                                                const guru = guruList.find(g => g.id === id);
+                                                                return guru ? guru.nama : `ID:${id}`;
+                                                            });
+                                                            const maxShow = 2;
+                                                            if (pesertaNames.length <= maxShow) {
+                                                                return pesertaNames.join(', ');
+                                                            }
+                                                            return `${pesertaNames.slice(0, maxShow).join(', ')} +${pesertaNames.length - maxShow} lainnya`;
+                                                        })()}
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -530,6 +602,13 @@ function ManajemenRapat() {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={filteredData.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                    />
                 </div>
             )}
 
@@ -660,7 +739,7 @@ function ManajemenRapat() {
                                                         type="button"
                                                         onClick={() => {
                                                             setPimpinanSearch(g.nama);
-                                                            setFormData({ ...formData, pimpinan: g.nama });
+                                                            setFormData({ ...formData, pimpinan: g.nama, pimpinan_id: g.id });
                                                             setShowPimpinanDropdown(false);
                                                         }}
                                                         className="block w-full text-left px-3 py-2 text-sm hover:bg-green-50"
@@ -694,7 +773,7 @@ function ManajemenRapat() {
                                                         type="button"
                                                         onClick={() => {
                                                             setSekretarisSearch(g.nama);
-                                                            setFormData({ ...formData, sekretaris: g.nama });
+                                                            setFormData({ ...formData, sekretaris: g.nama, sekretaris_id: g.id });
                                                             setShowSekretarisDropdown(false);
                                                         }}
                                                         className="block w-full text-left px-3 py-2 text-sm hover:bg-green-50"
@@ -705,6 +784,68 @@ function ManajemenRapat() {
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                                {/* Peserta Rapat Multi-select */}
+                                <div className="p-6 border-t border-gray-100">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 select-none">
+                                        <i className="fas fa-users mr-2 text-green-600"></i>
+                                        Peserta Rapat
+                                    </label>
+                                    {/* Search Input */}
+                                    <div className="relative mb-2">
+                                        <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                        <input
+                                            type="text"
+                                            value={pesertaSearch}
+                                            onChange={(e) => setPesertaSearch(e.target.value)}
+                                            placeholder="Cari nama guru..."
+                                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
+                                        />
+                                        {pesertaSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setPesertaSearch('')}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                <i className="fas fa-times text-sm"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="border border-gray-300 rounded-md px-3 py-2 min-h-[100px] max-h-[150px] overflow-y-auto bg-gray-50">
+                                        {(() => {
+                                            const availableGuru = guruList
+                                                .filter(g => g.id !== formData.pimpinan_id && g.id !== formData.sekretaris_id)
+                                                .filter(g => !pesertaSearch || g.nama.toLowerCase().includes(pesertaSearch.toLowerCase()) || (g.nip && g.nip.includes(pesertaSearch)));
+
+                                            if (availableGuru.length === 0) {
+                                                return <p className="text-sm text-gray-400 py-2">{pesertaSearch ? 'Tidak ditemukan' : 'Pilih pimpinan dan sekretaris terlebih dahulu'}</p>;
+                                            }
+
+                                            return availableGuru.map(g => (
+                                                <label key={g.id} className="flex items-center gap-2 py-1.5 px-2 hover:bg-white rounded cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={(formData.peserta_rapat || []).includes(g.id)}
+                                                        onChange={(e) => {
+                                                            const current = formData.peserta_rapat || [];
+                                                            if (e.target.checked) {
+                                                                setFormData({ ...formData, peserta_rapat: [...current, g.id] });
+                                                            } else {
+                                                                setFormData({ ...formData, peserta_rapat: current.filter(id => id !== g.id) });
+                                                            }
+                                                        }}
+                                                        className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                    />
+                                                    <span className="text-sm text-gray-700">{g.nama}</span>
+                                                    <span className="text-xs text-gray-400">({g.nip || '-'})</span>
+                                                </label>
+                                            ));
+                                        })()}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        <i className="fas fa-info-circle mr-1"></i>
+                                        {(formData.peserta_rapat || []).length} peserta dipilih
+                                    </p>
                                 </div>
                             </div>
 

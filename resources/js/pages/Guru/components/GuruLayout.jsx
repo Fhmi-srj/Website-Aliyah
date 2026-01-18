@@ -63,101 +63,107 @@ function GuruLayout({ children }) {
                 {children}
             </main>
 
-            {/* FAB Overlay */}
+            {/* FAB Overlay - only darken background */}
             {fabOpen && (
                 <div
-                    className="fixed inset-0 bg-black/40 z-40 md:hidden backdrop-blur-sm"
+                    className="fixed inset-0 z-30 md:hidden"
                     onClick={() => setFabOpen(false)}
                 />
             )}
 
-            {/* FAB Options - Arc Layout Above Navbar (matching reference design) */}
-            <div className={`fixed z-50 md:hidden transition-all duration-300 ${fabOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                style={{ bottom: '100px', left: '50%', transform: 'translateX(-50%)' }}>
-
-                {/* Left - Mengajar */}
-                <button
-                    onClick={() => handleAbsensiClick('mengajar')}
-                    className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center ${fabOpen ? 'opacity-100' : 'opacity-0'}`}
+            {/* FAB Menu Container - Behind Navbar with Glassmorphism */}
+            <div className={`fixed bottom-0 left-0 right-0 z-[35] md:hidden transition-all duration-300 ${fabOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div
+                    className="max-w-md mx-auto rounded-t-3xl overflow-hidden"
                     style={{
-                        left: '-80px',
-                        top: '-20px',
-                        transitionDelay: fabOpen ? '50ms' : '0ms',
-                        transform: fabOpen ? 'scale(1)' : 'scale(0.5)'
+                        background: 'rgba(248, 250, 252, 0.98)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.15), 0 -1px 3px rgba(0,0,0,0.08)'
                     }}
                 >
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                        <i className="fas fa-chalkboard-teacher text-white text-base"></i>
-                    </div>
-                </button>
+                    {/* Menu Items */}
+                    <div className="px-4 pt-4 pb-20 space-y-1">
+                        {/* Absensi Mengajar */}
+                        <button
+                            onClick={() => handleAbsensiClick('mengajar')}
+                            className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
+                        >
+                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-chalkboard-teacher text-white text-sm"></i>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-semibold text-gray-800 text-sm">Absensi Mengajar</p>
+                                <p className="text-xs text-gray-500">Guru</p>
+                            </div>
+                            <i className="fas fa-chevron-right text-green-500"></i>
+                        </button>
 
-                {/* Top Center - Kegiatan (highest position) */}
-                <button
-                    onClick={() => handleAbsensiClick('kegiatan')}
-                    className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center ${fabOpen ? 'opacity-100' : 'opacity-0'}`}
-                    style={{
-                        left: '50%',
-                        top: '-60px',
-                        transitionDelay: fabOpen ? '100ms' : '0ms',
-                        transform: `translateX(-50%) ${fabOpen ? 'scale(1)' : 'scale(0.5)'}`
-                    }}
-                >
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                        <i className="fas fa-calendar-check text-white text-base"></i>
-                    </div>
-                </button>
+                        {/* Absensi Kegiatan */}
+                        <button
+                            onClick={() => handleAbsensiClick('kegiatan')}
+                            className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
+                        >
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-calendar-check text-white text-sm"></i>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-semibold text-gray-800 text-sm">Absensi Kegiatan</p>
+                                <p className="text-xs text-gray-500">Kegiatan</p>
+                            </div>
+                            <i className="fas fa-chevron-right text-green-500"></i>
+                        </button>
 
-                {/* Right - Rapat */}
-                <button
-                    onClick={() => handleAbsensiClick('rapat')}
-                    className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center ${fabOpen ? 'opacity-100' : 'opacity-0'}`}
-                    style={{
-                        right: '-80px',
-                        top: '-20px',
-                        transitionDelay: fabOpen ? '150ms' : '0ms',
-                        transform: fabOpen ? 'scale(1)' : 'scale(0.5)'
-                    }}
-                >
-                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                        <i className="fas fa-users text-white text-base"></i>
+                        {/* Absensi Rapat */}
+                        <button
+                            onClick={() => handleAbsensiClick('rapat')}
+                            className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
+                        >
+                            <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-users text-white text-sm"></i>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-semibold text-gray-800 text-sm">Absensi Rapat</p>
+                                <p className="text-xs text-gray-500">Rapat</p>
+                            </div>
+                            <i className="fas fa-chevron-right text-green-500"></i>
+                        </button>
                     </div>
-                </button>
+                </div>
             </div>
 
-            {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden shadow-lg">
-                <div className="max-w-md mx-auto flex items-center justify-around h-16 px-2">
-                    {navItems.map((item, idx) => {
-                        if (item.type === 'fab') {
+            {/* Bottom Navigation - Above FAB Menu */}
+            <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+                <div className="max-w-md mx-auto bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] border-t border-gray-100">
+                    <div className="flex items-center justify-around h-16 px-2">
+                        {navItems.map((item, idx) => {
+                            if (item.type === 'fab') {
+                                return (
+                                    <button
+                                        key="fab"
+                                        onClick={() => setFabOpen(!fabOpen)}
+                                        className={`-mt-6 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 cursor-pointer bg-green-600 border-4 border-white ${fabOpen ? 'bg-red-500' : ''}`}
+                                    >
+                                        <i className={`${fabOpen ? 'fas fa-times' : 'fas fa-clipboard-check'} text-white text-lg`}></i>
+                                    </button>
+                                );
+                            }
                             return (
-                                <button
-                                    key="fab"
-                                    onClick={() => setFabOpen(!fabOpen)}
-                                    className={`-mt-8 w-16 h-16 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 cursor-pointer border-4 border-white ${fabOpen
-                                        ? 'bg-red-500 rotate-45'
-                                        : 'bg-gradient-to-br from-green-500 to-green-700'
-                                        }`}
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    end={item.end}
+                                    onClick={() => setFabOpen(false)}
+                                    className={({ isActive }) =>
+                                        `flex flex-col items-center justify-center py-2 px-3 transition-colors ${isActive ? 'text-green-600' : 'text-gray-400 hover:text-green-500'}`
+                                    }
                                 >
-                                    <i className={`${fabOpen ? 'fas fa-times' : 'fas fa-clipboard-check'} text-white text-xl`}></i>
-                                </button>
+                                    <i className={`${item.icon} text-lg`}></i>
+                                    <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+                                </NavLink>
                             );
-                        }
-                        return (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                end={item.end}
-                                onClick={() => setFabOpen(false)}
-                                className={({ isActive }) =>
-                                    `flex flex-col items-center justify-center py-2 px-3 transition-colors ${isActive ? 'text-green-600' : 'text-gray-400 hover:text-green-500'
-                                    }`
-                                }
-                            >
-                                <i className={`${item.icon} text-lg`}></i>
-                                <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-                            </NavLink>
-                        );
-                    })}
+                        })}
+                    </div>
                 </div>
             </nav>
         </div>

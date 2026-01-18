@@ -1,53 +1,173 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../lib/axios';
+import { useAuth } from '../../contexts/AuthContext';
+import { ModalBelumMulai, ModalAbsensiSiswa, ModalSudahAbsen } from './components/AbsensiModals';
 
 function AbsensiMengajar() {
-    const [selectedDay, setSelectedDay] = useState('Kamis'); // Default hari ini
-    const [selectedClass, setSelectedClass] = useState('');
+    const { user } = useAuth();
+    const days = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
-    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    // Get current day name in Indonesian
+    const getTodayName = () => {
+        const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        return dayNames[new Date().getDay()];
+    };
 
-    // Helper function untuk menentukan status berdasarkan waktu
+    const [selectedDay, setSelectedDay] = useState(getTodayName());
+    const [loading, setLoading] = useState(true);
+    const [weeklySchedule, setWeeklySchedule] = useState({});
+    const [tanggalHariIni, setTanggalHariIni] = useState('');
+    const [guruData, setGuruData] = useState({ name: '', nip: '' });
+
+    // Modal states
+    const [selectedJadwal, setSelectedJadwal] = useState(null);
+    const [modalType, setModalType] = useState(null);
+    const [siswaList, setSiswaList] = useState([]);
+
+    // Fetch jadwal for all days and guru profile
+    useEffect(() => {
+        const fetchWeeklySchedule = async () => {
+            try {
+                setLoading(true);
+                const response = await api.get('/guru-panel/jadwal-seminggu');
+                setWeeklySchedule(response.data.jadwal || {});
+                setTanggalHariIni(response.data.tanggal || '');
+            } catch (err) {
+                console.error('Error fetching weekly schedule:', err);
+                // Fallback: fetch jadwal hari ini saja
+                try {
+                    const todayResponse = await api.get('/guru-panel/jadwal-hari-ini');
+                    const todayName = getTodayName();
+                    setWeeklySchedule({ [todayName]: todayResponse.data.jadwal || [] });
+                    setTanggalHariIni(todayResponse.data.tanggal || '');
+                } catch (e) {
+                    console.error('Error fetching today schedule:', e);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const fetchProfile = async () => {
+            try {
+                const response = await api.get('/guru-panel/profile');
+                setGuruData({
+                    name: response.data.nama || user?.name || 'Guru',
+                    nip: response.data.nip || ''
+                });
+            } catch (err) {
+                console.error('Error fetching profile:', err);
+                setGuruData({ name: user?.name || 'Guru', nip: '' });
+            }
+        };
+
+        fetchWeeklySchedule();
+        fetchProfile();
+    }, []);
+
+    // Helper function untuk status color
     const getStatusColor = (status) => {
         switch (status) {
-            case 'attended':
-                return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700', ring: 'ring-green-500' };
-            case 'ongoing':
-            case 'missed':
-                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: status === 'ongoing' ? 'Belum Absen' : 'Terlewat', labelBg: 'bg-red-100 text-red-700', ring: 'ring-red-500' };
-            case 'upcoming':
+            case 'sudah_absen':
+                return {
+                    border: 'border-l-green-500',
+                    bg: 'bg-green-100',
+                    icon: 'text-green-500',
+                    label: 'Sudah Absen',
+                    labelBg: 'bg-green-100 text-green-700'
+                };
+            case 'sedang_berlangsung':
+                return {
+                    border: 'border-l-red-500',
+                    bg: 'bg-red-100',
+                    icon: 'text-red-500',
+                    label: 'Belum Absen',
+                    labelBg: 'bg-red-100 text-red-700'
+                };
+            case 'terlewat':
+                return {
+                    border: 'border-l-red-500',
+                    bg: 'bg-red-100',
+                    icon: 'text-red-500',
+                    label: 'Terlewat',
+                    labelBg: 'bg-red-100 text-red-700'
+                };
+            case 'belum_mulai':
             default:
-                return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Akan Datang', labelBg: 'bg-blue-100 text-blue-700', ring: 'ring-blue-500' };
+                return {
+                    border: 'border-l-blue-500',
+                    bg: 'bg-blue-100',
+                    icon: 'text-blue-500',
+                    label: 'Akan Datang',
+                    labelBg: 'bg-blue-100 text-blue-700'
+                };
         }
     };
 
-    // Mock data jadwal seminggu (dummy)
-    const weeklySchedule = {
-        'Senin': [
-            { id: 1, name: 'X IPA 1', subject: 'Matematika', time: '07:00 - 07:45', students: 30, status: 'attended' },
-            { id: 2, name: 'X IPA 2', subject: 'Matematika', time: '08:30 - 09:15', students: 32, status: 'attended' },
-        ],
-        'Selasa': [
-            { id: 3, name: 'XI IPA 1', subject: 'Matematika', time: '07:00 - 07:45', students: 28, status: 'attended' },
-            { id: 4, name: 'XI IPA 2', subject: 'Matematika', time: '10:00 - 10:45', students: 30, status: 'attended' },
-        ],
-        'Rabu': [
-            { id: 5, name: 'X IPA 1', subject: 'Matematika', time: '08:30 - 09:15', students: 30, status: 'attended' },
-            { id: 6, name: 'XII IPA 1', subject: 'Matematika', time: '11:00 - 11:45', students: 26, status: 'attended' },
-        ],
-        'Kamis': [
-            { id: 7, name: 'X IPA 1', subject: 'Matematika', time: '07:00 - 07:45', students: 30, status: 'attended' },
-            { id: 8, name: 'X IPA 2', subject: 'Matematika', time: '08:30 - 09:15', students: 32, status: 'ongoing' },
-            { id: 9, name: 'XI IPA 1', subject: 'Matematika', time: '10:00 - 10:45', students: 28, status: 'upcoming' },
-            { id: 10, name: 'XI IPA 2', subject: 'Matematika', time: '11:00 - 11:45', students: 30, status: 'upcoming' },
-        ],
-        'Jumat': [
-            { id: 11, name: 'XII IPA 1', subject: 'Matematika', time: '07:30 - 08:15', students: 26, status: 'upcoming' },
-            { id: 12, name: 'XII IPA 2', subject: 'Matematika', time: '09:00 - 09:45', students: 28, status: 'upcoming' },
-        ],
-        'Sabtu': [],
+    // Handle jadwal click
+    const handleJadwalClick = async (jadwal) => {
+        // Only allow interaction for today
+        if (selectedDay !== getTodayName()) {
+            return; // Just show, can't interact with other days
+        }
+
+        setSelectedJadwal(jadwal);
+
+        // Treat 'terlewat' same as 'sedang_berlangsung' - both should open absensi modal
+        const effectiveStatus = jadwal.status === 'terlewat' ? 'sedang_berlangsung' : jadwal.status;
+        setModalType(effectiveStatus);
+
+        // If sedang_berlangsung or terlewat, fetch siswa list
+        if (jadwal.status === 'sedang_berlangsung' || jadwal.status === 'terlewat') {
+            try {
+                const response = await api.get(`/guru-panel/jadwal/${jadwal.id}/detail`);
+                setSiswaList(response.data.siswa || []);
+            } catch (err) {
+                console.error('Error fetching siswa:', err);
+                setSiswaList([]);
+            }
+        }
+    };
+
+    // Close modal
+    const handleCloseModal = () => {
+        setModalType(null);
+        setSelectedJadwal(null);
+        setSiswaList([]);
+    };
+
+    // Refresh after absensi success
+    const handleAbsensiSuccess = async () => {
+        handleCloseModal();
+        try {
+            const todayResponse = await api.get('/guru-panel/jadwal-hari-ini');
+            const todayName = getTodayName();
+            setWeeklySchedule(prev => ({
+                ...prev,
+                [todayName]: todayResponse.data.jadwal || []
+            }));
+        } catch (err) {
+            console.error('Error refreshing jadwal:', err);
+        }
     };
 
     const currentSchedule = weeklySchedule[selectedDay] || [];
+    const isToday = selectedDay === getTodayName();
+
+    // Loading skeleton
+    if (loading) {
+        return (
+            <div className="animate-pulse">
+                <div className="bg-green-200 h-24"></div>
+                <div className="p-4 space-y-4">
+                    <div className="bg-gray-200 rounded-xl h-14"></div>
+                    <div className="bg-gray-200 rounded-xl h-20"></div>
+                    <div className="bg-gray-200 rounded-xl h-20"></div>
+                    <div className="bg-gray-200 rounded-xl h-20"></div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fadeIn">
@@ -59,15 +179,12 @@ function AbsensiMengajar() {
 
             {/* Day Pills */}
             <div className="px-4 pt-4">
-                <div className="bg-white rounded-xl p-2 shadow-sm flex gap-1 overflow-x-auto scrollbar-hide">
+                <div className="bg-white rounded-xl p-2 shadow-sm grid grid-cols-6 gap-1">
                     {days.map((day) => (
                         <button
                             key={day}
-                            onClick={() => {
-                                setSelectedDay(day);
-                                setSelectedClass('');
-                            }}
-                            className={`flex-1 min-w-[60px] py-2 px-3 rounded-lg text-sm font-medium transition-all ${selectedDay === day
+                            onClick={() => setSelectedDay(day)}
+                            className={`py-2.5 rounded-lg text-xs font-medium transition-all text-center ${selectedDay === day
                                 ? 'bg-green-500 text-white shadow-md'
                                 : 'text-gray-500 hover:bg-gray-100'
                                 }`}
@@ -91,31 +208,51 @@ function AbsensiMengajar() {
                 </span>
             </div>
 
+            {/* Info for non-today */}
+            {!isToday && (
+                <div className="mx-4 mt-4 p-3 bg-blue-50 rounded-xl text-blue-600 text-sm flex items-center gap-2">
+                    <i className="fas fa-info-circle"></i>
+                    <span>Anda hanya bisa melakukan absensi untuk jadwal hari ini</span>
+                </div>
+            )}
+
             {/* Class List */}
             <div className="p-4 space-y-3">
                 {currentSchedule.length > 0 ? (
-                    currentSchedule.map(cls => {
-                        const colors = getStatusColor(cls.status);
+                    currentSchedule.map(jadwal => {
+                        const colors = getStatusColor(jadwal.status);
+                        const canInteract = isToday && jadwal.status !== 'sudah_absen';
+
                         return (
                             <button
-                                key={cls.id}
-                                onClick={() => setSelectedClass(cls.id)}
-                                disabled={cls.status === 'attended'}
-                                className={`w-full bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 cursor-pointer transition-all border-l-4 ${colors.border} ${selectedClass === cls.id ? `ring-2 ${colors.ring}` : ''
-                                    } ${cls.status === 'attended' ? 'opacity-60' : ''}`}
+                                key={jadwal.id}
+                                onClick={() => isToday && handleJadwalClick(jadwal)}
+                                disabled={!isToday}
+                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+                                    } ${jadwal.status === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
                             >
-                                <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                    <i className={`fas fa-door-open ${colors.icon}`}></i>
-                                </div>
-                                <div className="flex-1 text-left">
-                                    <p className="font-semibold text-gray-800">{cls.subject}</p>
-                                    <p className="text-xs text-gray-500">{cls.name} • {cls.students} siswa</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400 mb-1">{cls.time}</p>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
-                                        {colors.label}
-                                    </span>
+                                <div className="flex items-start gap-3">
+                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                        <i className={`fas fa-door-open ${colors.icon}`}></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0 text-left">
+                                        {/* Row 1: Mapel */}
+                                        <p className="font-semibold text-gray-800 truncate">{jadwal.mapel}</p>
+                                        {/* Row 2: Kelas */}
+                                        <p className="text-xs text-gray-500 truncate">{jadwal.kelas}</p>
+                                        {/* Row 3: Badge JP + Time + Status */}
+                                        <div className="flex items-center justify-between mt-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">{jadwal.jam_ke} JP</span>
+                                                <span className="text-[10px] text-gray-400">
+                                                    {jadwal.jam_mulai?.substring(0, 5)} - {jadwal.jam_selesai?.substring(0, 5)}
+                                                </span>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
+                                                {colors.label}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </button>
                         );
@@ -129,15 +266,36 @@ function AbsensiMengajar() {
                         <p className="text-gray-400 text-sm">Hari {selectedDay} tidak ada jadwal mengajar</p>
                     </div>
                 )}
-
-                {/* Start Button */}
-                {selectedClass && (
-                    <button className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl py-4 font-semibold mt-4 cursor-pointer hover:shadow-lg transition-all">
-                        <i className="fas fa-clipboard-check mr-2"></i>
-                        Mulai Absensi
-                    </button>
-                )}
             </div>
+
+            {/* Modals */}
+            {modalType === 'belum_mulai' && selectedJadwal && (
+                <ModalBelumMulai
+                    jadwal={selectedJadwal}
+                    tanggal={tanggalHariIni}
+                    onClose={handleCloseModal}
+                />
+            )}
+
+            {modalType === 'sedang_berlangsung' && selectedJadwal && (
+                <ModalAbsensiSiswa
+                    jadwal={selectedJadwal}
+                    tanggal={tanggalHariIni}
+                    siswaList={siswaList}
+                    onClose={handleCloseModal}
+                    onSuccess={handleAbsensiSuccess}
+                    guruName={guruData.name}
+                    guruNip={guruData.nip}
+                />
+            )}
+
+            {modalType === 'sudah_absen' && selectedJadwal && (
+                <ModalSudahAbsen
+                    jadwal={selectedJadwal}
+                    onClose={handleCloseModal}
+                />
+            )}
+
         </div>
     );
 }

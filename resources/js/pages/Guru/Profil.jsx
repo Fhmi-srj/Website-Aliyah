@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
+import Swal from 'sweetalert2';
 
 function Profil() {
     const { logout } = useAuth();
@@ -32,7 +33,25 @@ function Profil() {
     }, []);
 
     const handleLogout = async () => {
-        if (confirm('Yakin ingin keluar?')) {
+        const result = await Swal.fire({
+            title: 'Keluar dari Aplikasi?',
+            text: 'Anda akan keluar dari akun ini',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Ya, Keluar',
+            cancelButtonText: 'Batal',
+            reverseButtons: true,
+            width: '90%',
+            customClass: {
+                popup: 'rounded-2xl !max-w-xs',
+                confirmButton: 'rounded-xl px-4 text-sm',
+                cancelButton: 'rounded-xl px-4 text-sm'
+            }
+        });
+
+        if (result.isConfirmed) {
             await logout();
         }
     };
@@ -59,10 +78,27 @@ function Profil() {
 
     if (loading) {
         return (
-            <div className="animate-fadeIn min-h-screen bg-white flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
-                    <p className="text-gray-500 text-sm">Memuat profil...</p>
+            <div className="animate-pulse min-h-screen bg-white">
+                {/* Header Skeleton */}
+                <div className="bg-green-200 px-4 pt-8 pb-12 text-center">
+                    <div className="w-24 h-24 bg-green-300 rounded-full mx-auto mb-4"></div>
+                    <div className="h-5 bg-green-300 rounded w-40 mx-auto mb-2"></div>
+                    <div className="h-4 bg-green-300 rounded w-32 mx-auto"></div>
+                </div>
+                {/* Tabs Skeleton */}
+                <div className="bg-white border-b border-gray-200">
+                    <div className="flex justify-around py-4">
+                        <div className="w-16 h-12 bg-gray-200 rounded"></div>
+                        <div className="w-16 h-12 bg-gray-200 rounded"></div>
+                        <div className="w-16 h-12 bg-gray-200 rounded"></div>
+                    </div>
+                </div>
+                {/* Content Skeleton */}
+                <div className="p-4 space-y-3">
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
+                    <div className="h-16 bg-gray-200 rounded-xl"></div>
                 </div>
             </div>
         );
@@ -96,8 +132,8 @@ function Profil() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${activeTab === tab.id
-                                    ? 'text-green-600 border-b-2 border-green-600'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                ? 'text-green-600 border-b-2 border-green-600'
+                                : 'text-gray-400 hover:text-gray-600'
                                 }`}
                         >
                             <i className={`${tab.icon} text-xl`}></i>
@@ -112,85 +148,85 @@ function Profil() {
                 {/* Identitas Tab */}
                 {activeTab === 'identitas' && (
                     <div className="divide-y divide-gray-100">
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-user text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-user text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Nama Lengkap</p>
-                                <p className="font-semibold text-gray-800">{profile?.name || '-'}</p>
+                                <p className="text-xs text-gray-400">Nama Lengkap</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.name || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-id-card text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-id-card text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">NIP</p>
-                                <p className="font-semibold text-gray-800">{profile?.nip || '-'}</p>
+                                <p className="text-xs text-gray-400">NIP</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.nip || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-envelope text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-envelope text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Email</p>
-                                <p className="font-semibold text-gray-800">{profile?.email || '-'}</p>
+                                <p className="text-xs text-gray-400">Email</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.email || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-briefcase text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-briefcase text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Jabatan</p>
-                                <p className="font-semibold text-gray-800">{profile?.jabatan || '-'}</p>
+                                <p className="text-xs text-gray-400">Jabatan</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.jabatan || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-venus-mars text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-venus-mars text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Jenis Kelamin</p>
-                                <p className="font-semibold text-gray-800">{profile?.jenis_kelamin || '-'}</p>
+                                <p className="text-xs text-gray-400">Jenis Kelamin</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.jenis_kelamin || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-map-marker-alt text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-map-marker-alt text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Tempat, Tanggal Lahir</p>
-                                <p className="font-semibold text-gray-800">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
+                                <p className="text-xs text-gray-400">Tempat, Tanggal Lahir</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-home text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-home text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Alamat</p>
-                                <p className="font-semibold text-gray-800">{profile?.alamat || '-'}</p>
+                                <p className="text-xs text-gray-400">Alamat</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.alamat || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-graduation-cap text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-graduation-cap text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Pendidikan</p>
-                                <p className="font-semibold text-gray-800">{profile?.pendidikan || '-'}</p>
+                                <p className="text-xs text-gray-400">Pendidikan</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.pendidikan || '-'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 px-4 py-4">
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-phone text-green-600 text-lg"></i>
+                        <div className="flex items-center gap-3 px-4 py-3">
+                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-phone text-green-600 text-sm"></i>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Kontak</p>
-                                <p className="font-semibold text-gray-800">{profile?.kontak || '-'}</p>
+                                <p className="text-xs text-gray-400">Kontak</p>
+                                <p className="font-medium text-gray-800 text-sm">{profile?.kontak || '-'}</p>
                             </div>
                         </div>
                     </div>

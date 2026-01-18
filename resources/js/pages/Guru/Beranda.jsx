@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
+import { ModalBelumMulai, ModalAbsensiSiswa, ModalSudahAbsen } from './components/AbsensiModals';
+import { ModalAbsensiKegiatanPJ, ModalKegiatanBelumMulai, ModalKegiatanSudahAbsen, ModalAbsensiKegiatanPendamping } from './components/KegiatanModals';
+import { ModalRapatBelumMulai, ModalRapatSudahAbsen, ModalAbsensiRapatPeserta, ModalAbsensiRapatSekretaris } from './components/RapatModals';
 
 function Beranda() {
     const navigate = useNavigate();
@@ -20,17 +23,40 @@ function Beranda() {
         reminders: []
     });
 
-    // Helper function untuk menentukan status berdasarkan waktu
+    // State for jadwal absensi modals
+    const [jadwalList, setJadwalList] = useState([]);
+    const [tanggalJadwal, setTanggalJadwal] = useState('');
+    const [selectedJadwal, setSelectedJadwal] = useState(null);
+    const [modalType, setModalType] = useState(null); // 'belum_mulai', 'sedang_berlangsung', 'sudah_absen', 'terlewat'
+    const [siswaList, setSiswaList] = useState([]);
+
+    // State for kegiatan modals
+    const [selectedKegiatan, setSelectedKegiatan] = useState(null);
+    const [kegiatanModalType, setKegiatanModalType] = useState(null);
+    const [guruPendamping, setGuruPendamping] = useState([]);
+    const [kegiatanSiswaList, setKegiatanSiswaList] = useState([]);
+
+    // State for rapat modals
+    const [selectedRapat, setSelectedRapat] = useState(null);
+    const [rapatModalType, setRapatModalType] = useState(null);
+    const [rapatPimpinan, setRapatPimpinan] = useState(null);
+    const [rapatPesertaList, setRapatPesertaList] = useState([]);
+
+    // Helper function untuk menentukan status berdasarkan waktu (synced with AbsensiKegiatan)
     const getStatusColor = (status) => {
         switch (status) {
+            case 'sudah_absen':
             case 'attended':
-                return { border: 'border-l-green-500', bg: 'bg-green-500', text: 'text-green-600' };
+                return { border: 'border-l-green-500', bg: 'bg-green-100', text: 'text-green-600', label: 'Sudah Absen' };
+            case 'sedang_berlangsung':
             case 'ongoing':
+            case 'terlewat':
             case 'missed':
-                return { border: 'border-l-red-500', bg: 'bg-red-500', text: 'text-red-600' };
+                return { border: 'border-l-red-500', bg: 'bg-red-100', text: 'text-red-600', label: status === 'terlewat' || status === 'missed' ? 'Terlewat' : 'Belum Absen' };
+            case 'belum_mulai':
             case 'upcoming':
             default:
-                return { border: 'border-l-blue-500', bg: 'bg-blue-500', text: 'text-blue-600' };
+                return { border: 'border-l-blue-500', bg: 'bg-blue-100', text: 'text-blue-600', label: 'Akan Datang' };
         }
     };
 
@@ -55,8 +81,153 @@ function Beranda() {
             }
         };
 
+        const fetchJadwalHariIni = async () => {
+            try {
+                const response = await api.get('/guru-panel/jadwal-hari-ini');
+                setJadwalList(response.data.jadwal || []);
+                setTanggalJadwal(response.data.tanggal || '');
+            } catch (err) {
+                console.error('Error fetching jadwal:', err);
+            }
+        };
+
         fetchDashboard();
+        fetchJadwalHariIni();
     }, []);
+
+    // Handle jadwal click
+    const handleJadwalClick = async (jadwal) => {
+        setSelectedJadwal(jadwal);
+
+        // Treat 'terlewat' same as 'sedang_berlangsung' - both should open absensi modal
+        const effectiveStatus = jadwal.status === 'terlewat' ? 'sedang_berlangsung' : jadwal.status;
+        setModalType(effectiveStatus);
+
+        // If sedang_berlangsung or terlewat, fetch siswa list
+        if (jadwal.status === 'sedang_berlangsung' || jadwal.status === 'terlewat') {
+            try {
+                const response = await api.get(`/guru-panel/jadwal/${jadwal.id}/detail`);
+                setSiswaList(response.data.siswa || []);
+            } catch (err) {
+                console.error('Error fetching siswa:', err);
+                setSiswaList([]);
+            }
+        }
+    };
+
+    // Close modal and refresh jadwal
+    const handleCloseModal = () => {
+        setModalType(null);
+        setSelectedJadwal(null);
+        setSiswaList([]);
+    };
+
+    // Refresh jadwal after successful absensi
+    const handleAbsensiSuccess = async () => {
+        handleCloseModal();
+        try {
+            const response = await api.get('/guru-panel/jadwal-hari-ini');
+            setJadwalList(response.data.jadwal || []);
+        } catch (err) {
+            console.error('Error refreshing jadwal:', err);
+        }
+    };
+
+    // Get status color for jadwal
+    const getJadwalStatusColor = (status) => {
+        switch (status) {
+            case 'sudah_absen':
+                return { border: 'border-l-green-500', text: 'text-green-600' };
+            case 'sedang_berlangsung':
+            case 'terlewat':
+                return { border: 'border-l-red-500', text: 'text-red-600' };
+            case 'belum_mulai':
+            default:
+                return { border: 'border-l-blue-500', text: 'text-blue-600' };
+        }
+    };
+
+    // Handle kegiatan click - open modal based on status
+    const handleKegiatanClick = async (kegiatan) => {
+        setSelectedKegiatan(kegiatan);
+
+        // Treat 'terlewat' same as 'sedang_berlangsung'
+        const effectiveStatus = kegiatan.status === 'terlewat' ? 'sedang_berlangsung' : kegiatan.status;
+        setKegiatanModalType(effectiveStatus);
+
+        // If sedang_berlangsung or terlewat, fetch detail
+        if (kegiatan.status === 'sedang_berlangsung' || kegiatan.status === 'terlewat') {
+            try {
+                const response = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/detail`);
+                setGuruPendamping(response.data.guru_pendamping || []);
+                setKegiatanSiswaList(response.data.siswa || []);
+            } catch (err) {
+                console.error('Error fetching kegiatan detail:', err);
+                setGuruPendamping([]);
+                setKegiatanSiswaList([]);
+            }
+        }
+    };
+
+    // Close kegiatan modal
+    const handleCloseKegiatanModal = () => {
+        setKegiatanModalType(null);
+        setSelectedKegiatan(null);
+        setGuruPendamping([]);
+        setKegiatanSiswaList([]);
+    };
+
+    // Refresh dashboard after kegiatan absensi success
+    const handleKegiatanAbsensiSuccess = async () => {
+        handleCloseKegiatanModal();
+        try {
+            const response = await api.get('/guru-panel/dashboard');
+            setDashboardData(response.data);
+        } catch (err) {
+            console.error('Error refreshing dashboard:', err);
+        }
+    };
+
+    // Handle rapat click - open modal based on status and role
+    const handleRapatClick = async (rapat) => {
+        setSelectedRapat(rapat);
+
+        // Treat 'terlewat' same as 'sedang_berlangsung'
+        const effectiveStatus = rapat.status === 'terlewat' ? 'sedang_berlangsung' : rapat.status;
+        setRapatModalType(effectiveStatus);
+
+        // If sedang_berlangsung or terlewat, fetch detail
+        if (rapat.status === 'sedang_berlangsung' || rapat.status === 'terlewat') {
+            try {
+                const response = await api.get(`/guru-panel/rapat/${rapat.id}/detail`);
+                setRapatPimpinan(response.data.pimpinan || null);
+                setRapatPesertaList(response.data.peserta || []);
+            } catch (err) {
+                console.error('Error fetching rapat detail:', err);
+                setRapatPimpinan(null);
+                setRapatPesertaList([]);
+            }
+        }
+    };
+
+    // Close rapat modal
+    const handleCloseRapatModal = () => {
+        setRapatModalType(null);
+        setSelectedRapat(null);
+        setRapatPimpinan(null);
+        setRapatPesertaList([]);
+    };
+
+    // Refresh dashboard after rapat absensi success
+    const handleRapatAbsensiSuccess = async () => {
+        handleCloseRapatModal();
+        try {
+            const response = await api.get('/guru-panel/dashboard');
+            setDashboardData(response.data);
+        } catch (err) {
+            console.error('Error refreshing dashboard:', err);
+        }
+    };
 
 
     // Loading state
@@ -173,25 +344,34 @@ function Beranda() {
                 </div>
             </div>
 
-            {/* Jadwal Hari Ini - Horizontal Scroll */}
+            {/* Jadwal Hari Ini - Horizontal Scroll (From API with click handlers) */}
             <div>
                 <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 px-1">
                     <i className="fas fa-chalkboard-teacher text-green-600"></i>
                     Jadwal Mengajar Hari Ini
                 </h3>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-                    {todaySchedule.length > 0 ? todaySchedule.map((item) => {
-                        const colors = getStatusColor(item.status);
+                    {jadwalList.length > 0 ? jadwalList.map((item) => {
+                        const colors = getJadwalStatusColor(item.status);
                         return (
-                            <div key={item.id} className={`flex-shrink-0 w-40 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border}`}>
-                                <div className="font-medium text-gray-800 text-sm mb-2">{item.subject}</div>
+                            <button
+                                key={item.id}
+                                onClick={() => handleJadwalClick(item)}
+                                className={`flex-shrink-0 w-40 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border} text-left cursor-pointer hover:shadow-md transition-shadow`}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="font-medium text-gray-800 text-sm">{item.mapel}</div>
+                                    <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">{item.jam_ke} JP</span>
+                                </div>
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-gray-500">
-                                        <i className="fas fa-door-open mr-1"></i>{item.class}
+                                        <i className="fas fa-door-open mr-1"></i>{item.kelas}
                                     </span>
-                                    <span className={`${colors.text} font-semibold`}>{item.time}</span>
+                                    <span className={`${colors.text} font-semibold`}>
+                                        {item.jam_mulai?.substring(0, 5)}
+                                    </span>
                                 </div>
-                            </div>
+                            </button>
                         );
                     }) : (
                         <div className="flex-shrink-0 w-full bg-gray-50 rounded-xl p-4 text-center text-gray-400 text-sm">
@@ -212,15 +392,22 @@ function Beranda() {
                         {todayActivities.map((item) => {
                             const colors = getStatusColor(item.status);
                             return (
-                                <div key={item.id} className={`flex-shrink-0 w-40 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border}`}>
-                                    <div className="font-medium text-gray-800 text-sm mb-2">{item.name}</div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="text-gray-500">
-                                            <i className="fas fa-map-marker-alt mr-1"></i>{item.location}
-                                        </span>
-                                        <span className={`${colors.text} font-semibold`}>{item.time}</span>
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleKegiatanClick(item)}
+                                    className={`flex-shrink-0 w-44 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border} text-left cursor-pointer hover:shadow-md transition-shadow`}
+                                >
+                                    <div className="font-medium text-gray-800 text-sm mb-1 line-clamp-2 leading-tight">{item.name}</div>
+                                    <div className="text-[10px] text-gray-500 truncate mb-1">
+                                        <i className="fas fa-map-marker-alt mr-1"></i>{item.location}
                                     </div>
-                                </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-[10px] ${colors.text} font-semibold`}>{item.time}</span>
+                                        {item.isPJ && (
+                                            <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">PJ</span>
+                                        )}
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>
@@ -238,15 +425,27 @@ function Beranda() {
                         {todayMeetings.map((item) => {
                             const colors = getStatusColor(item.status);
                             return (
-                                <div key={item.id} className={`flex-shrink-0 w-40 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border}`}>
-                                    <div className="font-medium text-gray-800 text-sm mb-2">{item.name}</div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="text-gray-500">
-                                            <i className="fas fa-map-marker-alt mr-1"></i>{item.location}
-                                        </span>
-                                        <span className={`${colors.text} font-semibold`}>{item.time}</span>
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleRapatClick(item)}
+                                    className={`flex-shrink-0 w-44 bg-white rounded-xl p-3 shadow-sm border-l-4 ${colors.border} text-left cursor-pointer hover:shadow-md transition-shadow`}
+                                >
+                                    <div className="font-medium text-gray-800 text-sm mb-1 line-clamp-2 leading-tight">{item.name}</div>
+                                    <div className="text-[10px] text-gray-500 truncate mb-1">
+                                        <i className="fas fa-map-marker-alt mr-1"></i>{item.location}
                                     </div>
-                                </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-[10px] ${colors.text} font-semibold`}>{item.time}</span>
+                                        {item.role && (
+                                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-medium ${item.role === 'pimpinan' ? 'bg-purple-100 text-purple-700' :
+                                                item.role === 'sekretaris' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-green-100 text-green-700'
+                                                }`}>
+                                                {item.role === 'pimpinan' ? 'Pimpinan' : item.role === 'sekretaris' ? 'Sekretaris' : 'Peserta'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>
@@ -333,6 +532,141 @@ function Beranda() {
                     </div>
                 </div>
             )}
+
+            {/* Modals for Absensi */}
+            {modalType === 'belum_mulai' && selectedJadwal && (
+                <ModalBelumMulai
+                    jadwal={selectedJadwal}
+                    tanggal={tanggalJadwal}
+                    onClose={handleCloseModal}
+                />
+            )}
+
+            {modalType === 'sedang_berlangsung' && selectedJadwal && (
+                <ModalAbsensiSiswa
+                    jadwal={selectedJadwal}
+                    tanggal={tanggalJadwal}
+                    siswaList={siswaList}
+                    onClose={handleCloseModal}
+                    onSuccess={handleAbsensiSuccess}
+                    guruName={dashboardData.user.name}
+                    guruNip={dashboardData.user.nip}
+                />
+            )}
+
+            {modalType === 'sudah_absen' && selectedJadwal && (
+                <ModalSudahAbsen
+                    jadwal={selectedJadwal}
+                    onClose={handleCloseModal}
+                />
+            )}
+
+            {/* Kegiatan Modals */}
+            {kegiatanModalType === 'belum_mulai' && selectedKegiatan && (
+                <ModalKegiatanBelumMulai
+                    kegiatan={selectedKegiatan}
+                    onClose={handleCloseKegiatanModal}
+                />
+            )}
+
+            {kegiatanModalType === 'sedang_berlangsung' && selectedKegiatan && selectedKegiatan.isPJ && (
+                <ModalAbsensiKegiatanPJ
+                    kegiatan={{
+                        ...selectedKegiatan,
+                        nama_kegiatan: selectedKegiatan.name,
+                        tempat: selectedKegiatan.location,
+                        waktu_mulai: selectedKegiatan.time,
+                        waktu_berakhir: selectedKegiatan.endTime,
+                    }}
+                    tanggal={today?.date || '-'}
+                    guruPendamping={guruPendamping}
+                    siswaList={kegiatanSiswaList}
+                    onClose={handleCloseKegiatanModal}
+                    onSuccess={handleKegiatanAbsensiSuccess}
+                    guruName={dashboardData.user.name}
+                    guruNip={dashboardData.user.nip}
+                />
+            )}
+
+            {kegiatanModalType === 'sedang_berlangsung' && selectedKegiatan && !selectedKegiatan.isPJ && (
+                <ModalAbsensiKegiatanPendamping
+                    kegiatan={{
+                        ...selectedKegiatan,
+                        nama_kegiatan: selectedKegiatan.name,
+                        tempat: selectedKegiatan.location,
+                        waktu_mulai: selectedKegiatan.time,
+                        waktu_berakhir: selectedKegiatan.endTime,
+                    }}
+                    onClose={handleCloseKegiatanModal}
+                    onSuccess={handleKegiatanAbsensiSuccess}
+                />
+            )}
+
+            {kegiatanModalType === 'sudah_absen' && selectedKegiatan && (
+                <ModalKegiatanSudahAbsen
+                    kegiatan={{
+                        ...selectedKegiatan,
+                        nama_kegiatan: selectedKegiatan.name,
+                    }}
+                    onClose={handleCloseKegiatanModal}
+                />
+            )}
+
+            {/* Rapat Modals */}
+            {rapatModalType === 'belum_mulai' && selectedRapat && (
+                <ModalRapatBelumMulai
+                    rapat={{
+                        ...selectedRapat,
+                        agenda_rapat: selectedRapat.name,
+                        tempat: selectedRapat.location,
+                    }}
+                    onClose={handleCloseRapatModal}
+                />
+            )}
+
+            {rapatModalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.role === 'sekretaris' && (
+                <ModalAbsensiRapatSekretaris
+                    rapat={{
+                        ...selectedRapat,
+                        agenda_rapat: selectedRapat.name,
+                        tempat: selectedRapat.location,
+                        waktu_mulai: selectedRapat.time,
+                        waktu_selesai: selectedRapat.endTime,
+                    }}
+                    tanggal={today?.date || '-'}
+                    pimpinan={rapatPimpinan}
+                    pesertaList={rapatPesertaList}
+                    onClose={handleCloseRapatModal}
+                    onSuccess={handleRapatAbsensiSuccess}
+                />
+            )}
+
+            {rapatModalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.role !== 'sekretaris' && (
+                <ModalAbsensiRapatPeserta
+                    rapat={{
+                        ...selectedRapat,
+                        agenda_rapat: selectedRapat.name,
+                        tempat: selectedRapat.location,
+                        waktu_mulai: selectedRapat.time,
+                        waktu_selesai: selectedRapat.endTime,
+                    }}
+                    tanggal={today?.date || '-'}
+                    role={selectedRapat.role}
+                    onClose={handleCloseRapatModal}
+                    onSuccess={handleRapatAbsensiSuccess}
+                />
+            )}
+
+            {rapatModalType === 'sudah_absen' && selectedRapat && (
+                <ModalRapatSudahAbsen
+                    rapat={{
+                        ...selectedRapat,
+                        agenda_rapat: selectedRapat.name,
+                    }}
+                    onClose={handleCloseRapatModal}
+                />
+            )}
+
         </div>
     );
 }

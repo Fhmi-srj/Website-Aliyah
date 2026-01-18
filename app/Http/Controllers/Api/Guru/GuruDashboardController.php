@@ -7,6 +7,8 @@ use App\Models\Jadwal;
 use App\Models\Kegiatan;
 use App\Models\Rapat;
 use App\Models\Guru;
+use App\Models\AbsensiKegiatan;
+use App\Models\AbsensiMengajar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -47,59 +49,189 @@ class GuruDashboardController extends Controller
             ]);
         }
 
-        $today = Carbon::today();
+        // Use explicit Jakarta timezone
+        $today = Carbon::today('Asia/Jakarta');
         $dayName = $this->getDayName($today->dayOfWeek);
-        $currentTime = Carbon::now()->format('H:i');
+        $currentTime = Carbon::now('Asia/Jakarta')->format('H:i');
 
-        // Get today's teaching schedule
+        // Get today's teaching schedule with actual attendance status
         $todaySchedule = Jadwal::with(['mapel', 'kelas'])
             ->where('guru_id', $guru->id)
             ->where('hari', $dayName)
             ->where('status', 'Aktif')
             ->orderBy('jam_mulai')
             ->get()
-            ->map(function ($jadwal) use ($currentTime) {
+            ->map(function ($jadwal) use ($currentTime, $today) {
+                // Check if already attended today
+                $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
+                    ->where('tanggal', $today->toDateString())
+                    ->first();
+
+                $now = Carbon::now('Asia/Jakarta');
+                $jamMulai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_mulai);
+                $jamSelesai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_selesai);
+
+                $status = 'belum_mulai';
+                if ($absensi) {
+                    $status = 'sudah_absen';
+                } elseif ($now->greaterThan($jamSelesai)) {
+                    $status = 'terlewat';
+                } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
+                    $status = 'sedang_berlangsung';
+                }
+
                 return [
                     'id' => $jadwal->id,
                     'time' => substr($jadwal->jam_mulai, 0, 5),
                     'endTime' => substr($jadwal->jam_selesai, 0, 5),
-                    'subject' => $jadwal->mapel->nama ?? 'N/A',
-                    'class' => $jadwal->kelas->nama ?? 'N/A',
-                    'status' => $this->getScheduleStatus($jadwal->jam_mulai, $jadwal->jam_selesai, $currentTime, false),
+                    'subject' => $jadwal->mapel?->nama_mapel ?? 'Mata Pelajaran',
+                    'class' => $jadwal->kelas?->nama_kelas ?? 'Kelas',
+                    'status' => $status,
                 ];
             });
 
-        // Get today's activities
-        $todayActivities = Kegiatan::whereDate('waktu_mulai', $today)
-            ->where('status', 'Aktif')
+        // Get today's activities where guru is PJ or pendamping (synced with AbsensiKegiatan)
+        $todayActivities = Kegiatan::where('status', 'Aktif')
+            ->whereDate('waktu_mulai', '<=', $today)
+            ->whereDate('waktu_berakhir', '>=', $today)
+            ->where(function ($query) use ($guru) {
+                $query->where('penanggung_jawab_id', $guru->id)
+                    ->orWhereJsonContains('guru_pendamping', $guru->id)
+                    ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
+            })
             ->orderBy('waktu_mulai')
             ->get()
-            ->map(function ($kegiatan) use ($currentTime) {
-                $startTime = Carbon::parse($kegiatan->waktu_mulai)->format('H:i');
-                $endTime = Carbon::parse($kegiatan->waktu_berakhir)->format('H:i');
+            ->map(function ($kegiatan) use ($currentTime, $guru, $today) {
+                $startTime = Carbon::parse($kegiatan->waktu_mulai)->setTimezone('Asia/Jakarta')->format('H:i');
+                $endTime = Carbon::parse($kegiatan->waktu_berakhir)->setTimezone('Asia/Jakarta')->format('H:i');
+                $isPJ = $kegiatan->penanggung_jawab_id === $guru->id;
+
+                // Get actual attendance status (same logic as GuruKegiatanController)
+                $absensi = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
+                $statusAbsensi = 'belum_mulai';
+
+                if ($absensi) {
+                    if ($isPJ) {
+                        // For PJ: only 'submitted' counts as sudah_absen
+                        if ($absensi->status === 'submitted') {
+                            $statusAbsensi = 'sudah_absen';
+                        } else {
+                            // Draft exists but PJ hasn't submitted
+                            $now = Carbon::now();
+                            $mulai = Carbon::parse($kegiatan->waktu_mulai);
+                            $selesai = Carbon::parse($kegiatan->waktu_berakhir);
+
+                            if ($now->lt($mulai)) {
+                                $statusAbsensi = 'belum_mulai';
+                            } elseif ($now->between($mulai, $selesai)) {
+                                $statusAbsensi = 'sedang_berlangsung';
+                            } else {
+                                $statusAbsensi = 'terlewat';
+                            }
+                        }
+                    } else {
+                        // For Pendamping: check if self-attended
+                        $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
+                        $selfAttended = false;
+                        foreach ($pendampingAbsensi as $entry) {
+                            if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                                $selfAttended = true;
+                                break;
+                            }
+                        }
+
+                        if ($selfAttended) {
+                            $statusAbsensi = 'sudah_absen';
+                        } else {
+                            $now = Carbon::now();
+                            $mulai = Carbon::parse($kegiatan->waktu_mulai);
+                            $selesai = Carbon::parse($kegiatan->waktu_berakhir);
+
+                            if ($now->lt($mulai)) {
+                                $statusAbsensi = 'belum_mulai';
+                            } elseif ($now->between($mulai, $selesai)) {
+                                $statusAbsensi = 'sedang_berlangsung';
+                            } else {
+                                $statusAbsensi = 'terlewat';
+                            }
+                        }
+                    }
+                } else {
+                    // No attendance record
+                    $now = Carbon::now();
+                    $mulai = Carbon::parse($kegiatan->waktu_mulai);
+                    $selesai = Carbon::parse($kegiatan->waktu_berakhir);
+
+                    if ($now->lt($mulai)) {
+                        $statusAbsensi = 'belum_mulai';
+                    } elseif ($now->between($mulai, $selesai)) {
+                        $statusAbsensi = 'sedang_berlangsung';
+                    } else {
+                        $statusAbsensi = 'terlewat';
+                    }
+                }
+
                 return [
                     'id' => $kegiatan->id,
                     'time' => $startTime,
                     'endTime' => $endTime,
                     'name' => $kegiatan->nama_kegiatan,
                     'location' => $kegiatan->tempat ?? 'N/A',
-                    'status' => $this->getScheduleStatus($startTime, $endTime, $currentTime, false),
+                    'status' => $statusAbsensi,
+                    'isPJ' => $isPJ,
                 ];
             });
 
-        // Get today's meetings
+        // Get today's meetings where guru is involved (pimpinan, sekretaris, or peserta)
         $todayMeetings = Rapat::whereDate('tanggal', $today)
             ->where('status', 'Dijadwalkan')
+            ->where(function ($query) use ($guru) {
+                $query->where('pimpinan_id', $guru->id)
+                    ->orWhere('sekretaris_id', $guru->id)
+                    ->orWhereJsonContains('peserta_rapat', $guru->id)
+                    ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
+            })
             ->orderBy('waktu_mulai')
             ->get()
-            ->map(function ($rapat) use ($currentTime) {
+            ->map(function ($rapat) use ($currentTime, $guru, $today) {
+                // Determine role
+                $role = 'peserta';
+                if ($rapat->pimpinan_id === $guru->id) {
+                    $role = 'pimpinan';
+                } elseif ($rapat->sekretaris_id === $guru->id) {
+                    $role = 'sekretaris';
+                }
+
+                // Check attendance status
+                $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
+                $statusAbsensi = $this->getScheduleStatus($rapat->waktu_mulai, $rapat->waktu_selesai, $currentTime, false);
+
+                if ($absensiRapat) {
+                    // Check if guru has attended
+                    if ($role === 'pimpinan' && $absensiRapat->status_pimpinan) {
+                        $statusAbsensi = 'sudah_absen';
+                    } elseif ($role === 'sekretaris' && $absensiRapat->status === 'submitted') {
+                        $statusAbsensi = 'sudah_absen';
+                    } else {
+                        // Check peserta
+                        $pesertaAbsensi = $absensiRapat->absensi_peserta ?? [];
+                        foreach ($pesertaAbsensi as $entry) {
+                            if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                                $statusAbsensi = 'sudah_absen';
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 return [
                     'id' => $rapat->id,
                     'time' => substr($rapat->waktu_mulai, 0, 5),
                     'endTime' => substr($rapat->waktu_selesai, 0, 5),
                     'name' => $rapat->agenda_rapat,
                     'location' => $rapat->tempat ?? 'N/A',
-                    'status' => $this->getScheduleStatus($rapat->waktu_mulai, $rapat->waktu_selesai, $currentTime, false),
+                    'status' => $statusAbsensi,
+                    'role' => $role,
                 ];
             });
 

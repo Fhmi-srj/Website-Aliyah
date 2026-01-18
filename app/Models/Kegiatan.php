@@ -19,7 +19,9 @@ class Kegiatan extends Model
         'tempat',
         'penanggung_jawab_id',
         'penanggung_jawab', // Keep for backward compatibility
+        'guru_pendamping',
         'peserta',
+        'kelas_peserta',
         'deskripsi',
         'status',
         'status_kbm', // Keep for backward compatibility
@@ -28,6 +30,8 @@ class Kegiatan extends Model
     protected $casts = [
         'waktu_mulai' => 'datetime',
         'waktu_berakhir' => 'datetime',
+        'guru_pendamping' => 'array',
+        'kelas_peserta' => 'array',
     ];
 
     /**
@@ -36,5 +40,27 @@ class Kegiatan extends Model
     public function penanggungjawab()
     {
         return $this->belongsTo(Guru::class, 'penanggung_jawab_id');
+    }
+
+    /**
+     * Get guru pendamping list.
+     */
+    public function guruPendampingList()
+    {
+        if (empty($this->guru_pendamping)) {
+            return collect([]);
+        }
+        return Guru::whereIn('id', $this->guru_pendamping)->get();
+    }
+
+    /**
+     * Get kelas peserta list.
+     */
+    public function kelasPesertaList()
+    {
+        if (empty($this->kelas_peserta)) {
+            return collect([]);
+        }
+        return Kelas::whereIn('id', $this->kelas_peserta)->get();
     }
 }

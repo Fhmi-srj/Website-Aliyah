@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import Pagination from '../../../components/Pagination';
 
 function ManajemenJadwal() {
     const [data, setData] = useState([]);
@@ -16,9 +17,9 @@ function ManajemenJadwal() {
     const [currentItem, setCurrentItem] = useState(null);
     const [isModalClosing, setIsModalClosing] = useState(false);
     const [formData, setFormData] = useState({
-        jam_ke: '1',
+        jam_pelajaran: '1',
         jam_mulai: '07:00',
-        jam_selesai: '07:45',
+        jam_selesai: '08:30',
         guru_id: '',
         mapel_id: '',
         kelas_id: '',
@@ -42,10 +43,43 @@ function ManajemenJadwal() {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [expandedRows, setExpandedRows] = useState(new Set());
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
     // File input ref for import
     const fileInputRef = useRef(null);
+    const guruDropdownRef = useRef(null);
+
+    // Guru autocomplete state
+    const [guruSearch, setGuruSearch] = useState('');
+    const [showGuruDropdown, setShowGuruDropdown] = useState(false);
 
     const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    // Auto-calculate jam selesai based on jam pelajaran (1 JP = 90 menit)
+    const calculateJamSelesai = (jamPelajaran, jamMulai) => {
+        if (!jamPelajaran || !jamMulai) return '';
+        const jp = parseInt(jamPelajaran);
+        if (isNaN(jp) || jp < 1) return '';
+        const [hours, mins] = jamMulai.split(':').map(Number);
+        const totalMins = hours * 60 + mins + (jp * 90);
+        const endHours = Math.floor(totalMins / 60);
+        const endMins = totalMins % 60;
+        return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    };
+
+    // Handler for jam pelajaran change
+    const handleJamPelajaranChange = (value) => {
+        const jamSelesai = calculateJamSelesai(value, formData.jam_mulai);
+        setFormData({ ...formData, jam_pelajaran: value, jam_selesai: jamSelesai });
+    };
+
+    // Handler for jam mulai change
+    const handleJamMulaiChange = (value) => {
+        const jamSelesai = calculateJamSelesai(formData.jam_pelajaran, value);
+        setFormData({ ...formData, jam_mulai: value, jam_selesai: jamSelesai });
+    };
 
     const fetchData = async () => {
         try {
@@ -76,9 +110,15 @@ function ManajemenJadwal() {
     }, []);
 
     useEffect(() => {
-        const handleClick = () => setActiveFilter(null);
-        document.body.addEventListener('click', handleClick);
-        return () => document.body.removeEventListener('click', handleClick);
+        const handleClick = (event) => {
+            setActiveFilter(null);
+            // Close guru dropdown on outside click
+            if (guruDropdownRef.current && !guruDropdownRef.current.contains(event.target)) {
+                setShowGuruDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
     }, []);
 
     // Toggle row expand for mobile
@@ -146,6 +186,15 @@ function ManajemenJadwal() {
         return sortData(result, sortColumn, sortDirection);
     })();
 
+    // Pagination logic
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    // Reset to page 1 when filter/search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filterHari, filterKelas, filterStatus]);
+
     // Render status badge
     const renderStatus = (status) => {
         const isAktif = status?.toLowerCase() === 'aktif';
@@ -210,11 +259,15 @@ function ManajemenJadwal() {
     // Modal functions
     const openAddModal = () => {
         setModalMode('add');
+        const defaultJP = '1';
+        const defaultMulai = '07:00';
+        setGuruSearch(''); // Reset guru search
+        setShowGuruDropdown(false);
         setFormData({
-            jam_ke: '1',
-            jam_mulai: '07:00',
-            jam_selesai: '07:45',
-            guru_id: guruList.find(g => g.status === 'Aktif')?.id || '',
+            jam_pelajaran: defaultJP,
+            jam_mulai: defaultMulai,
+            jam_selesai: calculateJamSelesai(defaultJP, defaultMulai),
+            guru_id: '',
             mapel_id: mapelList.find(m => m.status === 'Aktif')?.id || '',
             kelas_id: kelasList.find(k => k.status === 'Aktif')?.id || '',
             hari: 'Senin',
@@ -228,10 +281,16 @@ function ManajemenJadwal() {
     const openEditModal = (item) => {
         setModalMode('edit');
         setCurrentItem(item);
+        const jp = item.jam_ke || '1';
+        const mulai = item.jam_mulai ? item.jam_mulai.substring(0, 5) : '07:00';
+        // Set guru search to current guru name
+        const guru = guruList.find(g => g.id === item.guru_id);
+        setGuruSearch(guru?.nama || '');
+        setShowGuruDropdown(false);
         setFormData({
-            jam_ke: item.jam_ke || '1',
-            jam_mulai: item.jam_mulai ? item.jam_mulai.substring(0, 5) : '07:00',
-            jam_selesai: item.jam_selesai ? item.jam_selesai.substring(0, 5) : '07:45',
+            jam_pelajaran: jp,
+            jam_mulai: mulai,
+            jam_selesai: item.jam_selesai ? item.jam_selesai.substring(0, 5) : calculateJamSelesai(jp, mulai),
             guru_id: item.guru_id || '',
             mapel_id: item.mapel_id || '',
             kelas_id: item.kelas_id || '',
@@ -256,10 +315,16 @@ function ManajemenJadwal() {
         try {
             const url = modalMode === 'add' ? `${API_BASE}/jadwal` : `${API_BASE}/jadwal/${currentItem.id}`;
             const method = modalMode === 'add' ? 'POST' : 'PUT';
+            // Map jam_pelajaran to jam_ke for backend
+            const submitData = {
+                ...formData,
+                jam_ke: formData.jam_pelajaran // Backend uses jam_ke
+            };
+            delete submitData.jam_pelajaran;
             const response = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(submitData)
             });
             if (response.ok) {
                 closeModal();
@@ -338,7 +403,7 @@ function ManajemenJadwal() {
         const exportData = filteredData.map((item, idx) => ({
             'No': idx + 1,
             'Hari': item.hari,
-            'Jam Ke': item.jam_ke,
+            'JP': item.jam_ke,
             'Jam Mulai': formatTime(item.jam_mulai),
             'Jam Selesai': formatTime(item.jam_selesai),
             'Mata Pelajaran': item.mapel?.nama_mapel || '-',
@@ -427,7 +492,7 @@ function ManajemenJadwal() {
                                     filterValue={filterHari}
                                     setFilterValue={setFilterHari}
                                 />
-                                {!isMobile && <SortableHeader label="Jam Ke" column="jam_ke" />}
+                                {!isMobile && <SortableHeader label="JP" column="jam_ke" />}
                                 {!isMobile && <th className="select-none py-2 px-2 whitespace-nowrap">Waktu</th>}
                                 <SortableHeader label="Mapel" column="mapel" />
                                 {!isMobile && <SortableHeader label="Guru" column="guru" />}
@@ -462,10 +527,10 @@ function ManajemenJadwal() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredData.map((item, idx) => (
+                            {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
                                     <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{idx + 1}</td>
+                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                                         {isMobile && (
                                             <td
                                                 className="py-2 px-2 align-middle select-none text-center cursor-pointer"
@@ -496,7 +561,7 @@ function ManajemenJadwal() {
                                         <tr className="bg-green-50">
                                             <td colSpan="6" className="px-4 py-3">
                                                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                                    <div><strong>Jam Ke:</strong> {item.jam_ke}</div>
+                                                    <div><strong>JP:</strong> {item.jam_ke}</div>
                                                     <div><strong>Waktu:</strong> {formatTime(item.jam_mulai)} - {formatTime(item.jam_selesai)}</div>
                                                     <div><strong>Guru:</strong> {item.guru?.nama || '-'}</div>
                                                     <div><strong>Kelas:</strong> {item.kelas?.nama_kelas || '-'}</div>
@@ -517,6 +582,13 @@ function ManajemenJadwal() {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={filteredData.length}
+                        itemsPerPage={itemsPerPage}
+                    />
                 </div>
             )}
 
@@ -561,33 +633,38 @@ function ManajemenJadwal() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Ke *</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Pelajaran *</label>
                                         <input
-                                            type="text"
+                                            type="number"
+                                            min="1"
+                                            max="8"
                                             required
-                                            value={formData.jam_ke}
-                                            onChange={(e) => setFormData({ ...formData, jam_ke: e.target.value })}
+                                            value={formData.jam_pelajaran}
+                                            onChange={(e) => handleJamPelajaranChange(e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="1, 2, 3..."
+                                            placeholder="1"
                                         />
+                                        <p className="text-[10px] text-gray-500 mt-1">1 JP = 90 menit</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Mulai</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Mulai *</label>
                                         <input
                                             type="time"
+                                            required
                                             value={formData.jam_mulai}
-                                            onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                                            onChange={(e) => handleJamMulaiChange(e.target.value)}
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Selesai</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Selesai <span className="text-gray-400 font-normal">(otomatis)</span></label>
                                         <input
                                             type="time"
                                             value={formData.jam_selesai}
-                                            onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
+                                            readOnly
+                                            className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-600 cursor-not-allowed"
                                         />
+                                        <p className="text-[10px] text-gray-500 mt-1">Dihitung dari JP × 90 menit</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Mata Pelajaran *</label>
@@ -601,17 +678,52 @@ function ManajemenJadwal() {
                                             {mapelList.filter(m => m.status === 'Aktif').map(m => <option key={m.id} value={m.id}>{m.nama_mapel}</option>)}
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="relative" ref={guruDropdownRef}>
                                         <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Guru *</label>
-                                        <select
-                                            required
-                                            value={formData.guru_id}
-                                            onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
+                                        <input
+                                            type="text"
+                                            value={guruSearch}
+                                            onChange={(e) => {
+                                                setGuruSearch(e.target.value);
+                                                setShowGuruDropdown(e.target.value.length >= 3);
+                                                if (e.target.value.length < 3) {
+                                                    setFormData({ ...formData, guru_id: '' });
+                                                }
+                                            }}
+                                            onFocus={() => guruSearch.length >= 3 && setShowGuruDropdown(true)}
+                                            placeholder="Ketik min 3 huruf..."
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            <option value="">-- Pilih Guru --</option>
-                                            {guruList.filter(g => g.status === 'Aktif').map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
-                                        </select>
+                                        />
+                                        {!formData.guru_id && <p className="text-[10px] text-gray-500 mt-1">Minimal 3 huruf untuk mencari</p>}
+                                        {formData.guru_id && (
+                                            <p className="text-[10px] text-green-600 mt-1 flex items-center gap-1">
+                                                <i className="fas fa-check-circle"></i>
+                                                Guru terpilih
+                                            </p>
+                                        )}
+                                        {showGuruDropdown && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                                {guruList
+                                                    .filter(g => g.status === 'Aktif' && g.nama.toLowerCase().includes(guruSearch.toLowerCase()))
+                                                    .map(g => (
+                                                        <div
+                                                            key={g.id}
+                                                            className={`px-3 py-2 cursor-pointer hover:bg-green-50 text-sm ${formData.guru_id === g.id ? 'bg-green-100' : ''}`}
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, guru_id: g.id });
+                                                                setGuruSearch(g.nama);
+                                                                setShowGuruDropdown(false);
+                                                            }}
+                                                        >
+                                                            {g.nama}
+                                                        </div>
+                                                    ))
+                                                }
+                                                {guruList.filter(g => g.status === 'Aktif' && g.nama.toLowerCase().includes(guruSearch.toLowerCase())).length === 0 && (
+                                                    <div className="px-3 py-2 text-gray-500 text-sm">Tidak ditemukan</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Kelas *</label>

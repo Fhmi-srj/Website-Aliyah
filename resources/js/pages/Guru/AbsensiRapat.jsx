@@ -1,38 +1,136 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../lib/axios';
+import {
+    ModalRapatBelumMulai,
+    ModalRapatSudahAbsen,
+    ModalAbsensiRapatPimpinan,
+    ModalAbsensiRapatPeserta,
+    ModalAbsensiRapatSekretaris
+} from './components/RapatModals';
 
 function AbsensiRapat() {
     const navigate = useNavigate();
-    const [selectedMeeting, setSelectedMeeting] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [rapatList, setRapatList] = useState([]);
+    const [tanggal, setTanggal] = useState('');
+
+    // Modal states
+    const [selectedRapat, setSelectedRapat] = useState(null);
+    const [modalType, setModalType] = useState(null);
+    const [pimpinan, setPimpinan] = useState(null);
+    const [pesertaList, setPesertaList] = useState([]);
 
     // Helper function untuk menentukan status
     const getStatusColor = (status) => {
         switch (status) {
-            case 'attended':
+            case 'sudah_absen':
                 return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700' };
-            case 'ongoing':
-            case 'missed':
-                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: status === 'ongoing' ? 'Belum Absen' : 'Terlewat', labelBg: 'bg-red-100 text-red-700' };
-            case 'upcoming':
+            case 'sedang_berlangsung':
+                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Belum Absen', labelBg: 'bg-red-100 text-red-700' };
+            case 'terlewat':
+                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Terlewat', labelBg: 'bg-red-100 text-red-700' };
+            case 'belum_mulai':
             default:
                 return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Akan Datang', labelBg: 'bg-blue-100 text-blue-700' };
         }
     };
 
-    const meetings = [
-        { id: 1, name: 'Rapat Koordinasi', time: '13:00 - 14:00', location: 'Ruang Rapat', status: 'upcoming' },
-        { id: 2, name: 'Rapat Wali Kelas', time: '15:00 - 16:00', location: 'Aula', status: 'upcoming' },
-        { id: 3, name: 'Rapat Kurikulum', time: '16:30 - 17:30', location: 'Ruang Guru', status: 'upcoming' },
-    ];
+    // Get role badge
+    const getRoleBadge = (role) => {
+        switch (role) {
+            case 'pimpinan':
+                return { label: 'Pimpinan', bg: 'bg-purple-100 text-purple-700' };
+            case 'sekretaris':
+                return { label: 'Sekretaris', bg: 'bg-blue-100 text-blue-700' };
+            default:
+                return { label: 'Peserta', bg: 'bg-gray-100 text-gray-700' };
+        }
+    };
+
+    // Fetch rapat hari ini
+    useEffect(() => {
+        fetchRapatHariIni();
+    }, []);
+
+    const fetchRapatHariIni = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/guru-panel/rapat-hari-ini');
+            setRapatList(response.data.rapat || []);
+            setTanggal(response.data.tanggal || '');
+        } catch (err) {
+            console.error('Error fetching rapat:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle rapat click
+    const handleRapatClick = async (rapat) => {
+        setSelectedRapat(rapat);
+
+        // For sudah_absen, show confirmation modal
+        if (rapat.status_absensi === 'sudah_absen') {
+            setModalType('sudah_absen');
+            return;
+        }
+
+        // For belum_mulai, show info modal
+        if (rapat.status_absensi === 'belum_mulai') {
+            setModalType('belum_mulai');
+            return;
+        }
+
+        // For sedang_berlangsung or terlewat, fetch detail and show absensi modal
+        if (rapat.is_sekretaris) {
+            // Sekretaris needs full data
+            try {
+                const response = await api.get(`/guru-panel/rapat/${rapat.id}/detail`);
+                setPimpinan(response.data.pimpinan || null);
+                setPesertaList(response.data.peserta || []);
+            } catch (err) {
+                console.error('Error fetching rapat detail:', err);
+                setPimpinan(null);
+                setPesertaList([]);
+            }
+        }
+
+        setModalType('sedang_berlangsung');
+    };
+
+    // Close modal
+    const handleCloseModal = () => {
+        setModalType(null);
+        setSelectedRapat(null);
+        setPimpinan(null);
+        setPesertaList([]);
+    };
+
+    // Refresh after absensi success
+    const handleAbsensiSuccess = async () => {
+        handleCloseModal();
+        await fetchRapatHariIni();
+    };
+
+    if (loading) {
+        return (
+            <div className="animate-pulse">
+                <div className="bg-green-200 px-4 py-6"></div>
+                <div className="bg-white mx-4 -mt-3 rounded-xl h-16 mb-4"></div>
+                <div className="p-4 space-y-3">
+                    <div className="h-24 bg-gray-200 rounded-xl"></div>
+                    <div className="h-24 bg-gray-200 rounded-xl"></div>
+                    <div className="h-24 bg-gray-200 rounded-xl"></div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fadeIn">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-6 text-white">
-                <button onClick={() => navigate(-1)} className="mb-3 flex items-center gap-2 text-white/80 cursor-pointer">
-                    <i className="fas fa-arrow-left"></i>
-                    <span className="text-sm">Kembali</span>
-                </button>
                 <h1 className="text-xl font-bold">Absensi Rapat</h1>
                 <p className="text-green-100 text-sm">Pilih rapat untuk mengisi absensi</p>
             </div>
@@ -44,8 +142,8 @@ function AbsensiRapat() {
                         <i className="fas fa-users text-green-600 text-lg"></i>
                     </div>
                     <div>
-                        <p className="font-semibold text-gray-800">Kamis, 16 Januari 2026</p>
-                        <p className="text-sm text-gray-500">{meetings.length} rapat hari ini</p>
+                        <p className="font-semibold text-gray-800">{tanggal}</p>
+                        <p className="text-sm text-gray-500">{rapatList.length} rapat hari ini</p>
                     </div>
                 </div>
             </div>
@@ -65,42 +163,100 @@ function AbsensiRapat() {
 
             {/* Meeting List */}
             <div className="p-4 space-y-3">
-                <h2 className="font-semibold text-gray-800">Pilih Rapat</h2>
-                {meetings.map(meeting => {
-                    const colors = getStatusColor(meeting.status);
-                    return (
-                        <button
-                            key={meeting.id}
-                            onClick={() => setSelectedMeeting(meeting.id)}
-                            disabled={meeting.status === 'attended'}
-                            className={`w-full bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 cursor-pointer transition-all border-l-4 ${colors.border} ${selectedMeeting === meeting.id ? 'ring-2 ring-green-500' : ''
-                                } ${meeting.status === 'attended' ? 'opacity-60' : ''}`}
-                        >
-                            <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                <i className={`fas fa-users ${colors.icon}`}></i>
-                            </div>
-                            <div className="flex-1 text-left">
-                                <p className="font-semibold text-gray-800">{meeting.name}</p>
-                                <p className="text-xs text-gray-500"><i className="fas fa-map-marker-alt mr-1"></i>{meeting.location}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs text-gray-400 mb-1">{meeting.time}</p>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
-                                    {colors.label}
-                                </span>
-                            </div>
-                        </button>
-                    );
-                })}
+                <h2 className="font-semibold text-gray-800">Daftar Rapat</h2>
 
-                {/* Start Button */}
-                {selectedMeeting && (
-                    <button className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl py-4 font-semibold mt-4 cursor-pointer hover:shadow-lg transition-all">
-                        <i className="fas fa-clipboard-check mr-2"></i>
-                        Mulai Absensi
-                    </button>
+                {rapatList.length === 0 ? (
+                    <div className="bg-gray-50 rounded-xl p-8 text-center">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-calendar-times text-gray-300 text-2xl"></i>
+                        </div>
+                        <p className="text-gray-500 font-medium">Tidak ada rapat hari ini</p>
+                        <p className="text-gray-400 text-sm mt-1">Anda tidak terjadwal dalam rapat hari ini</p>
+                    </div>
+                ) : (
+                    rapatList.map(rapat => {
+                        const colors = getStatusColor(rapat.status_absensi);
+                        const roleBadge = getRoleBadge(rapat.role);
+                        return (
+                            <button
+                                key={rapat.id}
+                                onClick={() => handleRapatClick(rapat)}
+                                className={`w-full bg-white rounded-xl shadow-sm p-4 cursor-pointer transition-all border-l-4 ${colors.border} hover:shadow-md text-left`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                        <i className={`fas fa-users ${colors.icon}`}></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        {/* Row 1: Title */}
+                                        <p className="font-semibold text-gray-800 truncate">{rapat.agenda_rapat}</p>
+                                        {/* Row 2: Location */}
+                                        <p className="text-xs text-gray-500 truncate">
+                                            <i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat}
+                                        </p>
+                                        {/* Row 3: Role Badge + Time + Status */}
+                                        <div className="flex items-center justify-between mt-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${roleBadge.bg}`}>
+                                                    {roleBadge.label}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400">
+                                                    {rapat.waktu_mulai?.substring(0, 5)} - {rapat.waktu_selesai?.substring(0, 5)}
+                                                </span>
+                                            </div>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
+                                                {colors.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })
                 )}
             </div>
+
+            {/* Modals */}
+            {modalType === 'belum_mulai' && selectedRapat && (
+                <ModalRapatBelumMulai
+                    rapat={selectedRapat}
+                    onClose={handleCloseModal}
+                />
+            )}
+
+            {modalType === 'sudah_absen' && selectedRapat && (
+                <ModalRapatSudahAbsen
+                    rapat={selectedRapat}
+                    onClose={handleCloseModal}
+                />
+            )}
+
+            {modalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.is_pimpinan && (
+                <ModalAbsensiRapatPimpinan
+                    rapat={selectedRapat}
+                    onClose={handleCloseModal}
+                    onSuccess={handleAbsensiSuccess}
+                />
+            )}
+
+            {modalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.is_sekretaris && (
+                <ModalAbsensiRapatSekretaris
+                    rapat={selectedRapat}
+                    tanggal={tanggal}
+                    pimpinan={pimpinan}
+                    pesertaList={pesertaList}
+                    onClose={handleCloseModal}
+                    onSuccess={handleAbsensiSuccess}
+                />
+            )}
+
+            {modalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.is_peserta && !selectedRapat.is_pimpinan && !selectedRapat.is_sekretaris && (
+                <ModalAbsensiRapatPeserta
+                    rapat={selectedRapat}
+                    onClose={handleCloseModal}
+                    onSuccess={handleAbsensiSuccess}
+                />
+            )}
         </div>
     );
 }

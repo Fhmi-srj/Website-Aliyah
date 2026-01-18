@@ -16,6 +16,9 @@ class Rapat extends Model
         'jenis_rapat',
         'pimpinan',
         'sekretaris',
+        'pimpinan_id',
+        'sekretaris_id',
+        'peserta_rapat',
         'notulis_id',
         'tanggal',
         'waktu_mulai',
@@ -26,6 +29,7 @@ class Rapat extends Model
 
     protected $casts = [
         'tanggal' => 'date',
+        'peserta_rapat' => 'array',
     ];
 
     /**
@@ -35,4 +39,21 @@ class Rapat extends Model
     {
         return $this->belongsTo(Guru::class, 'notulis_id');
     }
+
+    /**
+     * Get the pimpinan (guru) for this rapat.
+     */
+    public function pimpinanGuru()
+    {
+        return $this->belongsTo(Guru::class, 'pimpinan_id');
+    }
+
+    /**
+     * Get the sekretaris (guru) for this rapat.
+     */
+    public function sekretarisGuru()
+    {
+        return $this->belongsTo(Guru::class, 'sekretaris_id');
+    }
 }
+

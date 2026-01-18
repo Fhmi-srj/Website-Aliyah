@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import Pagination from '../../../components/Pagination';
+
+const ITEMS_PER_PAGE = 10;
 
 function ManajemenSiswa() {
     const [data, setData] = useState([]);
@@ -31,6 +34,9 @@ function ManajemenSiswa() {
 
     // Mobile expandable rows
     const [expandedRows, setExpandedRows] = useState(new Set());
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
 
     // File input ref for import
     const fileInputRef = useRef(null);
@@ -116,6 +122,18 @@ function ManajemenSiswa() {
     if (sortColumn) {
         filteredData = sortData(filteredData, sortColumn, sortDirection);
     }
+
+    // Pagination
+    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+    const paginatedData = filteredData.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filterStatus, filterKelas, filterJk]);
 
     const uniqueKelas = [...new Set(data.map(d => d.kelas?.nama_kelas).filter(Boolean))].sort();
 
@@ -523,10 +541,10 @@ function ManajemenSiswa() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredData.map((item, idx) => (
+                            {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
                                     <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{idx + 1}</td>
+                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                                         {isMobile && (
                                             <td
                                                 className="py-2 px-2 align-middle select-none text-center cursor-pointer"
@@ -583,6 +601,13 @@ function ManajemenSiswa() {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        totalItems={filteredData.length}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                    />
                 </div>
             )}
 

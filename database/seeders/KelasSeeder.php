@@ -13,20 +13,16 @@ class KelasSeeder extends Seeder
     public function run(): void
     {
         $data = [
-            ['nama_kelas' => 'X', 'inisial' => 'X'],
-            ['nama_kelas' => 'XI', 'inisial' => 'XI'],
-            ['nama_kelas' => 'XII', 'inisial' => 'XII'],
-            ['nama_kelas' => 'X IPA 1', 'inisial' => 'XIPA1'],
-            ['nama_kelas' => 'XI IPS 2', 'inisial' => 'XIIPS2'],
+            ['nama_kelas' => 'X', 'inisial' => 'X', 'tingkat' => 'X', 'kapasitas' => 35, 'status' => 'Aktif'],
+            ['nama_kelas' => 'XI', 'inisial' => 'XI', 'tingkat' => 'XI', 'kapasitas' => 35, 'status' => 'Aktif'],
+            ['nama_kelas' => 'XII', 'inisial' => 'XII', 'tingkat' => 'XII', 'kapasitas' => 35, 'status' => 'Aktif'],
         ];
 
         foreach ($data as $item) {
-            DB::table('kelas')->insert([
-                'nama_kelas' => $item['nama_kelas'],
-                'inisial' => $item['inisial'],
+            DB::table('kelas')->insert(array_merge($item, [
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ]));
         }
     }
 }

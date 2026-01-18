@@ -99,8 +99,8 @@ function Pencarian() {
                             key={cat.value}
                             onClick={() => setCategory(cat.value)}
                             className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-all ${category === cat.value
-                                    ? 'bg-green-500 text-white shadow-md'
-                                    : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50'
+                                ? 'bg-green-500 text-white shadow-md'
+                                : 'bg-white text-gray-600 shadow-sm hover:bg-gray-50'
                                 }`}
                         >
                             <i className={`${cat.icon} mr-2`}></i>
@@ -118,8 +118,8 @@ function Pencarian() {
                         <button
                             onClick={() => setHari('')}
                             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hari === ''
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
                                 }`}
                         >
                             Semua
@@ -129,8 +129,8 @@ function Pencarian() {
                                 key={day}
                                 onClick={() => setHari(day)}
                                 className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${hari === day
-                                        ? 'bg-green-500 text-white'
-                                        : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
                                     }`}
                             >
                                 {day}
@@ -141,7 +141,38 @@ function Pencarian() {
             )}
 
             {/* Search Results */}
-            {searched && (
+            {loading && searched && (
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+                    <div className="p-3 border-b border-gray-100">
+                        <div className="h-5 bg-gray-200 rounded w-32"></div>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                        <div className="p-3 flex items-start gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                            <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                        <div className="p-3 flex items-start gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                            <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                        </div>
+                        <div className="p-3 flex items-start gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                            <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {searched && !loading && (
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                     <div className="p-3 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-800 text-sm">
