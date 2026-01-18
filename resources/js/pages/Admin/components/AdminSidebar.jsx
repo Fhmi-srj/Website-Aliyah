@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import logoImage from '../../../../images/logo.png';
 
 const menuItems = [
     {
@@ -118,7 +119,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
                                     className="w-6 h-6 flex-shrink-0"
                                     height="24"
                                     width="24"
-                                    src="/images/logo.png"
+                                    src={logoImage}
                                 />
                                 <span className="font-semibold text-green-800 text-lg ml-2 whitespace-nowrap">
                                     MA ALHIKAM

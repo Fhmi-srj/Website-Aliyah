@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AdminSidebar from './AdminSidebar';
+import logoImage from '../../../../images/logo.png';
 
 function AdminLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,7 +21,7 @@ function AdminLayout({ children }) {
                             className="w-6 h-6 mr-2"
                             height="24"
                             width="24"
-                            src="/images/logo.png"
+                            src={logoImage}
                         />
                         <span className="font-semibold text-[#1f2937] text-lg select-none">
                             MA ALHIKAM

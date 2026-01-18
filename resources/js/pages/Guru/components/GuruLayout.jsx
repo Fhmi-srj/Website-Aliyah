@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import logoImage from '../../../../images/logo.png';
 
 function GuruLayout({ children }) {
     const [fabOpen, setFabOpen] = useState(false);
@@ -40,7 +41,7 @@ function GuruLayout({ children }) {
             <header className="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-40 md:hidden shadow-sm border-b border-gray-100">
                 <div className="flex items-center gap-3">
                     <img
-                        src="/images/logo.png"
+                        src={logoImage}
                         alt="Logo MA Mamba'ul Huda"
                         className="w-10 h-10 object-contain"
                     />

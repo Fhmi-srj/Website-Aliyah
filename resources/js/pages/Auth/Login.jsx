@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import logoImage from '../../../images/logo.png';
 
 function Login() {
     const [username, setUsername] = useState('');
@@ -36,7 +37,7 @@ function Login() {
                 {/* Logo & Title */}
                 <div className="text-center mb-8">
                     <img
-                        src="/images/logo.png"
+                        src={logoImage}
                         alt="Logo MA ALHIKAM"
                         className="w-20 h-20 mx-auto mb-4"
                     />
