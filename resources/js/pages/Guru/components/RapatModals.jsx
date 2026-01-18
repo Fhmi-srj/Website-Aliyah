@@ -41,8 +41,8 @@ export function ModalRapatBelumMulai({ rapat, onClose }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl w-full max-w-sm animate-slideUp" onClick={e => e.stopPropagation()}>
                 <div className="p-6 text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i className="fas fa-clock text-blue-500 text-2xl"></i>
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fas fa-clock text-green-500 text-2xl"></i>
                     </div>
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Rapat Belum Dimulai</h3>
                     <p className="text-sm text-gray-500 mb-1">{rapat.agenda_rapat || rapat.name}</p>
@@ -118,14 +118,14 @@ export function ModalAbsensiRapatPimpinan({ rapat, onClose, onSuccess }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl w-full max-w-sm animate-slideUp max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-4 rounded-t-2xl text-white">
+                <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 rounded-t-2xl text-white">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="font-bold text-lg">Absensi Pimpinan Rapat</h3>
                         <button onClick={onClose} className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                             <i className="fas fa-times"></i>
                         </button>
                     </div>
-                    <p className="text-purple-200 text-sm">{rapat.agenda_rapat || rapat.name}</p>
+                    <p className="text-green-200 text-sm">{rapat.agenda_rapat || rapat.name}</p>
                 </div>
 
                 {/* Content */}
@@ -162,7 +162,7 @@ export function ModalAbsensiRapatPimpinan({ rapat, onClose, onSuccess }) {
                                 value={keterangan}
                                 onChange={(e) => setKeterangan(e.target.value)}
                                 placeholder="Alasan izin/tidak hadir"
-                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                             />
                         </div>
                     )}
@@ -173,7 +173,7 @@ export function ModalAbsensiRapatPimpinan({ rapat, onClose, onSuccess }) {
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50"
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50"
                     >
                         {loading ? (
                             <span><i className="fas fa-spinner fa-spin mr-2"></i>Menyimpan...</span>
@@ -256,9 +256,9 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
     // Get role label and color
     const getRoleInfo = () => {
         if (role === 'pimpinan') {
-            return { label: 'Pimpinan Rapat', color: 'purple', icon: 'fa-user-tie' };
+            return { label: 'Pimpinan Rapat', color: 'green', icon: 'fa-user-tie' };
         }
-        return { label: 'Peserta Rapat', color: 'blue', icon: 'fa-user-friends' };
+        return { label: 'Peserta Rapat', color: 'green', icon: 'fa-user-friends' };
     };
 
     const roleInfo = getRoleInfo();
@@ -275,7 +275,7 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`bg-gradient-to-r ${role === 'pimpinan' ? 'from-purple-600 to-purple-700' : 'from-blue-600 to-blue-700'} text-white p-4 flex-shrink-0`}>
+                <div className={`bg-gradient-to-r ${role === 'pimpinan' ? 'from-green-600 to-green-700' : 'from-green-600 to-green-700'} text-white p-4 flex-shrink-0`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -283,7 +283,7 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                             </div>
                             <div>
                                 <h2 className="font-bold text-sm">{rapat.agenda_rapat || rapat.name}</h2>
-                                <p className={`${role === 'pimpinan' ? 'text-purple-100' : 'text-blue-100'} text-xs`}>Absensi {roleInfo.label}</p>
+                                <p className={`${role === 'pimpinan' ? 'text-green-100' : 'text-green-100'} text-xs`}>Absensi {roleInfo.label}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
@@ -295,8 +295,8 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Info Badge */}
-                    <div className={`${role === 'pimpinan' ? 'bg-purple-50 border-purple-200' : 'bg-blue-50 border-blue-200'} border rounded-xl p-3`}>
-                        <div className={`flex items-center gap-2 ${role === 'pimpinan' ? 'text-purple-700' : 'text-blue-700'} text-sm font-medium`}>
+                    <div className={`${role === 'pimpinan' ? 'bg-green-50 border-green-200' : 'bg-green-50 border-green-200'} border rounded-xl p-3`}>
+                        <div className={`flex items-center gap-2 ${role === 'pimpinan' ? 'text-green-700' : 'text-green-700'} text-sm font-medium`}>
                             <i className={`fas ${roleInfo.icon}`}></i>
                             <span>Anda adalah {roleInfo.label}</span>
                         </div>
@@ -349,7 +349,7 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 ${role === 'pimpinan' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0`}>
+                                <div className={`w-12 h-12 ${role === 'pimpinan' ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-600'} rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0`}>
                                     {guruName?.charAt(0)?.toUpperCase() || 'G'}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -397,7 +397,7 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r ${role === 'pimpinan' ? 'from-purple-500 to-purple-600' : 'from-blue-500 to-blue-600'} text-white hover:shadow-lg disabled:opacity-50`}
+                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r ${role === 'pimpinan' ? 'from-green-500 to-green-600' : 'from-green-500 to-green-600'} text-white hover:shadow-lg disabled:opacity-50`}
                     >
                         {loading ? (
                             <i className="fas fa-spinner fa-spin"></i>
@@ -571,29 +571,29 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
             <div className="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex-shrink-0">
+                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><i className="fas fa-users"></i></div>
                             <div>
                                 <h2 className="font-bold text-sm">{rapat.agenda_rapat || rapat.name}</h2>
-                                <p className="text-blue-100 text-xs"><i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat || '-'} • {formatTime(rapat.waktu_mulai)} - {formatTime(rapat.waktu_selesai)}</p>
+                                <p className="text-green-100 text-xs"><i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat || '-'} • {formatTime(rapat.waktu_mulai)} - {formatTime(rapat.waktu_selesai)}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg"><i className="fas fa-times text-xl"></i></button>
                     </div>
                     <div className="flex gap-6 mt-4 text-center">
-                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.hadir}</p><p className="text-xs text-blue-100">Hadir</p></div>
-                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.izin}</p><p className="text-xs text-blue-100">Izin</p></div>
-                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.alpha}</p><p className="text-xs text-blue-100">Alpha</p></div>
+                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.hadir}</p><p className="text-xs text-green-100">Hadir</p></div>
+                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.izin}</p><p className="text-xs text-green-100">Izin</p></div>
+                        <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.alpha}</p><p className="text-xs text-green-100">Alpha</p></div>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Info Badge */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                        <div className="flex items-center gap-2 text-blue-700 text-sm font-medium"><i className="fas fa-user-edit"></i><span>Anda adalah Sekretaris Rapat</span></div>
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 text-green-700 text-sm font-medium"><i className="fas fa-user-edit"></i><span>Anda adalah Sekretaris Rapat</span></div>
                     </div>
 
                     {/* Read-only Info */}
@@ -607,7 +607,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg flex-shrink-0">{sekretarisName?.charAt(0)?.toUpperCase() || 'S'}</div>
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">{sekretarisName?.charAt(0)?.toUpperCase() || 'S'}</div>
                                 <div className="flex-1 min-w-0"><p className="font-bold text-gray-800 truncate">{sekretarisName || 'Loading...'}</p><p className="text-xs text-gray-400">{sekretarisNip || 'Sekretaris'}</p></div>
                                 <div className="flex gap-1.5">
                                     {['H', 'I', 'A'].map(s => (
@@ -621,9 +621,9 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
 
                     {/* Pimpinan Section - Collapsible */}
                     <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        <button type="button" onClick={() => setPimpinanExpanded(!pimpinanExpanded)} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 transition-all">
+                        <button type="button" onClick={() => setPimpinanExpanded(!pimpinanExpanded)} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-pink-50 hover:from-green-100 hover:to-pink-100 transition-all">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center"><i className="fas fa-user-tie text-white"></i></div>
+                                <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center"><i className="fas fa-user-tie text-white"></i></div>
                                 <div className="text-left"><p className="font-semibold text-gray-800">Pimpinan Rapat</p><p className="text-xs text-gray-500">{pimpinan?.nama || '-'}{pimpinanSelfAttended && <span className="text-green-600 ml-1">• Sudah absen mandiri</span>}</p></div>
                             </div>
                             <div className={`w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-transform duration-300 ${pimpinanExpanded ? 'rotate-180' : ''}`}><i className="fas fa-chevron-down text-gray-500 text-sm"></i></div>
@@ -632,7 +632,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                             <div className="p-3">
                                 <div className={`bg-white rounded-xl p-3 ${pimpinanSelfAttended ? 'border-2 border-green-400 shadow-sm' : 'border border-gray-100'}`}>
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${pimpinanSelfAttended ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'}`}>{pimpinanSelfAttended ? <i className="fas fa-check"></i> : pimpinan?.nama?.charAt(0)?.toUpperCase() || 'P'}</div>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${pimpinanSelfAttended ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-600'}`}>{pimpinanSelfAttended ? <i className="fas fa-check"></i> : pimpinan?.nama?.charAt(0)?.toUpperCase() || 'P'}</div>
                                         <div className="flex-1 min-w-0"><p className="font-semibold text-gray-800 text-sm truncate flex items-center gap-1">{pimpinan?.nama || 'Pimpinan'}{pimpinanSelfAttended && <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">Self</span>}</p><p className="text-xs text-gray-400">{pimpinan?.nip || 'Pimpinan Rapat'}</p></div>
                                         <div className="flex gap-1">
                                             {['H', 'I', 'A'].map(s => (
@@ -680,7 +680,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                     {/* Notulensi */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat <span className="text-red-500">*</span></label>
-                        <textarea value={notulensi} onChange={e => handleNotulensiChange(e.target.value)} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-400 min-h-[80px] resize-y" />
+                        <textarea value={notulensi} onChange={e => handleNotulensiChange(e.target.value)} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 min-h-[80px] resize-y" />
                     </div>
 
                     {/* Dokumentasi Rapat */}
@@ -697,7 +697,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                             </div>
                         )}
                         {fotoRapat.length < 4 && (
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
                                 <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
                                 {uploadingPhoto ? <div className="flex items-center gap-2 text-gray-500"><i className="fas fa-spinner fa-spin"></i><span className="text-sm">Memproses foto...</span></div> : <><i className="fas fa-camera text-gray-400 text-2xl mb-2"></i><span className="text-sm text-gray-500">Klik untuk upload foto</span><span className="text-xs text-gray-400">{fotoRapat.length}/4 foto</span></>}
                             </label>
@@ -709,7 +709,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                 {/* Footer */}
                 <div className="flex-shrink-0 p-4 border-t border-gray-100 flex gap-3 bg-white">
                     <button onClick={onClose} className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 font-medium hover:bg-gray-50">Batal</button>
-                    <button onClick={handleSubmit} disabled={loading || !canSubmit} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 ${canSubmit ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:shadow-lg' : 'bg-gray-300 text-gray-500 cursor-not-allowed'} disabled:opacity-50`}>
+                    <button onClick={handleSubmit} disabled={loading || !canSubmit} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 ${canSubmit ? 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg' : 'bg-gray-300 text-gray-500 cursor-not-allowed'} disabled:opacity-50`}>
                         {loading ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-save"></i>Simpan Absensi</>}
                     </button>
                 </div>

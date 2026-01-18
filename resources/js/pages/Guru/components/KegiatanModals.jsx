@@ -280,8 +280,8 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Info Badge - Penanggung Jawab */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                        <div className="flex items-center gap-2 text-blue-700 text-sm font-medium">
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
                             <i className="fas fa-user-tie"></i>
                             <span>Anda adalah Penanggung Jawab Kegiatan</span>
                         </div>
@@ -310,7 +310,7 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg flex-shrink-0">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">
                                     {guruName?.charAt(0)?.toUpperCase() || 'G'}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -353,10 +353,10 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                             <button
                                 type="button"
                                 onClick={() => setPendampingExpanded(!pendampingExpanded)}
-                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 transition-all"
+                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-pink-50 hover:from-green-100 hover:to-pink-100 transition-all"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
                                         <i className="fas fa-chalkboard-teacher text-white"></i>
                                     </div>
                                     <div className="text-left">
@@ -386,7 +386,7 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${guru.self_attended
                                                     ? 'bg-green-100 text-green-600'
-                                                    : 'bg-purple-100 text-purple-600'}`}>
+                                                    : 'bg-green-100 text-green-600'}`}>
                                                     {guru.self_attended ? (
                                                         <i className="fas fa-check"></i>
                                                     ) : (
@@ -444,10 +444,10 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                             <button
                                 type="button"
                                 onClick={() => setSiswaExpanded(!siswaExpanded)}
-                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 transition-all"
+                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-cyan-50 hover:from-green-100 hover:to-cyan-100 transition-all"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
                                         <i className="fas fa-user-graduate text-white"></i>
                                     </div>
                                     <div className="text-left">
@@ -675,8 +675,8 @@ export function ModalKegiatanBelumMulai({ kegiatan, tanggal, onClose }) {
                 style={{ animation: 'fadeIn 0.2s ease-out' }}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fas fa-clock text-blue-500 text-3xl"></i>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-clock text-green-500 text-3xl"></i>
                 </div>
                 <h2 className="text-xl font-bold text-gray-800 mb-2">Kegiatan Belum Dimulai</h2>
                 <p className="text-gray-500 mb-4">{kegiatan.nama_kegiatan}</p>
@@ -696,14 +696,14 @@ export function ModalKegiatanBelumMulai({ kegiatan, tanggal, onClose }) {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 text-blue-600 text-sm mb-6">
+                <div className="flex items-center justify-center gap-2 text-green-600 text-sm mb-6">
                     <i className="fas fa-info-circle"></i>
                     <span>Silakan kembali saat kegiatan dimulai</span>
                 </div>
 
                 <button
                     onClick={onClose}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition-colors"
+                    className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                     Mengerti
                 </button>
@@ -819,7 +819,7 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex-shrink-0">
+                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -827,7 +827,7 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                             </div>
                             <div>
                                 <h2 className="font-bold text-sm">{kegiatan.nama_kegiatan}</h2>
-                                <p className="text-purple-100 text-xs">Absensi Pendamping</p>
+                                <p className="text-green-100 text-xs">Absensi Pendamping</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
@@ -839,8 +839,8 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Info Badge */}
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                        <div className="flex items-center gap-2 text-purple-700 text-sm font-medium">
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
                             <i className="fas fa-user-friends"></i>
                             <span>Anda adalah Guru Pendamping</span>
                         </div>
@@ -893,7 +893,7 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold text-lg flex-shrink-0">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">
                                     {guruName?.charAt(0)?.toUpperCase() || 'G'}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -941,7 +941,7 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-lg disabled:opacity-50"
+                        className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg disabled:opacity-50"
                     >
                         {loading ? (
                             <i className="fas fa-spinner fa-spin"></i>

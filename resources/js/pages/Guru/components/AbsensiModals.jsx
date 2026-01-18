@@ -16,8 +16,8 @@ export function ModalBelumMulai({ jadwal, tanggal, onClose }) {
                 onClick={e => e.stopPropagation()}
             >
                 {/* Icon */}
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fas fa-clock text-blue-500 text-3xl"></i>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-clock text-green-500 text-3xl"></i>
                 </div>
 
                 {/* Title */}
@@ -37,7 +37,7 @@ export function ModalBelumMulai({ jadwal, tanggal, onClose }) {
                 </div>
 
                 {/* Notice */}
-                <div className="flex items-center justify-center gap-2 text-blue-600 text-sm mb-6">
+                <div className="flex items-center justify-center gap-2 text-green-600 text-sm mb-6">
                     <i className="fas fa-info-circle"></i>
                     <span>Silakan kembali saat mata pelajaran dimulai</span>
                 </div>
@@ -45,7 +45,7 @@ export function ModalBelumMulai({ jadwal, tanggal, onClose }) {
                 {/* Button */}
                 <button
                     onClick={onClose}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition-colors"
+                    className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                     Mengerti
                 </button>
@@ -183,7 +183,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                     <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                         <div className="flex items-center gap-3">
                             {/* Avatar */}
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg flex-shrink-0">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">
                                 {guruName?.charAt(0)?.toUpperCase() || 'G'}
                             </div>
 
@@ -263,10 +263,10 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                         <button
                             type="button"
                             onClick={() => setSiswaExpanded(!siswaExpanded)}
-                            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all"
+                            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-indigo-50 hover:from-green-100 hover:to-indigo-100 transition-all"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                                <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
                                     <i className="fas fa-users text-white"></i>
                                 </div>
                                 <div className="text-left">
