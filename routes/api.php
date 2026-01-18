@@ -85,5 +85,11 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::post('rapat/absensi-sekretaris', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'absensiSekretaris']);
     Route::get('rapat/{id}/absensi-peserta', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'getAbsensiPeserta']);
     Route::get('rapat/{id}/check-status', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'checkPesertaStatus']);
+
+    // Riwayat
+    Route::get('riwayat/mengajar', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatMengajar']);
+    Route::get('riwayat/mengajar/{id}/detail', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'detailPertemuan']);
+    Route::get('riwayat/kegiatan', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatKegiatan']);
+    Route::get('riwayat/rapat', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatRapat']);
 });
 

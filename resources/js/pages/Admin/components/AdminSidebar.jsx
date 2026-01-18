@@ -118,7 +118,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
                                     className="w-6 h-6 flex-shrink-0"
                                     height="24"
                                     width="24"
-                                    src="/Website-Aliyah/public/images/logo.png"
+                                    src="/images/logo.png"
                                 />
                                 <span className="font-semibold text-green-800 text-lg ml-2 whitespace-nowrap">
                                     MA ALHIKAM

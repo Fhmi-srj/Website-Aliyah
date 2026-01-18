@@ -20,7 +20,7 @@ function AdminLayout({ children }) {
                             className="w-6 h-6 mr-2"
                             height="24"
                             width="24"
-                            src="/Website-Aliyah/public/images/logo.png"
+                            src="/images/logo.png"
                         />
                         <span className="font-semibold text-[#1f2937] text-lg select-none">
                             MA ALHIKAM

@@ -36,7 +36,7 @@ function Login() {
                 {/* Logo & Title */}
                 <div className="text-center mb-8">
                     <img
-                        src="/Website-Aliyah/public/images/logo.png"
+                        src="/images/logo.png"
                         alt="Logo MA ALHIKAM"
                         className="w-20 h-20 mx-auto mb-4"
                     />

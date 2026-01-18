@@ -1,7 +1,14 @@
 // API Configuration
 // Automatically detect base path from current URL
 const getBasePath = () => {
+    const hostname = window.location.hostname;
     const path = window.location.pathname;
+
+    // If running on ngrok or production domain (no subdirectory needed)
+    if (hostname.includes('ngrok') || hostname.includes('.') && !hostname.includes('localhost')) {
+        return '';
+    }
+
     // Extract the base path (e.g., /Website-Aliyah/public from /Website-Aliyah/public/...)
     const match = path.match(/^(\/[^\/]+\/public)/);
     if (match) {
@@ -9,7 +16,7 @@ const getBasePath = () => {
     }
     // Fallback for different URL structures
     const altMatch = path.match(/^(\/[^\/]+)/);
-    if (altMatch && altMatch[1] !== '/data-induk') {
+    if (altMatch && altMatch[1] !== '/data-induk' && altMatch[1] !== '/login' && altMatch[1] !== '/api') {
         return altMatch[1];
     }
     return '';
