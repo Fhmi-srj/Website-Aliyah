@@ -588,30 +588,47 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                             </div>
                         )}
 
-                        {/* Upload Button */}
+                        {/* Upload Buttons - Camera and File */}
                         {fotoKegiatan.length < 4 && (
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={handlePhotoUpload}
-                                    className="hidden"
-                                    disabled={uploadingPhoto}
-                                />
+                            <div className="space-y-2">
                                 {uploadingPhoto ? (
-                                    <div className="flex items-center gap-2 text-gray-500">
+                                    <div className="flex items-center justify-center gap-2 text-gray-500 py-4">
                                         <i className="fas fa-spinner fa-spin"></i>
                                         <span className="text-sm">Memproses foto...</span>
                                     </div>
                                 ) : (
-                                    <>
-                                        <i className="fas fa-camera text-gray-400 text-2xl mb-2"></i>
-                                        <span className="text-sm text-gray-500">Klik untuk upload foto</span>
-                                        <span className="text-xs text-gray-400">{fotoKegiatan.length}/4 foto</span>
-                                    </>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* Camera Capture Button */}
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-xl p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all bg-green-50/30">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={handlePhotoUpload}
+                                                className="hidden"
+                                                disabled={uploadingPhoto}
+                                            />
+                                            <i className="fas fa-camera text-green-500 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-green-600">Ambil Foto</span>
+                                        </label>
+
+                                        {/* File Gallery Button */}
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handlePhotoUpload}
+                                                className="hidden"
+                                                disabled={uploadingPhoto}
+                                            />
+                                            <i className="fas fa-images text-gray-400 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-gray-500">Pilih File</span>
+                                        </label>
+                                    </div>
                                 )}
-                            </label>
+                                <p className="text-xs text-gray-400 text-center">{fotoKegiatan.length}/4 foto</p>
+                            </div>
                         )}
 
                         {/* Validation message */}

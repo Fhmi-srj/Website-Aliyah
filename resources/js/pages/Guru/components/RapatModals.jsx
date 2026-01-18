@@ -697,10 +697,31 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                             </div>
                         )}
                         {fotoRapat.length < 4 && (
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
-                                <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
-                                {uploadingPhoto ? <div className="flex items-center gap-2 text-gray-500"><i className="fas fa-spinner fa-spin"></i><span className="text-sm">Memproses foto...</span></div> : <><i className="fas fa-camera text-gray-400 text-2xl mb-2"></i><span className="text-sm text-gray-500">Klik untuk upload foto</span><span className="text-xs text-gray-400">{fotoRapat.length}/4 foto</span></>}
-                            </label>
+                            <div className="space-y-2">
+                                {uploadingPhoto ? (
+                                    <div className="flex items-center justify-center gap-2 text-gray-500 py-4">
+                                        <i className="fas fa-spinner fa-spin"></i>
+                                        <span className="text-sm">Memproses foto...</span>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* Camera Capture Button */}
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-xl p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all bg-green-50/30">
+                                            <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
+                                            <i className="fas fa-camera text-green-500 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-green-600">Ambil Foto</span>
+                                        </label>
+
+                                        {/* File Gallery Button */}
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                                            <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" disabled={uploadingPhoto} />
+                                            <i className="fas fa-images text-gray-400 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-gray-500">Pilih File</span>
+                                        </label>
+                                    </div>
+                                )}
+                                <p className="text-xs text-gray-400 text-center">{fotoRapat.length}/4 foto</p>
+                            </div>
                         )}
                         {fotoRapat.length < 2 && <p className="text-xs text-red-500 mt-1"><i className="fas fa-exclamation-circle mr-1"></i>Minimal upload 2 foto dokumentasi rapat</p>}
                     </div>
