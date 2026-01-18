@@ -202,10 +202,21 @@ class GuruDashboardController extends Controller
                     $role = 'sekretaris';
                 }
 
-                // Check attendance status
-                $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
-                $statusAbsensi = $this->getScheduleStatus($rapat->waktu_mulai, $rapat->waktu_selesai, $currentTime, false);
+                // Check attendance status - calculate manually to use consistent naming
+                $now = Carbon::now();
+                $startTime = Carbon::parse($today->format('Y-m-d') . ' ' . $rapat->waktu_mulai);
+                $endTime = Carbon::parse($today->format('Y-m-d') . ' ' . $rapat->waktu_selesai);
 
+                if ($now->lt($startTime)) {
+                    $statusAbsensi = 'belum_mulai';
+                } elseif ($now->between($startTime, $endTime)) {
+                    $statusAbsensi = 'sedang_berlangsung';
+                } else {
+                    $statusAbsensi = 'terlewat';
+                }
+
+                // Check if guru has already attended
+                $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
                 if ($absensiRapat) {
                     // Check if guru has attended
                     if ($role === 'pimpinan' && $absensiRapat->status_pimpinan) {
