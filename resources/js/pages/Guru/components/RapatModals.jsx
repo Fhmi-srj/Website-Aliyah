@@ -308,14 +308,14 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                             <i className="fas fa-calendar text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Tanggal</p>
-                                <p className="text-sm text-gray-800 font-medium">{tanggal || '-'}</p>
+                                <p className="text-sm text-gray-800 font-medium">{tanggal || rapat.date || rapat.tanggal || '-'}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-clock text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Waktu</p>
-                                <p className="text-sm text-gray-800 font-medium">{formatTime(rapat.waktu_mulai)} - {formatTime(rapat.waktu_selesai)}</p>
+                                <p className="text-sm text-gray-800 font-medium">{rapat.waktu_mulai ? `${formatTime(rapat.waktu_mulai)} - ${formatTime(rapat.waktu_selesai)}` : (rapat.time || '-')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -326,10 +326,17 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
-                            <i className="fas fa-user-edit text-gray-400 mt-0.5 w-4"></i>
+                            <i className="fas fa-user-tie text-gray-400 mt-0.5 w-4"></i>
                             <div>
-                                <p className="text-xs text-gray-500">Sekretaris</p>
-                                <p className="text-sm text-gray-800 font-medium">{rapat.sekretaris?.nama || '-'}</p>
+                                <p className="text-xs text-gray-500">Pimpinan</p>
+                                <p className="text-sm text-gray-800 font-medium">{rapat.pimpinan?.nama || rapat.pimpinan_nama || '-'}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <i className="fas fa-users text-gray-400 mt-0.5 w-4"></i>
+                            <div>
+                                <p className="text-xs text-gray-500">Peserta</p>
+                                <p className="text-sm text-gray-800 font-medium">{rapat.peserta_count || rapat.peserta_rapat?.length || '0'} guru</p>
                             </div>
                         </div>
                     </div>
@@ -577,7 +584,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><i className="fas fa-users"></i></div>
                             <div>
                                 <h2 className="font-bold text-sm">{rapat.agenda_rapat || rapat.name}</h2>
-                                <p className="text-green-100 text-xs"><i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat || '-'} • {formatTime(rapat.waktu_mulai)} - {formatTime(rapat.waktu_selesai)}</p>
+                                <p className="text-green-100 text-xs"><i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat || rapat.location || '-'} • {rapat.waktu_mulai ? `${formatTime(rapat.waktu_mulai)} - ${formatTime(rapat.waktu_selesai)}` : (rapat.time || '-')}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg"><i className="fas fa-times text-xl"></i></button>

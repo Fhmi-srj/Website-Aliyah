@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { ModalBelumMulai, ModalAbsensiSiswa, ModalSudahAbsen } from './components/AbsensiModals';
+import { AnimatedDayTabs } from './components/AnimatedTabs';
 
 function AbsensiMengajar() {
     const { user } = useAuth();
@@ -177,22 +178,13 @@ function AbsensiMengajar() {
                 <p className="text-green-100 text-sm">Jadwal mengajar mingguan</p>
             </div>
 
-            {/* Day Pills */}
+            {/* Day Pills - Animated */}
             <div className="px-4 pt-4">
-                <div className="bg-white rounded-xl p-2 shadow-sm grid grid-cols-6 gap-1">
-                    {days.map((day) => (
-                        <button
-                            key={day}
-                            onClick={() => setSelectedDay(day)}
-                            className={`py-2.5 rounded-lg text-xs font-medium transition-all text-center ${selectedDay === day
-                                ? 'bg-green-500 text-white shadow-md'
-                                : 'text-gray-500 hover:bg-gray-100'
-                                }`}
-                        >
-                            {day}
-                        </button>
-                    ))}
-                </div>
+                <AnimatedDayTabs
+                    days={days}
+                    activeDay={selectedDay}
+                    onDayChange={setSelectedDay}
+                />
             </div>
 
             {/* Legend */}

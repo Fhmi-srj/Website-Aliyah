@@ -280,6 +280,18 @@ function ManajemenRapat() {
     const openEditModal = (item) => {
         setModalMode('edit');
         setCurrentItem(item);
+        
+        // Convert UTC date to local date for proper display in date input
+        let formattedDate = '';
+        if (item.tanggal) {
+            const date = new Date(item.tanggal);
+            // Format to YYYY-MM-DD in local timezone
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            formattedDate = `${year}-${month}-${day}`;
+        }
+        
         setFormData({
             agenda_rapat: item.agenda_rapat || '',
             jenis_rapat: item.jenis_rapat || 'Rutin',
@@ -288,7 +300,7 @@ function ManajemenRapat() {
             pimpinan_id: item.pimpinan_id || null,
             sekretaris_id: item.sekretaris_id || null,
             peserta_rapat: item.peserta_rapat || [],
-            tanggal: item.tanggal?.split('T')[0] || '',
+            tanggal: formattedDate,
             waktu_mulai: item.waktu_mulai ? item.waktu_mulai.substring(0, 5) : '09:00',
             waktu_selesai: item.waktu_selesai ? item.waktu_selesai.substring(0, 5) : '11:00',
             tempat: item.tempat || '',

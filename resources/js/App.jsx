@@ -21,10 +21,15 @@ import GuruLayout from './pages/Guru/components/GuruLayout';
 import GuruBeranda from './pages/Guru/Beranda';
 import GuruPencarian from './pages/Guru/Pencarian';
 import GuruRiwayat from './pages/Guru/Riwayat';
+import GuruJadwal from './pages/Guru/Jadwal';
 import GuruProfil from './pages/Guru/Profil';
 import AbsensiMengajar from './pages/Guru/AbsensiMengajar';
 import AbsensiKegiatan from './pages/Guru/AbsensiKegiatan';
 import AbsensiRapat from './pages/Guru/AbsensiRapat';
+import Sertifikat from './pages/Guru/Sertifikat';
+import SPPD from './pages/Guru/SPPD';
+import Modul from './pages/Guru/Modul';
+import Download from './pages/Guru/Download';
 
 function App() {
     return (
@@ -43,10 +48,15 @@ function App() {
                                     <Route index element={<GuruBeranda />} />
                                     <Route path="pencarian" element={<GuruPencarian />} />
                                     <Route path="riwayat" element={<GuruRiwayat />} />
+                                    <Route path="jadwal" element={<GuruJadwal />} />
                                     <Route path="profil" element={<GuruProfil />} />
                                     <Route path="absensi/mengajar" element={<AbsensiMengajar />} />
                                     <Route path="absensi/kegiatan" element={<AbsensiKegiatan />} />
                                     <Route path="absensi/rapat" element={<AbsensiRapat />} />
+                                    <Route path="sertifikat" element={<Sertifikat />} />
+                                    <Route path="sppd" element={<SPPD />} />
+                                    <Route path="modul" element={<Modul />} />
+                                    <Route path="download" element={<Download />} />
                                 </Routes>
                             </GuruLayout>
                         </ProtectedRoute>

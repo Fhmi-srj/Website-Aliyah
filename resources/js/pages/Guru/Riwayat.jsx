@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import api from '../../lib/axios';
+import { RiwayatSkeleton } from './components/Skeleton';
+import { AnimatedTabsSimple } from './components/AnimatedTabs';
 
 // Modal component for Riwayat Pertemuan
 function ModalRiwayatPertemuan({ mapel, kelas, pertemuanList, onClose }) {
@@ -224,6 +226,7 @@ function Riwayat() {
     const [selectedKelas, setSelectedKelas] = useState('semua');
     const [selectedTahunAjaran, setSelectedTahunAjaran] = useState('');
     const [loading, setLoading] = useState(false);
+    const [initialLoad, setInitialLoad] = useState(true);
 
     // Data states
     const [mengajarData, setMengajarData] = useState([]);
@@ -269,6 +272,7 @@ function Riwayat() {
             console.error('Error fetching mengajar data:', error);
         } finally {
             setLoading(false);
+            setInitialLoad(false);
         }
     };
 
@@ -323,26 +327,45 @@ function Riwayat() {
         }
     };
 
+    // Refs to track initialization
+    const isInitialMount = React.useRef(true);
+    const hasFetchedInitial = React.useRef(false);
+
     // useEffect for initial load and tab changes
     useEffect(() => {
         if (activeTab === 'mengajar') {
-            fetchMengajarData();
+            // Only fetch if we haven't already fetched or if this is a tab switch (not initial mount)
+            if (!hasFetchedInitial.current || !isInitialMount.current) {
+                fetchMengajarData();
+                hasFetchedInitial.current = true;
+            }
         } else if (activeTab === 'kegiatan') {
             fetchKegiatanData();
         } else if (activeTab === 'rapat') {
             fetchRapatData();
         }
+        
+        // After first render, mark as no longer initial mount
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+        }
     }, [activeTab]);
 
-    // useEffect for filter changes (mengajar only)
+    // useEffect for filter changes (mengajar only) - skip initial mount
     useEffect(() => {
-        if (activeTab === 'mengajar' && selectedTahunAjaran) {
+        // Only trigger if not initial mount and we have valid filters
+        if (!isInitialMount.current && activeTab === 'mengajar' && hasFetchedInitial.current) {
             fetchMengajarData();
         }
     }, [selectedKelas, selectedTahunAjaran]);
 
-    // useEffect for search with debounce
+    // useEffect for search with debounce - skip initial mount
     useEffect(() => {
+        // Skip the initial empty searchQuery
+        if (isInitialMount.current) {
+            return;
+        }
+        
         const timer = setTimeout(() => {
             if (activeTab === 'mengajar') {
                 fetchMengajarData();
@@ -361,6 +384,11 @@ function Riwayat() {
         setSelectedMengajar(item);
         setDetailPertemuanData(null);
     };
+
+    // Show skeleton on initial load
+    if (initialLoad) {
+        return <RiwayatSkeleton />;
+    }
 
     return (
         <div className="animate-fadeIn">
@@ -386,21 +414,12 @@ function Riwayat() {
                     )}
                 </div>
 
-                {/* Tabs - 3 column grid like the design */}
-                <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-xl">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                                ? 'bg-green-600 text-white shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                {/* Tabs - Animated */}
+                <AnimatedTabsSimple
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                />
             </div>
 
             {/* Content */}

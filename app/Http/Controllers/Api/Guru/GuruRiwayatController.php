@@ -41,16 +41,16 @@ class GuruRiwayatController extends Controller
 
         if ($kelasFilter !== 'semua') {
             $jadwalQuery->whereHas('kelas', function ($q) use ($kelasFilter) {
-                $q->where('nama', $kelasFilter);
+                $q->where('nama_kelas', $kelasFilter);
             });
         }
 
         if ($search) {
             $jadwalQuery->where(function ($q) use ($search) {
                 $q->whereHas('mapel', function ($mq) use ($search) {
-                    $mq->where('nama', 'like', "%{$search}%");
+                    $mq->where('nama_mapel', 'like', "%{$search}%");
                 })->orWhereHas('kelas', function ($kq) use ($search) {
-                    $kq->where('nama', 'like', "%{$search}%");
+                    $kq->where('nama_kelas', 'like', "%{$search}%");
                 });
             });
         }
@@ -89,8 +89,8 @@ class GuruRiwayatController extends Controller
 
                 $result[] = [
                     'id' => $jadwal->id,
-                    'mapel' => $jadwal->mapel->nama ?? 'Unknown',
-                    'kelas' => $jadwal->kelas->nama ?? 'Unknown',
+                    'mapel' => $jadwal->mapel->nama_mapel ?? 'Unknown',
+                    'kelas' => $jadwal->kelas->nama_kelas ?? 'Unknown',
                     'time' => substr($jadwal->jam_mulai, 0, 5) . ' - ' . substr($jadwal->jam_selesai, 0, 5),
                     'hari' => $jadwal->hari,
                     'total_pertemuan' => count($pertemuanList),
@@ -104,7 +104,7 @@ class GuruRiwayatController extends Controller
             ->where('guru_id', $guru->id)
             ->where('tahun_ajaran', $tahunAjaran)
             ->get();
-        $kelasList = $allJadwal->pluck('kelas.nama')->unique()->filter()->sort()->values();
+        $kelasList = $allJadwal->pluck('kelas.nama_kelas')->unique()->filter()->sort()->values();
 
         // Get available tahun ajaran
         $tahunAjaranList = Jadwal::where('guru_id', $guru->id)
@@ -174,8 +174,8 @@ class GuruRiwayatController extends Controller
             'data' => [
                 'id' => $absensi->id,
                 'tanggal' => Carbon::parse($absensi->tanggal)->translatedFormat('d F Y'),
-                'mapel' => $absensi->jadwal->mapel->nama ?? 'Unknown',
-                'kelas' => $absensi->jadwal->kelas->nama ?? 'Unknown',
+                'mapel' => $absensi->jadwal->mapel->nama_mapel ?? 'Unknown',
+                'kelas' => $absensi->jadwal->kelas->nama_kelas ?? 'Unknown',
                 'ringkasan_materi' => $absensi->ringkasan_materi,
                 'berita_acara' => $absensi->berita_acara,
                 'stats' => [
@@ -206,43 +206,44 @@ class GuruRiwayatController extends Controller
 
         $search = $request->input('search', '');
 
-        // Get kegiatan where guru is PJ, pendamping, or has absensi
-        $kegiatanQuery = Kegiatan::with(['penanggungJawab', 'guruPendamping'])
-            ->where(function ($q) use ($guru) {
-                $q->where('penanggung_jawab_id', $guru->id)
-                    ->orWhereHas('guruPendamping', function ($pq) use ($guru) {
-                        $pq->where('guru_id', $guru->id);
-                    });
-            })
-            ->orderBy('tanggal', 'desc');
+        // Get kegiatan where guru is PJ or in pendamping array
+        $kegiatanQuery = Kegiatan::where(function ($q) use ($guru) {
+            $q->where('penanggung_jawab_id', $guru->id)
+                ->orWhereJsonContains('guru_pendamping', $guru->id)
+                ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
+        })
+            ->whereNotNull('waktu_mulai')
+            ->orderBy('waktu_mulai', 'desc');
 
         if ($search) {
-            $kegiatanQuery->where('nama', 'like', "%{$search}%");
+            $kegiatanQuery->where('nama_kegiatan', 'like', "%{$search}%");
         }
 
         $kegiatanList = $kegiatanQuery->get();
 
         $result = $kegiatanList->map(function ($kegiatan) use ($guru) {
             $role = 'Peserta';
-            if ($kegiatan->penanggung_jawab_id == $guru->id) {
+            $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
+            if ($isPJ) {
                 $role = 'PJ';
-            } elseif ($kegiatan->guruPendamping->contains('id', $guru->id)) {
-                $role = 'Pendamping';
+            } else {
+                $pendampingArr = $kegiatan->guru_pendamping ?? [];
+                if (is_array($pendampingArr) && (in_array($guru->id, $pendampingArr) || in_array((string) $guru->id, $pendampingArr))) {
+                    $role = 'Pendamping';
+                }
             }
 
-            // Check if already attended
-            $absensi = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)
-                ->where('guru_id', $guru->id)
-                ->first();
+            $waktuMulai = Carbon::parse($kegiatan->waktu_mulai);
+            $waktuSelesai = $kegiatan->waktu_berakhir ? Carbon::parse($kegiatan->waktu_berakhir) : $waktuMulai->copy()->addHours(2);
 
             return [
                 'id' => $kegiatan->id,
-                'nama' => $kegiatan->nama,
-                'tanggal' => Carbon::parse($kegiatan->tanggal)->translatedFormat('d F Y'),
-                'time' => substr($kegiatan->jam_mulai, 0, 5) . ' - ' . substr($kegiatan->jam_selesai, 0, 5),
+                'nama' => $kegiatan->nama_kegiatan,
+                'tanggal' => $waktuMulai->translatedFormat('d F Y'),
+                'time' => $waktuMulai->format('H:i') . ' - ' . $waktuSelesai->format('H:i'),
                 'role' => $role,
-                'status_absensi' => $absensi ? $absensi->status : null,
-                'lokasi' => $kegiatan->lokasi,
+                'status_absensi' => null,
+                'lokasi' => $kegiatan->tempat,
             ];
         });
 
@@ -269,17 +270,17 @@ class GuruRiwayatController extends Controller
 
         $search = $request->input('search', '');
 
-        // Get rapat where guru is pimpinan, sekretaris, or peserta
-        $rapatQuery = Rapat::with(['pimpinan', 'sekretaris'])
-            ->where(function ($q) use ($guru) {
-                $q->where('pimpinan_id', $guru->id)
-                    ->orWhere('sekretaris_id', $guru->id)
-                    ->orWhereJsonContains('peserta', $guru->id);
-            })
+        // Get rapat where guru is pimpinan, sekretaris, or in peserta_rapat array
+        $rapatQuery = Rapat::where(function ($q) use ($guru) {
+            $q->where('pimpinan_id', $guru->id)
+                ->orWhere('sekretaris_id', $guru->id)
+                ->orWhereJsonContains('peserta_rapat', $guru->id)
+                ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
+        })
             ->orderBy('tanggal', 'desc');
 
         if ($search) {
-            $rapatQuery->where('nama', 'like', "%{$search}%");
+            $rapatQuery->where('agenda_rapat', 'like', "%{$search}%");
         }
 
         $rapatList = $rapatQuery->get();
@@ -292,19 +293,14 @@ class GuruRiwayatController extends Controller
                 $role = 'Sekretaris';
             }
 
-            // Check if already attended
-            $absensi = AbsensiRapat::where('rapat_id', $rapat->id)
-                ->where('guru_id', $guru->id)
-                ->first();
-
             return [
                 'id' => $rapat->id,
-                'nama' => $rapat->nama,
+                'nama' => $rapat->agenda_rapat,
                 'tanggal' => Carbon::parse($rapat->tanggal)->translatedFormat('d F Y'),
-                'time' => substr($rapat->jam_mulai, 0, 5) . ' - ' . substr($rapat->jam_selesai, 0, 5),
+                'time' => substr($rapat->waktu_mulai, 0, 5) . ' - ' . substr($rapat->waktu_selesai, 0, 5),
                 'role' => $role,
-                'status_absensi' => $absensi ? $absensi->status : null,
-                'lokasi' => $rapat->lokasi,
+                'status_absensi' => null,
+                'lokasi' => $rapat->tempat,
             ];
         });
 

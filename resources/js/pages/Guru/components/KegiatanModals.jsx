@@ -843,7 +843,7 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                                 <i className="fas fa-calendar-check"></i>
                             </div>
                             <div>
-                                <h2 className="font-bold text-sm">{kegiatan.nama_kegiatan}</h2>
+                                <h2 className="font-bold text-sm">{kegiatan.nama_kegiatan || kegiatan.name}</h2>
                                 <p className="text-green-100 text-xs">Absensi Pendamping</p>
                             </div>
                         </div>
@@ -869,28 +869,28 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                             <i className="fas fa-calendar text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Tanggal</p>
-                                <p className="text-sm text-gray-800 font-medium">{formatDate(kegiatan.waktu_mulai)}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatan.waktu_mulai ? formatDate(kegiatan.waktu_mulai) : (tanggal || kegiatan.date || kegiatan.tanggal || '-')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-clock text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Waktu</p>
-                                <p className="text-sm text-gray-800 font-medium">{formatTime(kegiatan.waktu_mulai)} - {formatTime(kegiatan.waktu_berakhir)}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatan.waktu_mulai ? `${formatTime(kegiatan.waktu_mulai)} - ${formatTime(kegiatan.waktu_berakhir)}` : (kegiatan.time || '-')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-map-marker-alt text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Tempat</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.tempat || '-'}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatan.tempat || kegiatan.location || '-'}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-user-tie text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Penanggung Jawab</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.penanggungjawab?.nama || '-'}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatan.penanggungjawab?.nama || kegiatan.pj || '-'}</p>
                             </div>
                         </div>
                     </div>

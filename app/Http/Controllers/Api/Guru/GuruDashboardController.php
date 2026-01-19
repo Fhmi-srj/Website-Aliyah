@@ -246,13 +246,107 @@ class GuruDashboardController extends Controller
                 ];
             });
 
-        // Calculate statistics (mock for now - will integrate with absensi table later)
+        // Calculate REAL monthly statistics
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
+        // Stats Mengajar - from AbsensiMengajar
+        // Note: Creating AbsensiMengajar record = guru sudah mengajar (hadir)
+        // We don't track izin/sakit for mengajar, just count total absensi entries
+        $mengajarAbsensi = AbsensiMengajar::where('guru_id', $guru->id)
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->get();
+        $mengajarTotal = $mengajarAbsensi->count();
+        $mengajarHadir = $mengajarTotal; // All entries = hadir (karena sudah absen mengajar)
+
+        // Stats Kegiatan - from AbsensiKegiatan where guru participated
+        $kegiatanThisMonth = Kegiatan::where(function ($q) use ($guru) {
+            $q->where('penanggung_jawab_id', $guru->id)
+                ->orWhereJsonContains('guru_pendamping', $guru->id)
+                ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
+        })
+            ->whereBetween('waktu_mulai', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $kegiatanTotal = $kegiatanThisMonth->count();
+        $kegiatanHadir = 0;
+        foreach ($kegiatanThisMonth as $kegiatan) {
+            $absensiKeg = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
+            if ($absensiKeg) {
+                $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
+                if ($isPJ && $absensiKeg->status === 'submitted') {
+                    $kegiatanHadir++;
+                } elseif (!$isPJ) {
+                    $pendampingAbsensi = $absensiKeg->absensi_pendamping ?? [];
+                    foreach ($pendampingAbsensi as $entry) {
+                        if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                            $kegiatanHadir++;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Stats Rapat - properly check AbsensiRapat
+        $rapatThisMonth = Rapat::where(function ($q) use ($guru) {
+            $q->where('pimpinan_id', $guru->id)
+                ->orWhere('sekretaris_id', $guru->id)
+                ->orWhereJsonContains('peserta_rapat', $guru->id)
+                ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
+        })
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $rapatTotal = $rapatThisMonth->count();
+        $rapatHadir = 0;
+
+        // Import AbsensiRapat at top of file if not already imported
+        foreach ($rapatThisMonth as $rapat) {
+            $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
+            if ($absensiRapat) {
+                $isPimpinan = $rapat->pimpinan_id == $guru->id;
+                $isSekretaris = $rapat->sekretaris_id == $guru->id;
+
+                if ($isPimpinan && $absensiRapat->pimpinan_self_attended) {
+                    $rapatHadir++;
+                } elseif ($isSekretaris && $absensiRapat->status === 'submitted') {
+                    $rapatHadir++;
+                } else {
+                    // Check peserta array
+                    $pesertaAbsensi = $absensiRapat->absensi_peserta ?? [];
+                    foreach ($pesertaAbsensi as $entry) {
+                        if (isset($entry['guru_id']) && $entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                            $rapatHadir++;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         $stats = [
-            'totalMengajar' => $todaySchedule->count() * 20, // Approximate monthly
-            'hadir' => round($todaySchedule->count() * 20 * 0.93),
-            'izin' => round($todaySchedule->count() * 20 * 0.04),
-            'sakit' => round($todaySchedule->count() * 20 * 0.03),
-            'percentage' => 93,
+            'mengajar' => [
+                'total' => $mengajarTotal,
+                'hadir' => $mengajarHadir,
+                'izin' => 0,
+                'sakit' => 0,
+                'percentage' => $mengajarTotal > 0 ? 100 : 0, // All entries = 100% hadir
+            ],
+            'kegiatan' => [
+                'total' => $kegiatanTotal,
+                'hadir' => $kegiatanHadir,
+                'izin' => 0,
+                'sakit' => 0,
+                'percentage' => $kegiatanTotal > 0 ? round($kegiatanHadir / $kegiatanTotal * 100) : 0,
+            ],
+            'rapat' => [
+                'total' => $rapatTotal,
+                'hadir' => $rapatHadir,
+                'izin' => 0,
+                'sakit' => 0,
+                'percentage' => $rapatTotal > 0 ? round($rapatHadir / $rapatTotal * 100) : 0,
+            ],
         ];
 
         // Generate reminders
@@ -266,11 +360,8 @@ class GuruDashboardController extends Controller
             ],
             'today' => [
                 'date' => $today->locale('id')->translatedFormat('l, d F Y'),
-                'scheduleCount' => $todaySchedule->count(),
+                'scheduleCount' => $todaySchedule->count() + $todayActivities->count() + $todayMeetings->count(),
             ],
-            'todaySchedule' => $todaySchedule,
-            'todayActivities' => $todayActivities,
-            'todayMeetings' => $todayMeetings,
             'stats' => $stats,
             'reminders' => $reminders,
         ]);

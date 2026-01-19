@@ -15,7 +15,7 @@ function GuruLayout({ children }) {
         { to: '/guru', icon: 'fas fa-home', label: 'Beranda', end: true },
         { to: '/guru/pencarian', icon: 'fas fa-search', label: 'Cari' },
         { type: 'fab' }, // Placeholder for FAB
-        { to: '/guru/riwayat', icon: 'fas fa-history', label: 'Riwayat' },
+        { to: '/guru/jadwal', icon: 'fas fa-calendar-alt', label: 'Jadwal' },
         { to: '/guru/profil', icon: 'fas fa-user', label: 'Profil' },
     ];
 

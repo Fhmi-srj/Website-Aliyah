@@ -91,5 +91,9 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('riwayat/mengajar/{id}/detail', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'detailPertemuan']);
     Route::get('riwayat/kegiatan', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatKegiatan']);
     Route::get('riwayat/rapat', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatRapat']);
+
+    // Jadwal (next 7 days)
+    Route::get('jadwal/kegiatan', [\App\Http\Controllers\Api\Guru\GuruJadwalController::class, 'getJadwalKegiatan']);
+    Route::get('jadwal/rapat', [\App\Http\Controllers\Api\Guru\GuruJadwalController::class, 'getJadwalRapat']);
 });
 
