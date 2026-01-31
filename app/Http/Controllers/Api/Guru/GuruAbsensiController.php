@@ -228,6 +228,8 @@ class GuruAbsensiController extends Controller
             'jadwal_id' => 'required|exists:jadwal,id',
             'ringkasan_materi' => 'nullable|string',
             'berita_acara' => 'nullable|string',
+            'guru_status' => 'nullable|in:H,I',
+            'guru_keterangan' => 'nullable|string',
             'absensi_siswa' => 'required|array',
             'absensi_siswa.*.siswa_id' => 'required|exists:siswa,id',
             'absensi_siswa.*.status' => 'required|in:H,I,A',
@@ -256,7 +258,8 @@ class GuruAbsensiController extends Controller
             return response()->json(['error' => 'Absensi sudah dilakukan untuk jadwal ini hari ini'], 400);
         }
 
-        // Create absensi mengajar
+        // Create absensi mengajar with guru_status
+        $guruStatus = $validated['guru_status'] ?? 'H';
         $absensi = AbsensiMengajar::create([
             'jadwal_id' => $jadwal->id,
             'guru_id' => $guru->id,
@@ -264,6 +267,8 @@ class GuruAbsensiController extends Controller
             'ringkasan_materi' => $validated['ringkasan_materi'] ?? null,
             'berita_acara' => $validated['berita_acara'] ?? null,
             'status' => 'hadir',
+            'guru_status' => $guruStatus,
+            'guru_keterangan' => $guruStatus === 'I' ? ($validated['guru_keterangan'] ?? null) : null,
             'absensi_time' => $now,
         ]);
 

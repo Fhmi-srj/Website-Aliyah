@@ -258,6 +258,67 @@ aside {
     animation: modalOut 0.2s ease-in forwards;
 }
 
+/* SlideUp animation for modals */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+}
+
+.animate-slideUp {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideDown {
+    animation: slideDown 0.25s ease-in forwards;
+}
+
+/* Backdrop fade animation */
+@keyframes backdropFadeIn {
+    from { background-color: rgba(0, 0, 0, 0); }
+    to { background-color: rgba(0, 0, 0, 0.5); }
+}
+
+@keyframes backdropFadeOut {
+    from { background-color: rgba(0, 0, 0, 0.5); }
+    to { background-color: rgba(0, 0, 0, 0); }
+}
+
+.animate-backdropIn {
+    animation: backdropFadeIn 0.3s ease-out forwards;
+}
+
+.animate-backdropOut {
+    animation: backdropFadeOut 0.25s ease-in forwards;
+}
+
+/* Smooth modal focus for better UX */
+.modal-content {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.3s ease-out;
+}
+
+/* Button press effect for modals */
+.modal-btn-press:active {
+    transform: scale(0.98);
+}
+
 /* SweetAlert above modal */
 .swal-above-modal {
     z-index: 10001 !important;

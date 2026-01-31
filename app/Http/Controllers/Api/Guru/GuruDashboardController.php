@@ -9,8 +9,10 @@ use App\Models\Rapat;
 use App\Models\Guru;
 use App\Models\AbsensiKegiatan;
 use App\Models\AbsensiMengajar;
+use App\Models\AbsensiRapat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+
 
 class GuruDashboardController extends Controller
 {
@@ -247,48 +249,124 @@ class GuruDashboardController extends Controller
             });
 
         // Calculate REAL monthly statistics
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
+        $startOfMonth = Carbon::now('Asia/Jakarta')->startOfMonth();
+        $endOfMonth = Carbon::now('Asia/Jakarta')->endOfMonth();
+        $today = Carbon::now('Asia/Jakarta')->startOfDay();
 
-        // Stats Mengajar - from AbsensiMengajar
-        // Note: Creating AbsensiMengajar record = guru sudah mengajar (hadir)
-        // We don't track izin/sakit for mengajar, just count total absensi entries
-        $mengajarAbsensi = AbsensiMengajar::where('guru_id', $guru->id)
-            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+        // ============ STATS MENGAJAR ============
+        // Get all jadwal for this guru
+        $guruJadwal = Jadwal::where('guru_id', $guru->id)
+            ->where('status', 'Aktif')
             ->get();
-        $mengajarTotal = $mengajarAbsensi->count();
-        $mengajarHadir = $mengajarTotal; // All entries = hadir (karena sudah absen mengajar)
 
-        // Stats Kegiatan - from AbsensiKegiatan where guru participated
+        // Calculate all teaching dates this month based on jadwal
+        $mengajarTotal = 0;
+        $mengajarHadir = 0;
+        $mengajarIzin = 0;
+        $mengajarAlpha = 0;
+
+        $dayMapping = [
+            'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
+            'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6
+        ];
+
+        foreach ($guruJadwal as $jadwal) {
+            $dayOfWeek = $dayMapping[$jadwal->hari] ?? null;
+            if ($dayOfWeek === null) continue;
+
+            // Find all dates of this day in current month up to today
+            $currentDate = $startOfMonth->copy();
+            while ($currentDate->lte($today) && $currentDate->lte($endOfMonth)) {
+                if ($currentDate->dayOfWeek === $dayOfWeek) {
+                    $mengajarTotal++;
+                    
+                    // Check if absensi exists for this date
+                    $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
+                        ->where('tanggal', $currentDate->toDateString())
+                        ->first();
+                    
+                    if ($absensi) {
+                        // Check guru status from absensi record
+                        if ($absensi->guru_status === 'I') {
+                            $mengajarIzin++;
+                        } else {
+                            $mengajarHadir++;
+                        }
+                    } else {
+                        // No attendance record = Alpha (only for past dates)
+                        $jadwalEndTime = Carbon::parse($currentDate->toDateString() . ' ' . $jadwal->jam_selesai, 'Asia/Jakarta');
+                        if (Carbon::now('Asia/Jakarta')->gt($jadwalEndTime)) {
+                            $mengajarAlpha++;
+                        }
+                    }
+                }
+                $currentDate->addDay();
+            }
+        }
+
+        // ============ STATS KEGIATAN ============
+        // Get all kegiatan where guru is PJ or pendamping, that have ended
         $kegiatanThisMonth = Kegiatan::where(function ($q) use ($guru) {
             $q->where('penanggung_jawab_id', $guru->id)
                 ->orWhereJsonContains('guru_pendamping', $guru->id)
                 ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
         })
             ->whereBetween('waktu_mulai', [$startOfMonth, $endOfMonth])
+            ->where('waktu_berakhir', '<=', Carbon::now('Asia/Jakarta'))
             ->get();
 
         $kegiatanTotal = $kegiatanThisMonth->count();
         $kegiatanHadir = 0;
+        $kegiatanIzin = 0;
+        $kegiatanAlpha = 0;
+
         foreach ($kegiatanThisMonth as $kegiatan) {
             $absensiKeg = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
+            $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
+            $attended = false;
+            $izin = false;
+
             if ($absensiKeg) {
-                $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
-                if ($isPJ && $absensiKeg->status === 'submitted') {
-                    $kegiatanHadir++;
-                } elseif (!$isPJ) {
+                if ($isPJ) {
+                    // PJ: Check pj_status field
+                    if ($absensiKeg->status === 'submitted') {
+                        if ($absensiKeg->pj_status === 'I') {
+                            $izin = true;
+                        } else {
+                            $attended = true;
+                        }
+                    }
+                } else {
+                    // Check pendamping status
                     $pendampingAbsensi = $absensiKeg->absensi_pendamping ?? [];
                     foreach ($pendampingAbsensi as $entry) {
-                        if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
-                            $kegiatanHadir++;
+                        if ($entry['guru_id'] == $guru->id) {
+                            if (!empty($entry['self_attended'])) {
+                                if (isset($entry['status']) && $entry['status'] === 'I') {
+                                    $izin = true;
+                                } else {
+                                    $attended = true;
+                                }
+                            } elseif (isset($entry['status']) && $entry['status'] === 'I') {
+                                $izin = true;
+                            }
                             break;
                         }
                     }
                 }
             }
+
+            if ($attended) {
+                $kegiatanHadir++;
+            } elseif ($izin) {
+                $kegiatanIzin++;
+            } else {
+                $kegiatanAlpha++;
+            }
         }
 
-        // Stats Rapat - properly check AbsensiRapat
+        // ============ STATS RAPAT ============
+        // Get all rapat where guru is involved, that have ended
         $rapatThisMonth = Rapat::where(function ($q) use ($guru) {
             $q->where('pimpinan_id', $guru->id)
                 ->orWhere('sekretaris_id', $guru->id)
@@ -296,32 +374,77 @@ class GuruDashboardController extends Controller
                 ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
         })
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-            ->get();
+            ->get()
+            ->filter(function ($rapat) {
+                // Only count rapat that have ended
+                try {
+                    $tanggal = $rapat->tanggal instanceof \Carbon\Carbon 
+                        ? $rapat->tanggal->format('Y-m-d') 
+                        : (is_string($rapat->tanggal) ? substr($rapat->tanggal, 0, 10) : date('Y-m-d'));
+                    $endTime = Carbon::parse($tanggal . ' ' . $rapat->waktu_selesai, 'Asia/Jakarta');
+                    return Carbon::now('Asia/Jakarta')->gt($endTime);
+                } catch (\Exception $e) {
+                    return false; // Skip if can't parse
+                }
+            });
 
         $rapatTotal = $rapatThisMonth->count();
         $rapatHadir = 0;
+        $rapatIzin = 0;
+        $rapatAlpha = 0;
 
-        // Import AbsensiRapat at top of file if not already imported
         foreach ($rapatThisMonth as $rapat) {
             $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
-            if ($absensiRapat) {
-                $isPimpinan = $rapat->pimpinan_id == $guru->id;
-                $isSekretaris = $rapat->sekretaris_id == $guru->id;
+            $isPimpinan = $rapat->pimpinan_id == $guru->id;
+            $isSekretaris = $rapat->sekretaris_id == $guru->id;
+            $attended = false;
+            $izin = false;
 
-                if ($isPimpinan && $absensiRapat->pimpinan_self_attended) {
-                    $rapatHadir++;
-                } elseif ($isSekretaris && $absensiRapat->status === 'submitted') {
-                    $rapatHadir++;
+            if ($absensiRapat) {
+                if ($isPimpinan) {
+                    if ($absensiRapat->pimpinan_self_attended) {
+                        if ($absensiRapat->pimpinan_status === 'I') {
+                            $izin = true;
+                        } else {
+                            $attended = true;
+                        }
+                    } elseif ($absensiRapat->pimpinan_status === 'I') {
+                        $izin = true;
+                    }
+                } elseif ($isSekretaris) {
+                    if ($absensiRapat->status === 'submitted') {
+                        if ($absensiRapat->sekretaris_status === 'I') {
+                            $izin = true;
+                        } else {
+                            $attended = true;
+                        }
+                    }
                 } else {
                     // Check peserta array
                     $pesertaAbsensi = $absensiRapat->absensi_peserta ?? [];
                     foreach ($pesertaAbsensi as $entry) {
-                        if (isset($entry['guru_id']) && $entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
-                            $rapatHadir++;
+                        if (isset($entry['guru_id']) && $entry['guru_id'] == $guru->id) {
+                            if (!empty($entry['self_attended'])) {
+                                if (isset($entry['status']) && $entry['status'] === 'I') {
+                                    $izin = true;
+                                } else {
+                                    $attended = true;
+                                }
+                            } elseif (isset($entry['status']) && $entry['status'] === 'I') {
+                                $izin = true;
+                            }
                             break;
                         }
                     }
                 }
+            }
+
+            if ($attended) {
+                $rapatHadir++;
+            } elseif ($izin) {
+                $rapatIzin++;
+            } else {
+                $rapatAlpha++;
             }
         }
 
@@ -329,22 +452,22 @@ class GuruDashboardController extends Controller
             'mengajar' => [
                 'total' => $mengajarTotal,
                 'hadir' => $mengajarHadir,
-                'izin' => 0,
-                'alpha' => 0,
-                'percentage' => $mengajarTotal > 0 ? 100 : 0, // All entries = 100% hadir
+                'izin' => $mengajarIzin,
+                'alpha' => $mengajarAlpha,
+                'percentage' => $mengajarTotal > 0 ? round($mengajarHadir / $mengajarTotal * 100) : 0,
             ],
             'kegiatan' => [
                 'total' => $kegiatanTotal,
                 'hadir' => $kegiatanHadir,
-                'izin' => 0,
-                'alpha' => 0,
+                'izin' => $kegiatanIzin,
+                'alpha' => $kegiatanAlpha,
                 'percentage' => $kegiatanTotal > 0 ? round($kegiatanHadir / $kegiatanTotal * 100) : 0,
             ],
             'rapat' => [
                 'total' => $rapatTotal,
                 'hadir' => $rapatHadir,
-                'izin' => 0,
-                'alpha' => 0,
+                'izin' => $rapatIzin,
+                'alpha' => $rapatAlpha,
                 'percentage' => $rapatTotal > 0 ? round($rapatHadir / $rapatTotal * 100) : 0,
             ],
         ];
@@ -509,9 +632,9 @@ class GuruDashboardController extends Controller
             if (!empty($query)) {
                 $jadwalQuery->where(function ($q) use ($query) {
                     $q->whereHas('mapel', function ($mq) use ($query) {
-                        $mq->where('nama', 'like', "%{$query}%");
+                        $mq->where('nama_mapel', 'like', "%{$query}%");
                     })->orWhereHas('kelas', function ($kq) use ($query) {
-                        $kq->where('nama', 'like', "%{$query}%");
+                        $kq->where('nama_kelas', 'like', "%{$query}%");
                     })->orWhere('hari', 'like', "%{$query}%");
                 });
             }
@@ -520,24 +643,44 @@ class GuruDashboardController extends Controller
                 $jadwalQuery->where('hari', $hari);
             }
 
-            $jadwal = $jadwalQuery->limit(10)->get()->map(function ($item) {
+            $today = Carbon::today();
+            $todayHari = $today->translatedFormat('l'); // Hari dalam bahasa Indonesia
+
+            $jadwal = $jadwalQuery->limit(10)->get()->map(function ($item) use ($todayHari) {
+                $isToday = strtolower($item->hari) === strtolower($todayHari);
                 return [
                     'id' => $item->id,
                     'type' => 'jadwal',
-                    'title' => $item->mapel->nama ?? 'N/A',
-                    'subtitle' => ($item->kelas->nama ?? 'N/A') . ' - ' . $item->hari,
+                    'title' => $item->mapel->nama_mapel ?? $item->mapel->nama ?? 'N/A',
+                    'subtitle' => ($item->kelas->nama_kelas ?? $item->kelas->nama ?? 'N/A') . ' - ' . $item->hari,
                     'time' => substr($item->jam_mulai, 0, 5) . ' - ' . substr($item->jam_selesai, 0, 5),
                     'icon' => 'fa-chalkboard-teacher',
                     'color' => 'green',
+                    // Additional fields for modal
+                    'hari' => $item->hari,
+                    'jam_mulai' => substr($item->jam_mulai, 0, 5),
+                    'jam_selesai' => substr($item->jam_selesai, 0, 5),
+                    'mapel' => $item->mapel->nama_mapel ?? 'N/A',
+                    'kelas' => $item->kelas->nama_kelas ?? 'N/A',
+                    'isToday' => $isToday,
                 ];
             });
 
             $results = array_merge($results, $jadwal->toArray());
         }
 
-        // Search Kegiatan
+        // Search Kegiatan - only where guru is PJ or pendamping
         if ($category === 'all' || $category === 'kegiatan') {
             $kegiatanQuery = Kegiatan::where('status', 'Aktif');
+
+            // Filter by guru's role (PJ or pendamping)
+            if ($guru) {
+                $kegiatanQuery->where(function ($q) use ($guru) {
+                    $q->where('penanggung_jawab_id', $guru->id)
+                        ->orWhereJsonContains('guru_pendamping', $guru->id)
+                        ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
+                });
+            }
 
             if (!empty($query)) {
                 $kegiatanQuery->where(function ($q) use ($query) {
@@ -546,24 +689,60 @@ class GuruDashboardController extends Controller
                 });
             }
 
-            $kegiatan = $kegiatanQuery->limit(10)->get()->map(function ($item) {
+            $today = Carbon::today();
+            
+            $kegiatan = $kegiatanQuery->limit(10)->get()->map(function ($item) use ($guru, $today) {
+                $isPJ = $guru && $item->penanggung_jawab_id == $guru->id;
+                $time = 'N/A';
+                $tanggal = null;
+                $isToday = false;
+                
+                try {
+                    if ($item->waktu_mulai) {
+                        $waktuMulai = Carbon::parse($item->waktu_mulai);
+                        $time = $waktuMulai->format('d M Y, H:i');
+                        $tanggal = $waktuMulai->format('Y-m-d');
+                        $isToday = $waktuMulai->isSameDay($today);
+                    }
+                } catch (\Exception $e) {
+                    $time = 'N/A';
+                }
+                
                 return [
                     'id' => $item->id,
                     'type' => 'kegiatan',
                     'title' => $item->nama_kegiatan,
-                    'subtitle' => $item->tempat ?? 'N/A',
-                    'time' => Carbon::parse($item->waktu_mulai)->format('d M Y, H:i'),
+                    'subtitle' => ($isPJ ? '[PJ] ' : '[Pendamping] ') . ($item->tempat ?? 'N/A'),
+                    'time' => $time,
                     'icon' => 'fa-calendar-check',
                     'color' => 'blue',
+                    // Additional fields for modal
+                    'nama' => $item->nama_kegiatan,
+                    'lokasi' => $item->tempat ?? 'N/A',
+                    'tanggal' => $tanggal,
+                    'waktu_mulai' => $item->waktu_mulai,
+                    'waktu_selesai' => $item->waktu_selesai,
+                    'role' => $isPJ ? 'PJ' : 'Pendamping',
+                    'isToday' => $isToday,
                 ];
             });
 
             $results = array_merge($results, $kegiatan->toArray());
         }
 
-        // Search Rapat
+        // Search Rapat - only where guru is pimpinan, sekretaris, or peserta
         if ($category === 'all' || $category === 'rapat') {
-            $rapatQuery = Rapat::query();
+            $rapatQuery = Rapat::where('status', 'Dijadwalkan');
+
+            // Filter by guru's role
+            if ($guru) {
+                $rapatQuery->where(function ($q) use ($guru) {
+                    $q->where('pimpinan_id', $guru->id)
+                        ->orWhere('sekretaris_id', $guru->id)
+                        ->orWhereJsonContains('peserta_rapat', $guru->id)
+                        ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
+                });
+            }
 
             if (!empty($query)) {
                 $rapatQuery->where(function ($q) use ($query) {
@@ -573,19 +752,288 @@ class GuruDashboardController extends Controller
                 });
             }
 
-            $rapat = $rapatQuery->limit(10)->get()->map(function ($item) {
+            $today = Carbon::today();
+            
+            $rapat = $rapatQuery->limit(10)->get()->map(function ($item) use ($guru, $today) {
+                // Determine role
+                $role = 'Peserta';
+                if ($guru) {
+                    if ($item->pimpinan_id == $guru->id) {
+                        $role = 'Pimpinan';
+                    } elseif ($item->sekretaris_id == $guru->id) {
+                        $role = 'Sekretaris';
+                    }
+                }
+                
+                $time = 'N/A';
+                $tanggalStr = null;
+                $isToday = false;
+                
+                try {
+                    $tanggalDate = $item->tanggal instanceof \Carbon\Carbon 
+                        ? $item->tanggal
+                        : (is_string($item->tanggal) ? Carbon::parse(substr($item->tanggal, 0, 10)) : null);
+                    
+                    if ($tanggalDate) {
+                        $tanggalStr = $tanggalDate->format('Y-m-d');
+                        $time = $tanggalDate->format('d M Y') . ', ' . substr($item->waktu_mulai ?? '00:00', 0, 5);
+                        $isToday = $tanggalDate->isSameDay($today);
+                    }
+                } catch (\Exception $e) {
+                    $time = 'N/A';
+                }
+                
                 return [
                     'id' => $item->id,
                     'type' => 'rapat',
                     'title' => $item->agenda_rapat,
-                    'subtitle' => ($item->jenis_rapat ?? 'Rapat') . ' - ' . ($item->tempat ?? 'N/A'),
-                    'time' => Carbon::parse($item->tanggal)->format('d M Y') . ', ' . substr($item->waktu_mulai, 0, 5),
+                    'subtitle' => "[{$role}] " . ($item->jenis_rapat ?? 'Rapat') . ' - ' . ($item->tempat ?? 'N/A'),
+                    'time' => $time,
                     'icon' => 'fa-users',
                     'color' => 'purple',
+                    // Additional fields for modal
+                    'nama' => $item->agenda_rapat,
+                    'jenis' => $item->jenis_rapat ?? 'Rapat',
+                    'lokasi' => $item->tempat ?? 'N/A',
+                    'tanggal' => $tanggalStr,
+                    'waktu_mulai' => substr($item->waktu_mulai ?? '00:00', 0, 5),
+                    'waktu_selesai' => substr($item->waktu_selesai ?? '00:00', 0, 5),
+                    'role' => $role,
+                    'isToday' => $isToday,
                 ];
             });
 
             $results = array_merge($results, $rapat->toArray());
+        }
+
+        // Search Absensi - based on jadwal (like Riwayat page)
+        if ($category === 'all' || $category === 'absensi') {
+            // Get jadwal for this guru
+            $jadwalQuery = Jadwal::with(['mapel', 'kelas'])
+                ->where('status', 'aktif');
+
+            if ($guru) {
+                $jadwalQuery->where('guru_id', $guru->id);
+            }
+
+            if (!empty($query)) {
+                $jadwalQuery->where(function ($q) use ($query) {
+                    $q->whereHas('mapel', function ($mq) use ($query) {
+                        $mq->where('nama_mapel', 'like', "%{$query}%");
+                    })->orWhereHas('kelas', function ($kq) use ($query) {
+                        $kq->where('nama_kelas', 'like', "%{$query}%");
+                    });
+                });
+            }
+
+            $jadwalList = $jadwalQuery->limit(10)->get();
+
+            // Map days to Carbon day numbers
+            $dayMap = [
+                'Senin' => Carbon::MONDAY,
+                'Selasa' => Carbon::TUESDAY,
+                'Rabu' => Carbon::WEDNESDAY,
+                'Kamis' => Carbon::THURSDAY,
+                'Jumat' => Carbon::FRIDAY,
+                'Sabtu' => Carbon::SATURDAY,
+                'Minggu' => Carbon::SUNDAY,
+            ];
+
+            $absensiResults = [];
+            $today = Carbon::now('Asia/Jakarta');
+            $thirtyDaysAgo = Carbon::now('Asia/Jakarta')->subDays(30)->startOfDay();
+
+            // Get existing absensi records
+            $jadwalIds = $jadwalList->pluck('id')->toArray();
+            $existingAbsensi = AbsensiMengajar::whereIn('jadwal_id', $jadwalIds)
+                ->where('tanggal', '>=', $thirtyDaysAgo)
+                ->get()
+                ->keyBy(function ($item) {
+                    return $item->jadwal_id . '-' . Carbon::parse($item->tanggal)->format('Y-m-d');
+                });
+
+            foreach ($jadwalList as $jadwal) {
+                $dayNumber = $dayMap[$jadwal->hari] ?? null;
+                if ($dayNumber === null) continue;
+
+                // Find most recent occurrence
+                $checkDate = $today->copy();
+                while ($checkDate->dayOfWeek !== $dayNumber) {
+                    $checkDate->subDay();
+                }
+
+                // Check if has passed
+                $endTime = Carbon::parse($checkDate->format('Y-m-d') . ' ' . $jadwal->jam_selesai, 'Asia/Jakarta');
+                if ($endTime->gt($today)) {
+                    $checkDate->subWeek();
+                }
+
+                if ($checkDate->lt($thirtyDaysAgo)) continue;
+
+                $key = $jadwal->id . '-' . $checkDate->format('Y-m-d');
+                $absensi = $existingAbsensi->get($key);
+
+                $guruStatus = $absensi ? ($absensi->guru_status ?? 'H') : 'A';
+                $statusText = $guruStatus === 'H' ? 'Hadir' : ($guruStatus === 'I' ? 'Izin' : 'Alpha');
+
+                $absensiResults[] = [
+                    'id' => $absensi ? $absensi->id : $jadwal->id,
+                    'type' => 'absensi',
+                    'title' => ($jadwal->mapel->nama_mapel ?? 'N/A') . ' - ' . ($jadwal->kelas->nama_kelas ?? 'N/A'),
+                    'subtitle' => '[Mengajar] Status: ' . $statusText,
+                    'time' => $checkDate->translatedFormat('d M Y') . ', ' . substr($jadwal->jam_mulai, 0, 5),
+                    'icon' => 'fa-clipboard-check',
+                    'color' => 'orange',
+                ];
+            }
+
+            // Also search Kegiatan records (similar to riwayat)
+            $kegiatanQuery = Kegiatan::with('absensiKegiatan')
+                ->whereNotNull('waktu_mulai');
+            
+            if ($guru) {
+                $kegiatanQuery->where(function ($q) use ($guru) {
+                    $q->where('penanggung_jawab_id', $guru->id)
+                        ->orWhereJsonContains('guru_pendamping', $guru->id)
+                        ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
+                });
+            }
+            if (!empty($query)) {
+                $kegiatanQuery->where('nama_kegiatan', 'like', "%{$query}%");
+            }
+
+            $kegiatanList = $kegiatanQuery->orderBy('waktu_mulai', 'desc')->limit(10)->get();
+            
+            foreach ($kegiatanList as $kegiatan) {
+                // Check if this kegiatan has ended
+                try {
+                    $waktuMulai = Carbon::parse($kegiatan->waktu_mulai);
+                    if ($waktuMulai->gt($today)) continue; // Skip future kegiatan
+                } catch (\Exception $e) {
+                    continue;
+                }
+
+                // Get absensi record (absensiKegiatan is a collection, need first())
+                $absensiKeg = $kegiatan->absensiKegiatan->first() ?? AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
+                $isPJ = $guru && $kegiatan->penanggung_jawab_id == $guru->id;
+                
+                $status = 'Alpha';
+                if ($absensiKeg) {
+                    if ($isPJ) {
+                        $pjStatus = $absensiKeg->pj_status ?? 'A';
+                        $status = $pjStatus === 'H' ? 'Hadir' : ($pjStatus === 'I' ? 'Izin' : 'Alpha');
+                    } else {
+                        $pendampingAbsensi = $absensiKeg->absensi_pendamping ?? [];
+                        foreach ($pendampingAbsensi as $entry) {
+                            if (($entry['guru_id'] ?? null) == $guru->id) {
+                                $entryStatus = $entry['status'] ?? 'A';
+                                $status = $entryStatus === 'H' ? 'Hadir' : ($entryStatus === 'I' ? 'Izin' : 'Alpha');
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                $role = $isPJ ? 'PJ' : 'Pendamping';
+                $time = 'N/A';
+                try {
+                    $time = Carbon::parse($kegiatan->waktu_mulai)->format('d M Y, H:i');
+                } catch (\Exception $e) {}
+
+                $absensiResults[] = [
+                    'id' => $kegiatan->id,
+                    'type' => 'absensi',
+                    'title' => $kegiatan->nama_kegiatan,
+                    'subtitle' => "[Kegiatan - {$role}] Status: " . $status,
+                    'time' => $time,
+                    'icon' => 'fa-calendar-check',
+                    'color' => 'orange',
+                ];
+            }
+
+            // Also search Rapat records (similar to riwayat)
+            $rapatQuery = Rapat::with('absensiRapat')
+                ->whereNotNull('tanggal');
+            
+            if ($guru) {
+                $rapatQuery->where(function ($q) use ($guru) {
+                    $q->where('pimpinan_id', $guru->id)
+                        ->orWhere('sekretaris_id', $guru->id)
+                        ->orWhereJsonContains('peserta_rapat', $guru->id)
+                        ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
+                });
+            }
+            if (!empty($query)) {
+                $rapatQuery->where(function ($q) use ($query) {
+                    $q->where('agenda_rapat', 'like', "%{$query}%")
+                        ->orWhere('jenis_rapat', 'like', "%{$query}%");
+                });
+            }
+
+            $rapatList = $rapatQuery->orderBy('tanggal', 'desc')->limit(10)->get();
+
+            foreach ($rapatList as $rapat) {
+                // Check if rapat has started (not future)
+                try {
+                    $tanggal = $rapat->tanggal instanceof Carbon 
+                        ? $rapat->tanggal->format('Y-m-d') 
+                        : substr($rapat->tanggal, 0, 10);
+                    $rapatDate = Carbon::parse($tanggal);
+                    if ($rapatDate->gt($today)) continue; // Skip future rapat
+                } catch (\Exception $e) {
+                    continue;
+                }
+
+
+                $absensiRapat = $rapat->absensiRapat->first() ?? AbsensiRapat::where('rapat_id', $rapat->id)->first();
+                $isPimpinan = $guru && $rapat->pimpinan_id == $guru->id;
+                $isSekretaris = $guru && $rapat->sekretaris_id == $guru->id;
+                
+                $status = 'Alpha';
+                $role = 'Peserta';
+                
+                if ($isPimpinan) {
+                    $role = 'Pimpinan';
+                    if ($absensiRapat) {
+                        $pimpinanStatus = $absensiRapat->pimpinan_status ?? 'A';
+                        $status = $pimpinanStatus === 'H' ? 'Hadir' : ($pimpinanStatus === 'I' ? 'Izin' : 'Alpha');
+                    }
+                } elseif ($isSekretaris) {
+                    $role = 'Sekretaris';
+                    if ($absensiRapat) {
+                        $sekretarisStatus = $absensiRapat->sekretaris_status ?? 'A';
+                        $status = $sekretarisStatus === 'H' ? 'Hadir' : ($sekretarisStatus === 'I' ? 'Izin' : 'Alpha');
+                    }
+                } else {
+                    if ($absensiRapat) {
+                        $pesertaAbsensi = $absensiRapat->absensi_peserta ?? [];
+                        foreach ($pesertaAbsensi as $entry) {
+                            if (($entry['guru_id'] ?? null) == $guru->id) {
+                                $entryStatus = $entry['status'] ?? 'A';
+                                $status = $entryStatus === 'H' ? 'Hadir' : ($entryStatus === 'I' ? 'Izin' : 'Alpha');
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                $time = 'N/A';
+                try {
+                    $time = Carbon::parse($tanggal)->format('d M Y') . ', ' . substr($rapat->waktu_mulai, 0, 5);
+                } catch (\Exception $e) {}
+
+                $absensiResults[] = [
+                    'id' => $rapat->id,
+                    'type' => 'absensi',
+                    'title' => $rapat->agenda_rapat,
+                    'subtitle' => "[Rapat - {$role}] Status: " . $status,
+                    'time' => $time,
+                    'icon' => 'fa-users',
+                    'color' => 'orange',
+                ];
+            }
+
+            $results = array_merge($results, $absensiResults);
         }
 
         return response()->json([

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axios';
 import {
@@ -8,17 +8,11 @@ import {
     ModalAbsensiRapatPeserta,
     ModalAbsensiRapatSekretaris
 } from './components/RapatModals';
-import { AnimatedDateTabs, generateWeekDates } from './components/AnimatedTabs';
-import SwipeableContent from './components/SwipeableContent';
 
 function AbsensiRapat() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [rapatByDate, setRapatByDate] = useState({});
-
-    // Date selection
-    const weekDates = generateWeekDates();
-    const [selectedDate, setSelectedDate] = useState(weekDates[0].date);
 
     // Modal states
     const [selectedRapat, setSelectedRapat] = useState(null);
@@ -28,14 +22,35 @@ function AbsensiRapat() {
 
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
-    const isToday = selectedDate === today;
-    const currentDateIndex = weekDates.findIndex(d => d.date === selectedDate);
 
-    // Handle swipe navigation
-    const handleSwipeChange = (newIndex) => {
-        if (newIndex >= 0 && newIndex < weekDates.length) {
-            setSelectedDate(weekDates[newIndex].date);
+    // Flatten all rapat from all dates into a single list with date info
+    const allRapat = useMemo(() => {
+        const result = [];
+        const sortedDates = Object.keys(rapatByDate).sort();
+
+        for (const dateStr of sortedDates) {
+            const items = rapatByDate[dateStr] || [];
+            for (const item of items) {
+                result.push({
+                    ...item,
+                    dateStr,
+                    isToday: dateStr === today
+                });
+            }
         }
+        return result;
+    }, [rapatByDate, today]);
+
+    // Format date for display
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        if (dateStr === today) return 'Hari ini';
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Besok';
+
+        return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
     };
 
     // Helper function untuk menentukan status
@@ -65,7 +80,7 @@ function AbsensiRapat() {
         }
     };
 
-    // Fetch rapat for 7 days
+    // Fetch rapat (from today onwards)
     useEffect(() => {
         fetchRapatSeminggu();
     }, []);
@@ -83,19 +98,22 @@ function AbsensiRapat() {
         }
     };
 
-    // Get rapat for selected date
-    const currentRapat = rapatByDate[selectedDate] || [];
-
-    // Get formatted date for display
+    // Get formatted date for modal
     const getFormattedDate = () => {
-        const dateObj = weekDates.find(d => d.date === selectedDate);
-        return dateObj?.fullDate || '';
+        if (!selectedRapat) return '';
+        const date = new Date(selectedRapat.dateStr + 'T00:00:00');
+        return date.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     };
 
     // Handle rapat click
     const handleRapatClick = async (rapat) => {
-        // Only allow interaction for today
-        if (!isToday) return;
+        // Only allow interaction for today's rapat
+        if (!rapat.isToday) return;
 
         setSelectedRapat(rapat);
 
@@ -147,7 +165,7 @@ function AbsensiRapat() {
             <div className="animate-pulse">
                 <div className="bg-green-200 px-4 py-6"></div>
                 <div className="p-4 space-y-3">
-                    <div className="bg-gray-200 rounded-xl h-14"></div>
+                    <div className="h-24 bg-gray-200 rounded-xl"></div>
                     <div className="h-24 bg-gray-200 rounded-xl"></div>
                     <div className="h-24 bg-gray-200 rounded-xl"></div>
                 </div>
@@ -160,16 +178,7 @@ function AbsensiRapat() {
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-6 text-white">
                 <h1 className="text-xl font-bold">Absensi Rapat</h1>
-                <p className="text-green-100 text-sm">Jadwal rapat mingguan</p>
-            </div>
-
-            {/* Date Tabs */}
-            <div className="px-4 pt-4">
-                <AnimatedDateTabs
-                    dates={weekDates}
-                    activeDate={selectedDate}
-                    onDateChange={setSelectedDate}
-                />
+                <p className="text-green-100 text-sm">Jadwal rapat hari ini & mendatang</p>
             </div>
 
             {/* Legend */}
@@ -185,44 +194,29 @@ function AbsensiRapat() {
                 </span>
             </div>
 
-            {/* Swipeable Content Area */}
-            <SwipeableContent
-                currentIndex={currentDateIndex}
-                totalItems={weekDates.length}
-                onIndexChange={handleSwipeChange}
-            >
-                {/* Info for non-today */}
-                {!isToday && (
-                    <div className="mx-4 mt-4 p-3 bg-blue-50 rounded-xl text-blue-600 text-sm flex items-center gap-2">
-                        <i className="fas fa-info-circle"></i>
-                        <span>Anda hanya bisa melakukan absensi untuk jadwal hari ini</span>
-                    </div>
-                )}
-
-                {/* Meeting List */}
-                <div className="p-4 space-y-3">
-                {currentRapat.length === 0 ? (
+            {/* Meeting List */}
+            <div className="p-4 space-y-3">
+                {allRapat.length === 0 ? (
                     <div className="bg-gray-50 rounded-xl p-8 text-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                             <i className="fas fa-calendar-times text-gray-300 text-2xl"></i>
                         </div>
                         <p className="text-gray-500 font-medium">Tidak ada rapat</p>
-                        <p className="text-gray-400 text-sm mt-1">Tidak ada rapat pada tanggal ini</p>
+                        <p className="text-gray-400 text-sm mt-1">Belum ada rapat yang dijadwalkan</p>
                     </div>
                 ) : (
-                    currentRapat.map(rapat => {
+                    allRapat.map((rapat, index) => {
                         const colors = getStatusColor(rapat.status_absensi);
                         const roleBadge = getRoleBadge(rapat.role);
-                        const canInteract = isToday && rapat.status_absensi !== 'sudah_absen';
+                        const canInteract = rapat.isToday && rapat.status_absensi !== 'sudah_absen';
 
                         return (
                             <button
-                                key={rapat.id}
+                                key={`${rapat.id}-${rapat.dateStr}`}
                                 onClick={() => handleRapatClick(rapat)}
-                                disabled={!isToday}
-                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} text-left ${
-                                    canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-                                } ${rapat.status_absensi === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
+                                disabled={!rapat.isToday}
+                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} text-left ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+                                    } ${rapat.status_absensi === 'sudah_absen' ? 'opacity-60' : ''} ${!rapat.isToday ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start gap-3">
                                     <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -235,11 +229,14 @@ function AbsensiRapat() {
                                         <p className="text-xs text-gray-500 truncate">
                                             <i className="fas fa-map-marker-alt mr-1"></i>{rapat.tempat || '-'}
                                         </p>
-                                        {/* Row 3: Role Badge + Time + Status */}
+                                        {/* Row 3: Role Badge + Date + Time + Status */}
                                         <div className="flex items-center justify-between mt-1.5">
                                             <div className="flex items-center gap-2">
                                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${roleBadge.bg}`}>
                                                     {roleBadge.label}
+                                                </span>
+                                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${rapat.isToday ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {formatDate(rapat.dateStr)}
                                                 </span>
                                                 <span className="text-[10px] text-gray-400">
                                                     {rapat.waktu_mulai?.substring(0, 5)} - {rapat.waktu_selesai?.substring(0, 5)}
@@ -255,8 +252,7 @@ function AbsensiRapat() {
                         );
                     })
                 )}
-                </div>
-            </SwipeableContent>
+            </div>
 
             {/* Modals */}
             {modalType === 'belum_mulai' && selectedRapat && (

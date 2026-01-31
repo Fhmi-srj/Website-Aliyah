@@ -2,6 +2,44 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import api from '../../../lib/axios';
 
+// Animated Modal Wrapper for smooth transitions
+function AnimatedModalWrapper({ children, onClose, maxWidth = 'max-w-md' }) {
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => setIsVisible(true));
+        });
+        document.body.style.overflow = 'hidden';
+        const handleEscape = (e) => { if (e.key === 'Escape') handleClose(); };
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(() => onClose(), 300);
+    };
+
+    return ReactDOM.createPortal(
+        <div
+            className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-300 ease-out ${isVisible ? 'bg-black/50' : 'bg-black/0'}`}
+            onClick={handleClose}
+        >
+            <div
+                className={`w-full ${maxWidth} transition-all duration-300 ease-out transform ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'}`}
+                style={{ maxHeight: '90vh' }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {typeof children === 'function' ? children(handleClose) : children}
+            </div>
+        </div>,
+        document.body
+    );
+}
 // Modal 1: Belum Mulai (Biru)
 export function ModalBelumMulai({ jadwal, tanggal, onClose }) {
     return ReactDOM.createPortal(

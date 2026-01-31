@@ -14,7 +14,7 @@ class MapelController extends Controller
      */
     public function index(): JsonResponse
     {
-        $mapel = Mapel::with('guruPengampu:id,nama')->orderBy('nama_mapel')->get();
+        $mapel = Mapel::orderBy('nama_mapel')->get();
         return response()->json([
             'success' => true,
             'data' => $mapel
@@ -30,14 +30,11 @@ class MapelController extends Controller
             'nama_mapel' => 'required|string|max:100',
             'inisial' => 'required|string|max:20',
             'kode_mapel' => 'nullable|string|max:20',
-            'tingkat' => 'required|in:X,XI,XII,Semua',
-            'guru_pengampu_id' => 'nullable|exists:guru,id',
             'kkm' => 'required|integer|min:0|max:100',
             'status' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
         $mapel = Mapel::create($validated);
-        $mapel->load('guruPengampu:id,nama');
 
         return response()->json([
             'success' => true,
@@ -51,7 +48,6 @@ class MapelController extends Controller
      */
     public function show(Mapel $mapel): JsonResponse
     {
-        $mapel->load('guruPengampu:id,nama');
         return response()->json([
             'success' => true,
             'data' => $mapel
@@ -67,14 +63,11 @@ class MapelController extends Controller
             'nama_mapel' => 'required|string|max:100',
             'inisial' => 'required|string|max:20',
             'kode_mapel' => 'nullable|string|max:20',
-            'tingkat' => 'required|in:X,XI,XII,Semua',
-            'guru_pengampu_id' => 'nullable|exists:guru,id',
             'kkm' => 'required|integer|min:0|max:100',
             'status' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
         $mapel->update($validated);
-        $mapel->load('guruPengampu:id,nama');
 
         return response()->json([
             'success' => true,

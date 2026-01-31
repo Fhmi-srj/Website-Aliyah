@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axios';
+import {
+    ModalDetailJadwalMengajar,
+    ModalDetailJadwalKegiatan,
+    ModalDetailJadwalRapat,
+    ModalAbsensiFromSearch
+} from './components/SearchModals';
 
 function Pencarian() {
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('all');
     const [hari, setHari] = useState('');
@@ -9,14 +17,19 @@ function Pencarian() {
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
 
+    // Modal states
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [modalType, setModalType] = useState(null);
+
     const categories = [
         { value: 'all', icon: 'fas fa-search', label: 'Semua', color: 'bg-gray-500' },
         { value: 'jadwal', icon: 'fas fa-chalkboard-teacher', label: 'Jadwal', color: 'bg-green-500' },
         { value: 'kegiatan', icon: 'fas fa-calendar-check', label: 'Kegiatan', color: 'bg-blue-500' },
         { value: 'rapat', icon: 'fas fa-users', label: 'Rapat', color: 'bg-purple-500' },
+        { value: 'absensi', icon: 'fas fa-clipboard-check', label: 'Absensi', color: 'bg-orange-500' },
     ];
 
-    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const days = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
     // Debounce function
     const debounce = (func, delay) => {
@@ -70,8 +83,81 @@ function Pencarian() {
             green: { bg: 'bg-green-100', text: 'text-green-600', icon: 'text-green-500' },
             blue: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'text-blue-500' },
             purple: { bg: 'bg-purple-100', text: 'text-purple-600', icon: 'text-purple-500' },
+            orange: { bg: 'bg-orange-100', text: 'text-orange-600', icon: 'text-orange-500' },
         };
         return colors[color] || colors.green;
+    };
+
+    // Handle item click
+    const handleItemClick = (item) => {
+        setSelectedItem(item);
+        setModalType(item.type);
+    };
+
+    // Handle close modal
+    const handleCloseModal = () => {
+        setSelectedItem(null);
+        setModalType(null);
+    };
+
+    // Handle absensi navigation
+    const handleAbsensi = (item) => {
+        handleCloseModal();
+
+        switch (item.type) {
+            case 'jadwal':
+                navigate('/guru/absensi-mengajar', { state: { jadwalId: item.id } });
+                break;
+            case 'kegiatan':
+                navigate('/guru/kegiatan');
+                break;
+            case 'rapat':
+                navigate('/guru/rapat');
+                break;
+            default:
+                break;
+        }
+    };
+
+    // Render modal based on type
+    const renderModal = () => {
+        if (!selectedItem || !modalType) return null;
+
+        switch (modalType) {
+            case 'jadwal':
+                return (
+                    <ModalDetailJadwalMengajar
+                        item={selectedItem}
+                        onClose={handleCloseModal}
+                        onAbsensi={handleAbsensi}
+                    />
+                );
+            case 'kegiatan':
+                return (
+                    <ModalDetailJadwalKegiatan
+                        item={selectedItem}
+                        onClose={handleCloseModal}
+                        onAbsensi={handleAbsensi}
+                    />
+                );
+            case 'rapat':
+                return (
+                    <ModalDetailJadwalRapat
+                        item={selectedItem}
+                        onClose={handleCloseModal}
+                        onAbsensi={handleAbsensi}
+                    />
+                );
+            case 'absensi':
+                return (
+                    <ModalAbsensiFromSearch
+                        item={selectedItem}
+                        onClose={handleCloseModal}
+                    />
+                );
+            default:
+                return null;
+        }
     };
 
     return (
@@ -140,34 +226,28 @@ function Pencarian() {
                 </div>
             )}
 
-            {/* Search Results */}
+
+            {/* Search Results Loading Skeleton */}
             {loading && searched && (
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
                     <div className="p-3 border-b border-gray-100">
                         <div className="h-5 bg-gray-200 rounded w-32"></div>
                     </div>
                     <div className="divide-y divide-gray-50">
-                        <div className="p-3 flex items-start gap-3">
-                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                            <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="p-3 flex items-start gap-3">
+                                <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                                <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="h-5 bg-gray-200 rounded-full w-14"></div>
+                                    <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="p-3 flex items-start gap-3">
-                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                            <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-                            </div>
-                        </div>
-                        <div className="p-3 flex items-start gap-3">
-                            <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                            <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -186,7 +266,11 @@ function Pencarian() {
                             {results.map((item, idx) => {
                                 const colors = getColorClasses(item.color);
                                 return (
-                                    <div key={`${item.type}-${item.id}-${idx}`} className="p-3 hover:bg-gray-50 transition-colors">
+                                    <div
+                                        key={`${item.type}-${item.id}-${idx}`}
+                                        className="p-3 hover:bg-gray-50 transition-colors cursor-pointer active:bg-gray-100"
+                                        onClick={() => handleItemClick(item)}
+                                    >
                                         <div className="flex items-start gap-3">
                                             <div className={`w-10 h-10 ${colors.bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
                                                 <i className={`fas ${item.icon} ${colors.icon}`}></i>
@@ -198,9 +282,17 @@ function Pencarian() {
                                                     <i className="fas fa-clock mr-1"></i>{item.time}
                                                 </p>
                                             </div>
-                                            <span className={`text-[10px] px-2 py-1 rounded-full ${colors.bg} ${colors.text} font-medium capitalize`}>
-                                                {item.type}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {item.isToday && item.type !== 'absensi' && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500 text-white font-medium">
+                                                        Hari ini
+                                                    </span>
+                                                )}
+                                                <span className={`text-[10px] px-2 py-1 rounded-full ${colors.bg} ${colors.text} font-medium capitalize`}>
+                                                    {item.type}
+                                                </span>
+                                                <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -229,6 +321,9 @@ function Pencarian() {
                     </p>
                 </div>
             )}
+
+            {/* Render Modals */}
+            {renderModal()}
         </div>
     );
 }

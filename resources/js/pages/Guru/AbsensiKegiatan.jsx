@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { ModalAbsensiKegiatanPJ, ModalKegiatanBelumMulai, ModalKegiatanSudahAbsen, ModalAbsensiKegiatanPendamping } from './components/KegiatanModals';
-import { AnimatedDateTabs, generateWeekDates } from './components/AnimatedTabs';
-import SwipeableContent from './components/SwipeableContent';
 
 function AbsensiKegiatan() {
     const navigate = useNavigate();
@@ -12,10 +10,6 @@ function AbsensiKegiatan() {
     const [loading, setLoading] = useState(true);
     const [kegiatanByDate, setKegiatanByDate] = useState({});
     const [guruData, setGuruData] = useState({ name: '', nip: '' });
-
-    // Date selection
-    const weekDates = generateWeekDates();
-    const [selectedDate, setSelectedDate] = useState(weekDates[0].date);
 
     // Modal states
     const [selectedKegiatan, setSelectedKegiatan] = useState(null);
@@ -25,17 +19,26 @@ function AbsensiKegiatan() {
 
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
-    const isToday = selectedDate === today;
-    const currentDateIndex = weekDates.findIndex(d => d.date === selectedDate);
 
-    // Handle swipe navigation
-    const handleSwipeChange = (newIndex) => {
-        if (newIndex >= 0 && newIndex < weekDates.length) {
-            setSelectedDate(weekDates[newIndex].date);
+    // Flatten all kegiatan from all dates into a single list with date info
+    const allKegiatan = useMemo(() => {
+        const result = [];
+        const sortedDates = Object.keys(kegiatanByDate).sort();
+
+        for (const dateStr of sortedDates) {
+            const items = kegiatanByDate[dateStr] || [];
+            for (const item of items) {
+                result.push({
+                    ...item,
+                    dateStr,
+                    isToday: dateStr === today
+                });
+            }
         }
-    };
+        return result;
+    }, [kegiatanByDate, today]);
 
-    // Fetch kegiatan for 7 days
+    // Fetch kegiatan (from today onwards)
     useEffect(() => {
         const fetchKegiatan = async () => {
             try {
@@ -67,13 +70,16 @@ function AbsensiKegiatan() {
         fetchProfile();
     }, []);
 
-    // Get kegiatan for selected date
-    const currentKegiatan = kegiatanByDate[selectedDate] || [];
+    // Format date for display
+    const formatDate = (dateStr) => {
+        const date = new Date(dateStr + 'T00:00:00');
+        if (dateStr === today) return 'Hari ini';
 
-    // Get formatted date for display
-    const getFormattedDate = () => {
-        const dateObj = weekDates.find(d => d.date === selectedDate);
-        return dateObj?.fullDate || '';
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Besok';
+
+        return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
     };
 
     // Helper function untuk menentukan status
@@ -93,8 +99,8 @@ function AbsensiKegiatan() {
 
     // Handle kegiatan click
     const handleKegiatanClick = async (item) => {
-        // Only allow interaction for today
-        if (!isToday) return;
+        // Only allow interaction for today's kegiatan
+        if (!item.isToday) return;
 
         setSelectedKegiatan(item);
 
@@ -142,13 +148,25 @@ function AbsensiKegiatan() {
         return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     };
 
+    // Get formatted date for modal
+    const getFormattedDate = () => {
+        if (!selectedKegiatan) return '';
+        const date = new Date(selectedKegiatan.dateStr + 'T00:00:00');
+        return date.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    };
+
     // Loading skeleton
     if (loading) {
         return (
             <div className="animate-pulse">
                 <div className="bg-green-200 h-24"></div>
                 <div className="p-4 space-y-4">
-                    <div className="bg-gray-200 rounded-xl h-14"></div>
+                    <div className="bg-gray-200 rounded-xl h-20"></div>
                     <div className="bg-gray-200 rounded-xl h-20"></div>
                     <div className="bg-gray-200 rounded-xl h-20"></div>
                 </div>
@@ -161,16 +179,7 @@ function AbsensiKegiatan() {
             {/* Header */}
             <div className="bg-gradient-to-r from-green-500 to-green-600 px-4 py-6 text-white">
                 <h1 className="text-xl font-bold">Absensi Kegiatan</h1>
-                <p className="text-green-100 text-sm">Jadwal kegiatan mingguan</p>
-            </div>
-
-            {/* Date Tabs */}
-            <div className="px-4 pt-4">
-                <AnimatedDateTabs
-                    dates={weekDates}
-                    activeDate={selectedDate}
-                    onDateChange={setSelectedDate}
-                />
+                <p className="text-green-100 text-sm">Jadwal kegiatan hari ini & mendatang</p>
             </div>
 
             {/* Legend */}
@@ -186,36 +195,21 @@ function AbsensiKegiatan() {
                 </span>
             </div>
 
-            {/* Swipeable Content Area */}
-            <SwipeableContent
-                currentIndex={currentDateIndex}
-                totalItems={weekDates.length}
-                onIndexChange={handleSwipeChange}
-            >
-                {/* Info for non-today */}
-                {!isToday && (
-                    <div className="mx-4 mt-4 p-3 bg-blue-50 rounded-xl text-blue-600 text-sm flex items-center gap-2">
-                        <i className="fas fa-info-circle"></i>
-                        <span>Anda hanya bisa melakukan absensi untuk jadwal hari ini</span>
-                    </div>
-                )}
-
-                {/* Activity List */}
-                <div className="p-4 space-y-3">
-                {currentKegiatan.length > 0 ? (
-                    currentKegiatan.map(item => {
+            {/* Activity List */}
+            <div className="p-4 space-y-3">
+                {allKegiatan.length > 0 ? (
+                    allKegiatan.map((item, index) => {
                         const colors = getStatusColor(item.status_absensi);
-                        const canInteract = isToday && item.status_absensi !== 'sudah_absen';
+                        const canInteract = item.isToday && item.status_absensi !== 'sudah_absen';
                         const isPJ = item.role === 'penanggung_jawab';
 
                         return (
                             <button
-                                key={item.id}
+                                key={`${item.id}-${item.dateStr}`}
                                 onClick={() => handleKegiatanClick(item)}
-                                disabled={!isToday}
-                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${
-                                    canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-                                } ${item.status_absensi === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
+                                disabled={!item.isToday}
+                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+                                    } ${item.status_absensi === 'sudah_absen' ? 'opacity-60' : ''} ${!item.isToday ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start gap-3">
                                     <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -228,12 +222,15 @@ function AbsensiKegiatan() {
                                         <p className="text-xs text-gray-500 truncate">
                                             <i className="fas fa-map-marker-alt mr-1"></i>{item.tempat || '-'}
                                         </p>
-                                        {/* Row 3: Badge PJ + Time + Status */}
+                                        {/* Row 3: Badge PJ + Date + Time + Status */}
                                         <div className="flex items-center justify-between mt-1.5">
                                             <div className="flex items-center gap-2">
                                                 {isPJ && (
                                                     <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">PJ</span>
                                                 )}
+                                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${item.isToday ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {formatDate(item.dateStr)}
+                                                </span>
                                                 <span className="text-[10px] text-gray-400">
                                                     {formatTime(item.waktu_mulai)} - {formatTime(item.waktu_berakhir)}
                                                 </span>
@@ -253,11 +250,10 @@ function AbsensiKegiatan() {
                             <i className="fas fa-calendar-times text-gray-400 text-2xl"></i>
                         </div>
                         <p className="text-gray-500 font-medium">Tidak ada kegiatan</p>
-                        <p className="text-gray-400 text-sm">Tidak ada kegiatan pada tanggal ini</p>
+                        <p className="text-gray-400 text-sm">Belum ada kegiatan yang dijadwalkan</p>
                     </div>
                 )}
-                </div>
-            </SwipeableContent>
+            </div>
 
             {/* Modals */}
             {modalType === 'belum_mulai' && selectedKegiatan && (

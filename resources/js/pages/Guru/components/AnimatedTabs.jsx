@@ -157,8 +157,8 @@ export function AnimatedDayTabs({ days, activeDay, onDayChange, className = '' }
                     key={day}
                     onClick={() => onDayChange(day)}
                     className={`relative z-10 py-2.5 rounded-lg text-xs font-medium transition-colors duration-200 text-center ${activeDay === day
-                            ? 'text-white'
-                            : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-white'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     {day}
@@ -169,8 +169,9 @@ export function AnimatedDayTabs({ days, activeDay, onDayChange, className = '' }
 }
 
 /**
- * Date tabs for 7 days starting from today
+ * Date tabs for dynamic dates (today onwards)
  * Shows: "Sen 20", "Sel 21", etc.
+ * Supports variable number of dates with horizontal scrolling
  */
 export function AnimatedDateTabs({ dates, activeDate, onDateChange, className = '' }) {
     const containerRef = useRef(null);
@@ -193,9 +194,28 @@ export function AnimatedDateTabs({ dates, activeDate, onDateChange, className = 
                     left: button.offsetLeft + paddingOffset,
                     width: button.offsetWidth,
                 });
+
+                // Scroll active button into view
+                button.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             }
         }
     }, [activeDate, dates]);
+
+    // Determine grid columns based on date count
+    const getGridClass = () => {
+        const count = dates.length;
+        if (count <= 1) return 'grid-cols-1';
+        if (count === 2) return 'grid-cols-2';
+        if (count === 3) return 'grid-cols-3';
+        if (count === 4) return 'grid-cols-4';
+        if (count === 5) return 'grid-cols-5';
+        if (count === 6) return 'grid-cols-6';
+        if (count === 7) return 'grid-cols-7';
+        // For more than 7, use scrollable flex layout
+        return '';
+    };
+
+    const useScroll = dates.length > 7;
 
     return (
         <div
@@ -211,26 +231,30 @@ export function AnimatedDateTabs({ dates, activeDate, onDateChange, className = 
                 }}
             />
 
-            {/* Date buttons - Grid layout for 7 equal columns */}
-            <div 
+            {/* Date buttons - Dynamic layout based on count */}
+            <div
                 ref={scrollRef}
-                className="grid grid-cols-7 gap-0.5 relative"
+                className={useScroll
+                    ? 'flex gap-1 overflow-x-auto relative scrollbar-hide'
+                    : `grid ${getGridClass()} gap-0.5 relative`
+                }
+                style={useScroll ? { scrollbarWidth: 'none', msOverflowStyle: 'none' } : {}}
             >
                 {dates.map((dateItem) => {
                     const isToday = dateItem.date === today;
                     const isActive = dateItem.date === activeDate;
-                    
+
                     return (
                         <button
                             key={dateItem.date}
                             onClick={() => onDateChange(dateItem.date)}
-                            className={`relative z-10 py-2 rounded-lg text-xs font-medium transition-colors duration-200 text-center flex flex-col items-center ${
-                                isActive
+                            className={`relative z-10 py-2 rounded-lg text-xs font-medium transition-colors duration-200 text-center flex flex-col items-center ${useScroll ? 'flex-shrink-0 min-w-[3rem] px-2' : ''
+                                } ${isActive
                                     ? 'text-white'
                                     : isToday
                                         ? 'text-green-600 font-bold'
                                         : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                                }`}
                         >
                             <span className="text-[10px]">{dateItem.dayName}</span>
                             <span className={`text-sm ${isActive ? 'font-bold' : ''}`}>{dateItem.dayNum}</span>
@@ -252,24 +276,71 @@ export function AnimatedDateTabs({ dates, activeDate, onDateChange, className = 
 export function generateWeekDates() {
     const dates = [];
     const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-    
+
     for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
-        
+
         dates.push({
             date: date.toISOString().split('T')[0], // YYYY-MM-DD
             dayName: dayNames[date.getDay()],
             dayNum: date.getDate(),
-            fullDate: date.toLocaleDateString('id-ID', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
+            fullDate: date.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
             }),
         });
     }
-    
+
     return dates;
 }
 
+/**
+ * Helper function to generate dates from API data
+ * Takes the keys from API response (kegiatan/rapat by date) and generates date objects
+ * Falls back to just today if no data
+ */
+export function generateDatesFromData(dataByDate) {
+    const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const dates = [];
+
+    // Get date keys from data and sort them
+    const dateKeys = Object.keys(dataByDate || {}).sort();
+
+    // If no dates from API, use today as default
+    if (dateKeys.length === 0) {
+        const today = new Date();
+        return [{
+            date: today.toISOString().split('T')[0],
+            dayName: dayNames[today.getDay()],
+            dayNum: today.getDate(),
+            fullDate: today.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }),
+        }];
+    }
+
+    // Generate date objects from API date keys
+    for (const dateStr of dateKeys) {
+        const date = new Date(dateStr + 'T00:00:00');
+
+        dates.push({
+            date: dateStr,
+            dayName: dayNames[date.getDay()],
+            dayNum: date.getDate(),
+            fullDate: date.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }),
+        });
+    }
+
+    return dates;
+}

@@ -9,7 +9,6 @@ const ITEMS_PER_PAGE = 10;
 
 function ManajemenMapel() {
     const [data, setData] = useState([]);
-    const [guruList, setGuruList] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -20,8 +19,6 @@ function ManajemenMapel() {
         nama_mapel: '',
         inisial: '',
         kode_mapel: '',
-        tingkat: 'Semua',
-        guru_pengampu_id: '',
         kkm: 75,
         status: 'Aktif'
     });
@@ -31,7 +28,6 @@ function ManajemenMapel() {
     const [sortDirection, setSortDirection] = useState('asc');
 
     // Filter state
-    const [filterTingkat, setFilterTingkat] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [activeFilter, setActiveFilter] = useState(null);
 
@@ -58,19 +54,8 @@ function ManajemenMapel() {
         }
     };
 
-    const fetchGuruList = async () => {
-        try {
-            const response = await authFetch(`${API_BASE}/guru`);
-            const result = await response.json();
-            setGuruList(result.data || []);
-        } catch (error) {
-            console.error('Error fetching guru:', error);
-        }
-    };
-
     useEffect(() => {
         fetchData();
-        fetchGuruList();
     }, []);
 
     useEffect(() => {
@@ -105,10 +90,6 @@ function ManajemenMapel() {
         return [...dataToSort].sort((a, b) => {
             let valA = a[column];
             let valB = b[column];
-            if (column === 'guru_pengampu') {
-                valA = a.guru_pengampu?.nama || '';
-                valB = b.guru_pengampu?.nama || '';
-            }
             if (typeof valA === 'string') valA = valA.toLowerCase();
             if (typeof valB === 'string') valB = valB.toLowerCase();
             if (valA > valB) return dir;
@@ -129,15 +110,13 @@ function ManajemenMapel() {
     // Filter and sort data
     const filteredData = (() => {
         let result = data.filter(item => {
-            if (filterTingkat && item.tingkat !== filterTingkat) return false;
             if (filterStatus && item.status !== filterStatus) return false;
             if (!search) return true;
             const s = search.toLowerCase();
             return (
                 item.nama_mapel?.toLowerCase().includes(s) ||
                 item.inisial?.toLowerCase().includes(s) ||
-                item.kode_mapel?.toLowerCase().includes(s) ||
-                item.guru_pengampu?.nama?.toLowerCase().includes(s)
+                item.kode_mapel?.toLowerCase().includes(s)
             );
         });
         return sortData(result, sortColumn, sortDirection);
@@ -153,7 +132,7 @@ function ManajemenMapel() {
     // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, filterTingkat, filterStatus]);
+    }, [search, filterStatus]);
 
     // Render status badge
     const renderStatus = (status) => {
@@ -217,8 +196,6 @@ function ManajemenMapel() {
             nama_mapel: '',
             inisial: '',
             kode_mapel: '',
-            tingkat: 'Semua',
-            guru_pengampu_id: '',
             kkm: 75,
             status: 'Aktif'
         });
@@ -232,8 +209,6 @@ function ManajemenMapel() {
             nama_mapel: item.nama_mapel || '',
             inisial: item.inisial || '',
             kode_mapel: item.kode_mapel || '',
-            tingkat: item.tingkat || 'Semua',
-            guru_pengampu_id: item.guru_pengampu_id || '',
             kkm: item.kkm || 75,
             status: item.status || 'Aktif'
         });
@@ -256,10 +231,7 @@ function ManajemenMapel() {
             const response = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    guru_pengampu_id: formData.guru_pengampu_id || null
-                })
+                body: JSON.stringify(formData)
             });
             if (response.ok) {
                 closeModal();
@@ -329,7 +301,6 @@ function ManajemenMapel() {
                         nama_mapel: row['Nama Mapel'] || row['nama_mapel'] || '',
                         inisial: row['Inisial'] || row['inisial'] || '',
                         kode_mapel: row['Kode Mapel'] || row['kode_mapel'] || '',
-                        tingkat: row['Tingkat'] || row['tingkat'] || 'Semua',
                         kkm: parseInt(row['KKM'] || row['kkm']) || 75,
                         status: row['Status'] || row['status'] || 'Aktif'
                     };
@@ -364,8 +335,6 @@ function ManajemenMapel() {
             'Nama Mapel': item.nama_mapel,
             'Inisial': item.inisial,
             'Kode Mapel': item.kode_mapel || '',
-            'Tingkat': item.tingkat,
-            'Guru Pengampu': item.guru_pengampu?.nama || '-',
             'KKM': item.kkm,
             'Status': item.status
         }));
@@ -432,7 +401,7 @@ function ManajemenMapel() {
                 </div>
             ) : (
                 <div className="overflow-x-auto scrollbar-hide max-w-full">
-                    <table className={`w-full text-[12px] text-[#4a4a4a] border-separate border-spacing-y-[2px] ${isMobile ? '' : 'min-w-[900px]'}`}>
+                    <table className={`w-full text-[12px] text-[#4a4a4a] border-separate border-spacing-y-[2px] ${isMobile ? '' : 'min-w-[700px]'}`}>
                         <thead>
                             <tr className="text-left text-[#6b7280] select-none">
                                 <th className="select-none pl-3 py-2 px-3 whitespace-nowrap">No</th>
@@ -440,23 +409,6 @@ function ManajemenMapel() {
                                 <SortableHeader label="Nama Mapel" column="nama_mapel" />
                                 <SortableHeader label="Inisial" column="inisial" />
                                 {!isMobile && <SortableHeader label="Kode" column="kode_mapel" />}
-                                {!isMobile && (
-                                    <SortableHeader
-                                        label="Tingkat"
-                                        column="tingkat"
-                                        filterable
-                                        filterOptions={[
-                                            { label: 'Semua', value: '' },
-                                            { label: 'X', value: 'X' },
-                                            { label: 'XI', value: 'XI' },
-                                            { label: 'XII', value: 'XII' },
-                                            { label: 'Semua Tingkat', value: 'Semua' }
-                                        ]}
-                                        filterValue={filterTingkat}
-                                        setFilterValue={setFilterTingkat}
-                                    />
-                                )}
-                                {!isMobile && <SortableHeader label="Guru Pengampu" column="guru_pengampu" />}
                                 {!isMobile && <SortableHeader label="KKM" column="kkm" />}
                                 <SortableHeader
                                     label="Status"
@@ -489,8 +441,6 @@ function ManajemenMapel() {
                                         <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.nama_mapel}</td>
                                         <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.inisial}</td>
                                         {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.kode_mapel || '-'}</td>}
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.tingkat}</td>}
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.guru_pengampu?.nama || '-'}</td>}
                                         {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.kkm}</td>}
                                         <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
                                         <td className="py-2 px-3 align-middle text-center select-none whitespace-nowrap">
@@ -507,8 +457,6 @@ function ManajemenMapel() {
                                             <td colSpan="6" className="px-4 py-3">
                                                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                                                     <div><strong>Kode:</strong> {item.kode_mapel || '-'}</div>
-                                                    <div><strong>Tingkat:</strong> {item.tingkat}</div>
-                                                    <div><strong>Guru Pengampu:</strong> {item.guru_pengampu?.nama || '-'}</div>
                                                     <div><strong>KKM:</strong> {item.kkm}</div>
                                                 </div>
                                             </td>
@@ -518,8 +466,8 @@ function ManajemenMapel() {
                             ))}
                             {filteredData.length === 0 && (
                                 <tr>
-                                    <td colSpan={isMobile ? 6 : 9} className="text-center py-8 text-gray-500">
-                                        {search || filterTingkat || filterStatus ? 'Tidak ada data yang sesuai filter/pencarian' : 'Belum ada data mata pelajaran'}
+                                    <td colSpan={isMobile ? 6 : 7} className="text-center py-8 text-gray-500">
+                                        {search || filterStatus ? 'Tidak ada data yang sesuai filter/pencarian' : 'Belum ada data mata pelajaran'}
                                     </td>
                                 </tr>
                             )}
@@ -595,33 +543,6 @@ function ManajemenMapel() {
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
                                             placeholder="MAT001"
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Tingkat *</label>
-                                        <select
-                                            required
-                                            value={formData.tingkat}
-                                            onChange={(e) => setFormData({ ...formData, tingkat: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            <option value="X">X</option>
-                                            <option value="XI">XI</option>
-                                            <option value="XII">XII</option>
-                                            <option value="Semua">Semua</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Guru Pengampu</label>
-                                        <select
-                                            value={formData.guru_pengampu_id}
-                                            onChange={(e) => setFormData({ ...formData, guru_pengampu_id: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            <option value="">-- Pilih Guru --</option>
-                                            {guruList.filter(g => g.status === 'Aktif').map(guru => (
-                                                <option key={guru.id} value={guru.id}>{guru.nama}</option>
-                                            ))}
-                                        </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1 select-none">KKM *</label>

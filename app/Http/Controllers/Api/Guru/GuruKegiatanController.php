@@ -154,7 +154,8 @@ class GuruKegiatanController extends Controller
     }
 
     /**
-     * Get kegiatan for 7 days starting from today (for Jadwal view).
+     * Get kegiatan from today onwards (unlimited).
+     * Past kegiatan are excluded - they will be recorded as Alpha in riwayat.
      */
     public function kegiatanSeminggu(Request $request): JsonResponse
     {
@@ -166,18 +167,11 @@ class GuruKegiatanController extends Controller
                 return response()->json(['error' => 'Guru tidak ditemukan'], 404);
             }
 
-            $today = Carbon::today();
-            $endDate = Carbon::today()->addDays(6); // Today + 6 days = 7 days total
+            $today = Carbon::today('Asia/Jakarta');
 
-            // Get kegiatan where guru is PJ or pendamping within 7 days
+            // Get kegiatan where guru is PJ or pendamping, from today onwards
             $kegiatanList = Kegiatan::where('status', 'Aktif')
-                ->where(function ($query) use ($today, $endDate) {
-                    // Kegiatan that overlaps with the 7-day range
-                    $query->where(function ($q) use ($today, $endDate) {
-                        $q->whereDate('waktu_mulai', '<=', $endDate)
-                          ->whereDate('waktu_berakhir', '>=', $today);
-                    });
-                })
+                ->whereDate('waktu_berakhir', '>=', $today) // Kegiatan that hasn't ended yet
                 ->where(function ($query) use ($guru) {
                     $query->where('penanggung_jawab_id', $guru->id)
                         ->orWhereJsonContains('guru_pendamping', $guru->id)
@@ -187,14 +181,8 @@ class GuruKegiatanController extends Controller
                 ->orderBy('waktu_mulai', 'asc')
                 ->get();
 
-            // Process kegiatan and assign to applicable dates
+            // Group kegiatan by date
             $kegiatanByDate = [];
-            
-            for ($i = 0; $i < 7; $i++) {
-                $date = Carbon::today()->addDays($i);
-                $dateStr = $date->format('Y-m-d');
-                $kegiatanByDate[$dateStr] = [];
-            }
 
             foreach ($kegiatanList as $item) {
                 $guruPendamping = is_array($item->guru_pendamping) ? $item->guru_pendamping : [];
@@ -205,35 +193,45 @@ class GuruKegiatanController extends Controller
                 // Check absensi status
                 $absensi = AbsensiKegiatan::where('kegiatan_id', $item->id)->first();
 
-                // Add to all applicable dates with status calculated per date
+                // Calculate the dates this kegiatan spans (from max(start, today) to end)
                 $startDate = Carbon::parse($item->waktu_mulai)->startOfDay();
                 $endActivityDate = Carbon::parse($item->waktu_berakhir)->startOfDay();
+                
+                // Start from today if kegiatan started before today
+                $effectiveStart = $startDate->lt($today) ? $today->copy() : $startDate->copy();
 
-                for ($i = 0; $i < 7; $i++) {
-                    $date = Carbon::today('Asia/Jakarta')->addDays($i);
-                    $dateStr = $date->format('Y-m-d');
+                // Add to each applicable date
+                $currentDate = $effectiveStart->copy();
+                while ($currentDate->lte($endActivityDate)) {
+                    $dateStr = $currentDate->format('Y-m-d');
                     
-                    if ($date->between($startDate, $endActivityDate)) {
-                        // Calculate status for THIS specific date
-                        $statusAbsensi = $this->getKegiatanAbsensiStatusForDate($item, $guru, $absensi, $isPj, $dateStr);
+                    // Calculate status for THIS specific date
+                    $statusAbsensi = $this->getKegiatanAbsensiStatusForDate($item, $guru, $absensi, $isPj, $dateStr);
 
-                        $kegiatanData = [
-                            'id' => $item->id,
-                            'nama_kegiatan' => $item->nama_kegiatan,
-                            'tempat' => $item->tempat,
-                            'waktu_mulai' => $item->waktu_mulai,
-                            'waktu_berakhir' => $item->waktu_berakhir,
-                            'penanggungjawab' => $item->penanggungjawab,
-                            'is_pj' => $isPj,
-                            'is_pendamping' => $isPendamping,
-                            'role' => $role,
-                            'status_absensi' => $statusAbsensi,
-                        ];
+                    $kegiatanData = [
+                        'id' => $item->id,
+                        'nama_kegiatan' => $item->nama_kegiatan,
+                        'tempat' => $item->tempat,
+                        'waktu_mulai' => $item->waktu_mulai,
+                        'waktu_berakhir' => $item->waktu_berakhir,
+                        'penanggungjawab' => $item->penanggungjawab,
+                        'is_pj' => $isPj,
+                        'is_pendamping' => $isPendamping,
+                        'role' => $role,
+                        'status_absensi' => $statusAbsensi,
+                    ];
 
-                        $kegiatanByDate[$dateStr][] = $kegiatanData;
+                    if (!isset($kegiatanByDate[$dateStr])) {
+                        $kegiatanByDate[$dateStr] = [];
                     }
+                    $kegiatanByDate[$dateStr][] = $kegiatanData;
+
+                    $currentDate->addDay();
                 }
             }
+
+            // Sort dates
+            ksort($kegiatanByDate);
 
             return response()->json([
                 'success' => true,

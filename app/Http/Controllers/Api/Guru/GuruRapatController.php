@@ -162,7 +162,8 @@ class GuruRapatController extends Controller
     }
 
     /**
-     * Get rapat for 7 days starting from today (for Jadwal view)
+     * Get rapat from today onwards (unlimited).
+     * Past rapat are excluded - they will be recorded as Alpha in riwayat.
      */
     public function rapatSeminggu(Request $request): JsonResponse
     {
@@ -175,12 +176,10 @@ class GuruRapatController extends Controller
             }
 
             $today = Carbon::today('Asia/Jakarta');
-            $endDate = Carbon::today('Asia/Jakarta')->addDays(6);
 
-            // Get rapat within 7 days
+            // Get rapat from today onwards (unlimited)
             $rapatList = Rapat::where('status', 'Dijadwalkan')
                 ->whereDate('tanggal', '>=', $today)
-                ->whereDate('tanggal', '<=', $endDate)
                 ->where(function ($query) use ($guru) {
                     $query->where('pimpinan_id', $guru->id)
                         ->orWhere('sekretaris_id', $guru->id)
@@ -192,13 +191,8 @@ class GuruRapatController extends Controller
                 ->orderBy('waktu_mulai')
                 ->get();
 
-            // Group by date
+            // Group by date dynamically
             $rapatByDate = [];
-            for ($i = 0; $i < 7; $i++) {
-                $date = Carbon::today('Asia/Jakarta')->addDays($i);
-                $dateStr = $date->format('Y-m-d');
-                $rapatByDate[$dateStr] = [];
-            }
 
             foreach ($rapatList as $item) {
                 $dateStr = Carbon::parse($item->tanggal)->format('Y-m-d');
@@ -229,10 +223,14 @@ class GuruRapatController extends Controller
                     'status_absensi' => $statusAbsensi,
                 ];
 
-                if (isset($rapatByDate[$dateStr])) {
-                    $rapatByDate[$dateStr][] = $rapatData;
+                if (!isset($rapatByDate[$dateStr])) {
+                    $rapatByDate[$dateStr] = [];
                 }
+                $rapatByDate[$dateStr][] = $rapatData;
             }
+
+            // Sort dates
+            ksort($rapatByDate);
 
             return response()->json([
                 'success' => true,

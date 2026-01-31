@@ -164,25 +164,78 @@ export function PencarianSkeleton() {
     return (
         <div className="p-4 space-y-4">
             {/* Search Bar Skeleton */}
-            <div className="h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 bg-white rounded-xl shadow-sm animate-pulse"></div>
 
-            {/* Filter Chips Skeleton */}
-            <div className="flex gap-2 overflow-x-auto">
-                {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-8 bg-gray-200 rounded-full w-20 flex-shrink-0 animate-pulse"></div>
+            {/* Category Filter Chips Skeleton */}
+            <div className="flex gap-2 overflow-x-auto pb-2">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-9 bg-white rounded-full w-24 flex-shrink-0 shadow-sm animate-pulse"></div>
                 ))}
             </div>
 
-            {/* Results Skeleton */}
-            <div className="space-y-3">
-                {[...Array(6)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
-                            <div className="flex-1 space-y-2">
-                                <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+            {/* Day Filter Skeleton */}
+            <div className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                    {[...Array(7)].map((_, i) => (
+                        <div key={i} className="h-8 bg-white rounded-lg w-16 flex-shrink-0 shadow-sm animate-pulse"></div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Results Container Skeleton */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="p-3 border-b border-gray-100">
+                    <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
+                </div>
+
+                {/* Results List */}
+                <div className="divide-y divide-gray-50">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="p-3 flex items-start gap-3">
+                            {/* Icon */}
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0 animate-pulse"></div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/3 animate-pulse"></div>
                             </div>
+
+                            {/* Right side badges */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="h-5 bg-gray-200 rounded-full w-14 animate-pulse"></div>
+                                <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Skeleton for Search Results only (used inline)
+export function SearchResultsSkeleton() {
+    return (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+            <div className="p-3 border-b border-gray-100">
+                <div className="h-5 bg-gray-200 rounded w-32"></div>
+            </div>
+            <div className="divide-y divide-gray-50">
+                {[...Array(4)].map((_, i) => (
+                    <div key={i} className="p-3 flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="h-5 bg-gray-200 rounded-full w-14"></div>
+                            <div className="w-4 h-4 bg-gray-200 rounded"></div>
                         </div>
                     </div>
                 ))}

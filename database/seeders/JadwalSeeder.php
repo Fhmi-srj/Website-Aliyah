@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class JadwalSeeder extends Seeder
 {
@@ -14,6 +15,13 @@ class JadwalSeeder extends Seeder
      */
     public function run(): void
     {
+        // Clear existing jadwal and related data
+        Schema::disableForeignKeyConstraints();
+        DB::table('absensi_siswa')->truncate();
+        DB::table('absensi_mengajar')->truncate();
+        DB::table('jadwal')->truncate();
+        Schema::enableForeignKeyConstraints();
+
         // Get All Guru IDs
         $guru = [
             'tahfidz1' => DB::table('guru')->where('nama', 'like', '%Hafidz Rahman%')->first(),

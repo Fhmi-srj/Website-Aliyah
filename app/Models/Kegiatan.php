@@ -37,9 +37,17 @@ class Kegiatan extends Model
     /**
      * Get the penanggung jawab (guru) for this kegiatan.
      */
-    public function penanggungjawab()
+    public function penanggungJawab()
     {
         return $this->belongsTo(Guru::class, 'penanggung_jawab_id');
+    }
+
+    /**
+     * Get the absensi kegiatan records.
+     */
+    public function absensiKegiatan()
+    {
+        return $this->hasMany(AbsensiKegiatan::class, 'kegiatan_id');
     }
 
     /**

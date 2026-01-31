@@ -91,7 +91,7 @@ function GuruLayout({ children }) {
                         className="w-10 h-10 object-contain"
                     />
                     <div>
-                        <h1 className="font-bold text-green-800 text-sm leading-tight">MA Mamba'ul Huda</h1>
+                        <h1 className="font-bold text-green-800 text-sm leading-tight">MA Al Hikam</h1>
                         <p className="text-[10px] text-green-600">Sistem Absensi Guru</p>
                     </div>
                 </div>

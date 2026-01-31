@@ -4,15 +4,22 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MapelSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      * Mata Pelajaran untuk Madrasah Aliyah dengan fokus Kitab dan Tahfidz
+     * Note: guru_pengampu is assigned via JadwalSeeder, not here
      */
     public function run(): void
     {
+        // Disable foreign key checks and clear existing data
+        Schema::disableForeignKeyConstraints();
+        DB::table('mapel')->truncate();
+        Schema::enableForeignKeyConstraints();
+
         $data = [
             // Mata Pelajaran Keagamaan (Fokus Utama)
             ['nama_mapel' => 'Al-Quran Hadits', 'inisial' => 'QH', 'kode_mapel' => 'AGM-01', 'kkm' => 75, 'status' => 'Aktif'],
@@ -51,5 +58,7 @@ class MapelSeeder extends Seeder
                 'updated_at' => now(),
             ]));
         }
+
+        $this->command->info('MapelSeeder: ' . count($data) . ' mapel created.');
     }
 }

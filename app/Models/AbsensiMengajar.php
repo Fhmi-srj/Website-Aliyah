@@ -18,6 +18,8 @@ class AbsensiMengajar extends Model
         'ringkasan_materi',
         'berita_acara',
         'status',
+        'guru_status',
+        'guru_keterangan',
         'absensi_time',
     ];
 
