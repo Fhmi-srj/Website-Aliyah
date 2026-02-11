@@ -74,7 +74,7 @@ const compressImage = (file, maxWidth = 800, quality = 0.6) => {
 };
 
 // Modal Absensi Kegiatan untuk Penanggung Jawab
-export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, siswaList, onClose, onSuccess, guruName, guruNip }) {
+export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, siswaList, onClose, onSuccess, guruName, guruNip, isUnlocked = false }) {
     const [pjStatus, setPjStatus] = useState('A'); // Default Alpha
     const [pjKeterangan, setPjKeterangan] = useState('');
     const [absensiPendamping, setAbsensiPendamping] = useState([]);
@@ -82,6 +82,7 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
     const [beritaAcara, setBeritaAcara] = useState('');
     const [fotoKegiatan, setFotoKegiatan] = useState([]); // Array of base64
     const [loading, setLoading] = useState(false);
+    const [loadingExisting, setLoadingExisting] = useState(true);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [activeKelas, setActiveKelas] = useState(null);
     const [pendampingExpanded, setPendampingExpanded] = useState(true);
@@ -111,6 +112,65 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
             keterangan: ''
         })));
     }, [guruPendamping, siswaList]);
+
+    // Load existing absensi data if available
+    useEffect(() => {
+        const fetchExistingAbsensi = async () => {
+            if (!kegiatan?.id) return;
+
+            try {
+                setLoadingExisting(true);
+                const response = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/absensi`);
+
+                if (response.data.has_absensi && response.data.data) {
+                    const data = response.data.data;
+
+                    // Load PJ status
+                    setPjStatus(data.pj_status || 'A');
+                    setPjKeterangan(data.pj_keterangan || '');
+                    setBeritaAcara(data.berita_acara || '');
+                    setFotoKegiatan(data.foto_kegiatan || []);
+
+                    // Load pendamping absensi with existing data
+                    if (data.absensi_pendamping?.length > 0) {
+                        setAbsensiPendamping(prev => prev.map(guru => {
+                            const existingEntry = data.absensi_pendamping.find(e => e.guru_id == guru.guru_id);
+                            if (existingEntry) {
+                                return {
+                                    ...guru,
+                                    status: existingEntry.status || 'A',
+                                    keterangan: existingEntry.keterangan || '',
+                                    self_attended: existingEntry.self_attended || false
+                                };
+                            }
+                            return guru;
+                        }));
+                    }
+
+                    // Load siswa absensi with existing data
+                    if (data.absensi_siswa?.length > 0) {
+                        setAbsensiSiswa(prev => prev.map(siswa => {
+                            const existingEntry = data.absensi_siswa.find(e => e.siswa_id == siswa.siswa_id);
+                            if (existingEntry) {
+                                return {
+                                    ...siswa,
+                                    status: existingEntry.status || 'H',
+                                    keterangan: existingEntry.keterangan || ''
+                                };
+                            }
+                            return siswa;
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching existing absensi:', err);
+            } finally {
+                setLoadingExisting(false);
+            }
+        };
+
+        fetchExistingAbsensi();
+    }, [kegiatan?.id]);
 
     // Polling for realtime pendamping status updates
     useEffect(() => {
@@ -250,7 +310,8 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                     keterangan: s.keterangan || null
                 })),
                 berita_acara: beritaAcara || null,
-                foto_kegiatan: fotoKegiatan
+                foto_kegiatan: fotoKegiatan,
+                is_unlocked: isUnlocked
             });
             onSuccess();
         } catch (err) {
@@ -280,15 +341,15 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                 onClick={e => e.stopPropagation()}
             >
                 {/* Fixed Header */}
-                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
+                <div className={`${isUnlocked ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-green-600 to-green-700'} text-white p-4 flex-shrink-0`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                <i className="fas fa-calendar-check"></i>
+                                <i className={`fas ${isUnlocked ? 'fa-unlock' : 'fa-calendar-check'}`}></i>
                             </div>
                             <div>
-                                <h2 className="font-bold text-sm">{kegiatan.nama_kegiatan}</h2>
-                                <p className="text-green-100 text-xs">
+                                <h2 className="font-bold text-sm">{isUnlocked ? 'Isi Absensi (Dibuka Kembali)' : kegiatan.nama_kegiatan}</h2>
+                                <p className={`${isUnlocked ? 'text-amber-100' : 'text-green-100'} text-xs`}>
                                     <i className="fas fa-map-marker-alt mr-1"></i>{kegiatan.tempat || '-'} • {formatTime(kegiatan.waktu_mulai)} - {formatTime(kegiatan.waktu_berakhir)}
                                 </p>
                             </div>
@@ -302,21 +363,34 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                     <div className="flex gap-6 mt-4 text-center">
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{siswaCounts.hadir}</p>
-                            <p className="text-xs text-green-100">Hadir</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Hadir</p>
                         </div>
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{siswaCounts.izin}</p>
-                            <p className="text-xs text-green-100">Izin</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Izin</p>
                         </div>
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{siswaCounts.alpha}</p>
-                            <p className="text-xs text-green-100">Alpha</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Alpha</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Unlocked Info Banner */}
+                    {isUnlocked && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <i className="fas fa-info-circle text-amber-500 mt-0.5"></i>
+                                <div>
+                                    <p className="text-sm font-medium text-amber-800">Absensi Dibuka Kembali</p>
+                                    <p className="text-xs text-amber-600 mt-1">Admin telah membuka kunci absensi. Anda dapat mengisi data absensi yang terlewat.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Info Badge - Penanggung Jawab */}
                     <div className="bg-green-50 border border-green-200 rounded-xl p-3">
                         <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
@@ -415,37 +489,28 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                     {absensiPendamping.map((guru, index) => (
                                         <div
                                             key={guru.guru_id}
-                                            className={`bg-white rounded-xl p-3 ${guru.self_attended
-                                                ? 'border-2 border-green-400 shadow-sm'
+                                            className={`bg-white rounded-lg p-2 ${guru.self_attended
+                                                ? 'border-2 border-green-400'
                                                 : 'border border-gray-100'}`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${guru.self_attended
-                                                    ? 'bg-green-100 text-green-600'
-                                                    : 'bg-green-100 text-green-600'}`}>
-                                                    {guru.self_attended ? (
-                                                        <i className="fas fa-check"></i>
-                                                    ) : (
-                                                        guru.nama?.charAt(0)?.toUpperCase() || 'G'
-                                                    )}
-                                                </div>
+                                            <div className="flex items-center gap-1.5">
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-semibold text-gray-800 text-sm truncate flex items-center gap-1">
+                                                    <p className="font-semibold text-gray-800 text-[0.7rem] sm:text-[0.8rem] truncate flex items-center gap-1">
                                                         {guru.nama}
                                                         {guru.self_attended && (
-                                                            <span className="text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">
+                                                            <span className="text-[10px] bg-green-100 text-green-600 px-1 py-0.5 rounded-full">
                                                                 Self
                                                             </span>
                                                         )}
                                                     </p>
-                                                    <p className="text-xs text-gray-400">{guru.nip || 'Pendamping'}</p>
+                                                    <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-400">{guru.nip || 'Pendamping'}</p>
                                                 </div>
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-0.5">
                                                     {['H', 'I', 'A'].map(status => (
                                                         <button
                                                             key={status}
                                                             onClick={() => updatePendampingStatus(index, status)}
-                                                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${guru.status === status
+                                                            className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${guru.status === status
                                                                 ? status === 'H' ? 'bg-green-500 text-white'
                                                                     : status === 'I' ? 'bg-yellow-500 text-white'
                                                                         : 'bg-red-500 text-white'
@@ -461,7 +526,7 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                                     value={guru.keterangan}
                                                     onChange={e => updatePendampingKeterangan(index, e.target.value)}
                                                     placeholder="Keterangan izin..."
-                                                    className="w-full mt-2 border border-yellow-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                                    className="w-full mt-1.5 border border-yellow-200 rounded-lg p-1.5 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
                                                 />
                                             )}
                                         </div>
@@ -544,21 +609,18 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                                 return siswa.kelas === selectedKelas;
                                             })
                                             .map((siswa) => (
-                                                <div key={siswa.siswa_id} className="bg-white border border-gray-100 rounded-xl p-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-semibold flex-shrink-0">
-                                                            {siswa.nama?.charAt(0)?.toUpperCase() || 'S'}
-                                                        </div>
+                                                <div key={siswa.siswa_id} className="bg-white border border-gray-100 rounded-lg p-2">
+                                                    <div className="flex items-center gap-1.5">
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="font-semibold text-gray-800 text-sm truncate">{siswa.nama}</p>
-                                                            <p className="text-xs text-gray-400">{siswa.nis}</p>
+                                                            <p className="font-semibold text-gray-800 text-[0.7rem] sm:text-[0.8rem] truncate">{siswa.nama}</p>
+                                                            <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-400">{siswa.nis}</p>
                                                         </div>
-                                                        <div className="flex gap-1">
+                                                        <div className="flex gap-0.5">
                                                             {['H', 'I', 'A'].map(status => (
                                                                 <button
                                                                     key={status}
                                                                     onClick={() => updateSiswaStatus(siswa.originalIndex, status)}
-                                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${siswa.status === status
+                                                                    className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === status
                                                                         ? status === 'H' ? 'bg-green-500 text-white'
                                                                             : status === 'I' ? 'bg-yellow-500 text-white'
                                                                                 : 'bg-red-500 text-white'
@@ -574,7 +636,7 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                                             value={siswa.keterangan}
                                                             onChange={e => updateSiswaKeterangan(siswa.originalIndex, e.target.value)}
                                                             placeholder="Keterangan izin..."
-                                                            className="w-full mt-2 border border-yellow-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                                            className="w-full mt-1.5 border border-yellow-200 rounded-lg p-1.5 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
                                                         />
                                                     )}
                                                 </div>
@@ -800,29 +862,56 @@ export function ModalKegiatanSudahAbsen({ kegiatan, onClose }) {
 }
 
 // Modal Absensi Kegiatan untuk Guru Pendamping (Self-Attendance)
-export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onSuccess, guruName, guruNip }) {
+export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onSuccess, guruName, guruNip, isUnlocked = false }) {
     const [status, setStatus] = useState('A'); // Default Alpha
     const [keterangan, setKeterangan] = useState('');
     const [loading, setLoading] = useState(false);
+    const [checkingStatus, setCheckingStatus] = useState(true);
     const [alreadyAttended, setAlreadyAttended] = useState(false);
     const [existingStatus, setExistingStatus] = useState(null);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [kegiatanDetail, setKegiatanDetail] = useState(null);
+    const [absensiData, setAbsensiData] = useState(null);
 
-    // Check if already attended
+    // Read-only mode: kegiatan is submitted and not unlocked
+    const readOnlyMode = isSubmitted && !isUnlocked;
+
+    // Fetch kegiatan detail and absensi data
     useEffect(() => {
-        const checkStatus = async () => {
+        const fetchData = async () => {
             try {
-                const response = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/check-pendamping-status`);
-                if (response.data.attended) {
+                setCheckingStatus(true);
+
+                // Fetch kegiatan detail (for tempat, PJ info)
+                const detailResponse = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/detail`);
+                if (detailResponse.data.kegiatan) {
+                    setKegiatanDetail(detailResponse.data.kegiatan);
+                }
+
+                // Check pendamping status
+                const statusResponse = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/check-pendamping-status`);
+                if (statusResponse.data.attended) {
                     setAlreadyAttended(true);
-                    setExistingStatus(response.data.status);
-                    setStatus(response.data.status);
-                    setKeterangan(response.data.keterangan || '');
+                    setExistingStatus(statusResponse.data.status);
+                    setStatus(statusResponse.data.status);
+                    setKeterangan(statusResponse.data.keterangan || '');
+                }
+                setIsSubmitted(statusResponse.data.submitted || false);
+
+                // If submitted, fetch full absensi data for berita acara and photos
+                if (statusResponse.data.submitted) {
+                    const absensiResponse = await api.get(`/guru-panel/kegiatan/${kegiatan.id}/absensi`);
+                    if (absensiResponse.data.has_absensi) {
+                        setAbsensiData(absensiResponse.data.data);
+                    }
                 }
             } catch (err) {
-                console.error('Error checking status:', err);
+                console.error('Error fetching data:', err);
+            } finally {
+                setCheckingStatus(false);
             }
         };
-        checkStatus();
+        fetchData();
     }, [kegiatan.id]);
 
     const handleSubmit = async () => {
@@ -868,15 +957,15 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
+                <div className={`${isUnlocked ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-green-600 to-green-700'} text-white p-4 flex-shrink-0`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                <i className="fas fa-calendar-check"></i>
+                                <i className={`fas ${isUnlocked ? 'fa-unlock' : 'fa-calendar-check'}`}></i>
                             </div>
                             <div>
-                                <h2 className="font-bold text-sm">{kegiatan.nama_kegiatan || kegiatan.name}</h2>
-                                <p className="text-green-100 text-xs">Absensi Pendamping</p>
+                                <h2 className="font-bold text-sm">{isUnlocked ? 'Isi Absensi (Dibuka Kembali)' : (kegiatan.nama_kegiatan || kegiatan.name)}</h2>
+                                <p className={`${isUnlocked ? 'text-amber-100' : 'text-green-100'} text-xs`}>Absensi Pendamping</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
@@ -887,6 +976,32 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Unlocked Info Banner */}
+                    {isUnlocked && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <i className="fas fa-info-circle text-amber-500 mt-0.5"></i>
+                                <div>
+                                    <p className="text-sm font-medium text-amber-800">Absensi Dibuka Kembali</p>
+                                    <p className="text-xs text-amber-600 mt-1">Admin telah membuka kunci absensi. Anda dapat mengisi data absensi yang terlewat.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Read-Only Info Banner */}
+                    {readOnlyMode && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <i className="fas fa-lock text-blue-500 mt-0.5"></i>
+                                <div>
+                                    <p className="text-sm font-medium text-blue-800">Data Kegiatan (Sudah Dikunci)</p>
+                                    <p className="text-xs text-blue-600 mt-1">PJ sudah mengisi absensi kegiatan ini. Anda hanya bisa melihat data.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Info Badge */}
                     <div className="bg-green-50 border border-green-200 rounded-xl p-3">
                         <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
@@ -901,31 +1016,63 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                             <i className="fas fa-calendar text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Tanggal</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.waktu_mulai ? formatDate(kegiatan.waktu_mulai) : (tanggal || kegiatan.date || kegiatan.tanggal || '-')}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatanDetail?.waktu_mulai ? formatDate(kegiatanDetail.waktu_mulai) : (kegiatan.waktu_mulai ? formatDate(kegiatan.waktu_mulai) : (tanggal || '-'))}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-clock text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Waktu</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.waktu_mulai ? `${formatTime(kegiatan.waktu_mulai)} - ${formatTime(kegiatan.waktu_berakhir)}` : (kegiatan.time || '-')}</p>
+                                <p className="text-sm text-gray-800 font-medium">
+                                    {kegiatanDetail?.waktu_mulai
+                                        ? `${formatTime(kegiatanDetail.waktu_mulai)} - ${formatTime(kegiatanDetail.waktu_berakhir)}`
+                                        : (kegiatan.waktu_mulai ? `${formatTime(kegiatan.waktu_mulai)} - ${formatTime(kegiatan.waktu_berakhir)}` : '-')}
+                                </p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-map-marker-alt text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Tempat</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.tempat || kegiatan.location || '-'}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatanDetail?.tempat || kegiatan.tempat || '-'}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <i className="fas fa-user-tie text-gray-400 mt-0.5 w-4"></i>
                             <div>
                                 <p className="text-xs text-gray-500">Penanggung Jawab</p>
-                                <p className="text-sm text-gray-800 font-medium">{kegiatan.penanggungjawab?.nama || kegiatan.pj || '-'}</p>
+                                <p className="text-sm text-gray-800 font-medium">{kegiatanDetail?.penanggungjawab?.nama || kegiatan.penanggungjawab?.nama || kegiatan.pj || '-'}</p>
                             </div>
                         </div>
                     </div>
+
+                    {/* Berita Acara - Read Only (if submitted) */}
+                    {readOnlyMode && absensiData?.berita_acara && (
+                        <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-700">Berita Acara</label>
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap">{absensiData.berita_acara}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Foto Kegiatan - Show when absensi exists */}
+                    {absensiData?.foto_kegiatan?.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-700">Foto Kegiatan ({absensiData.foto_kegiatan.length})</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {absensiData.foto_kegiatan.map((foto, index) => (
+                                    <div key={index} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200">
+                                        <img
+                                            src={foto}
+                                            alt={`Foto ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Already Attended Notice */}
                     {alreadyAttended && (
@@ -942,23 +1089,22 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">
-                                    {guruName?.charAt(0)?.toUpperCase() || 'G'}
-                                </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-gray-800 truncate">{guruName}</p>
-                                    <p className="text-xs text-gray-400">{guruNip || 'Pendamping'}</p>
+                                    <p className="font-bold text-gray-800 truncate">{guruName || 'Pendamping'}</p>
+                                    {guruNip && <p className="text-xs text-gray-400">{guruNip}</p>}
                                 </div>
                                 <div className="flex gap-1.5">
                                     {['H', 'I', 'A'].map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => setStatus(s)}
+                                            onClick={() => !readOnlyMode && setStatus(s)}
+                                            disabled={readOnlyMode}
                                             className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${status === s
                                                 ? s === 'H' ? 'bg-green-500 text-white shadow-md'
                                                     : s === 'I' ? 'bg-yellow-500 text-white shadow-md'
                                                         : 'bg-red-500 text-white shadow-md'
-                                                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                                : readOnlyMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                                 }`}
                                         >{s}</button>
                                     ))}
@@ -979,26 +1125,37 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
 
                 {/* Footer */}
                 <div className="flex-shrink-0 p-4 border-t border-gray-100 flex gap-3 bg-white">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
-                    >
-                        Batal
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg disabled:opacity-50"
-                    >
-                        {loading ? (
-                            <i className="fas fa-spinner fa-spin"></i>
-                        ) : (
-                            <>
-                                <i className="fas fa-save"></i>
-                                {alreadyAttended ? 'Update Absensi' : 'Simpan Absensi'}
-                            </>
-                        )}
-                    </button>
+                    {readOnlyMode ? (
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 rounded-xl font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        >
+                            Tutup
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={onClose}
+                                className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading || checkingStatus}
+                                className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg disabled:opacity-50"
+                            >
+                                {loading ? (
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-save"></i>
+                                        {alreadyAttended ? 'Update Absensi' : 'Simpan Absensi'}
+                                    </>
+                                )}
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>,

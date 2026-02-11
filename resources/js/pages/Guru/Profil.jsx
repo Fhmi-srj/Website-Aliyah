@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
 import Swal from 'sweetalert2';
 import SwipeableContent from './components/SwipeableContent';
 import { AnimatedTabs } from './components/AnimatedTabs';
+import SignatureCanvas from '../../components/SignatureCanvas';
 
 function Profil() {
     const { logout } = useAuth();
     const [activeTab, setActiveTab] = useState('identitas');
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [uploadingTtd, setUploadingTtd] = useState(false);
+    const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
+    const fileInputRef = useRef(null);
+    const ttdInputRef = useRef(null);
 
     // Password change state
     const [passwords, setPasswords] = useState({
@@ -33,6 +39,170 @@ function Profil() {
         };
         fetchProfile();
     }, []);
+
+    // Handle photo upload
+    const handlePhotoClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handlePhotoChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Terlalu Besar',
+                text: 'Ukuran foto maksimal 2MB',
+                confirmButtonColor: '#22c55e'
+            });
+            return;
+        }
+
+        // Validate file type
+        if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(file.type)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Format Tidak Didukung',
+                text: 'Gunakan format JPG, PNG, atau GIF',
+                confirmButtonColor: '#22c55e'
+            });
+            return;
+        }
+
+        try {
+            setUploadingPhoto(true);
+            const formData = new FormData();
+            formData.append('photo', file);
+
+            const response = await api.post('/guru-panel/upload-photo', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setProfile(prev => ({ ...prev, foto_url: response.data.photo_url }));
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Foto profil berhasil diperbarui',
+                    confirmButtonColor: '#22c55e',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        } catch (err) {
+            console.error('Error uploading photo:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Upload',
+                text: err.response?.data?.message || 'Terjadi kesalahan saat mengupload foto',
+                confirmButtonColor: '#22c55e'
+            });
+        } finally {
+            setUploadingPhoto(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    // Handle TTD upload
+    const handleTtdClick = () => {
+        ttdInputRef.current?.click();
+    };
+
+    // Handle canvas signature save
+    const handleCanvasTtdSave = async (base64) => {
+        try {
+            setUploadingTtd(true);
+            const response = await api.post('/guru-panel/upload-ttd', {
+                ttd_base64: base64
+            });
+            if (response.data.success) {
+                setProfile(prev => ({ ...prev, ttd_url: response.data.ttd_url }));
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Tanda tangan berhasil disimpan',
+                    confirmButtonColor: '#22c55e',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        } catch (err) {
+            console.error('Error saving canvas TTD:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: err.response?.data?.message || 'Terjadi kesalahan saat menyimpan TTD',
+                confirmButtonColor: '#22c55e'
+            });
+        } finally {
+            setUploadingTtd(false);
+        }
+    };
+
+    const handleTtdChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Terlalu Besar',
+                text: 'Ukuran file maksimal 2MB',
+                confirmButtonColor: '#22c55e'
+            });
+            return;
+        }
+
+        if (!['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(file.type)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Format Tidak Didukung',
+                text: 'Gunakan format JPG, PNG, atau GIF',
+                confirmButtonColor: '#22c55e'
+            });
+            return;
+        }
+
+        try {
+            setUploadingTtd(true);
+            const formData = new FormData();
+            formData.append('ttd', file);
+
+            const response = await api.post('/guru-panel/upload-ttd', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setProfile(prev => ({ ...prev, ttd_url: response.data.ttd_url }));
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Tanda tangan berhasil diperbarui',
+                    confirmButtonColor: '#22c55e',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        } catch (err) {
+            console.error('Error uploading TTD:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Upload',
+                text: err.response?.data?.message || 'Terjadi kesalahan saat mengupload TTD',
+                confirmButtonColor: '#22c55e'
+            });
+        } finally {
+            setUploadingTtd(false);
+            if (ttdInputRef.current) {
+                ttdInputRef.current.value = '';
+            }
+        }
+    };
 
     const handleLogout = async () => {
         const result = await Swal.fire({
@@ -117,22 +287,64 @@ function Profil() {
 
     return (
         <div className="animate-fadeIn min-h-screen bg-white">
+            {/* Hidden File Inputs */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoChange}
+                accept="image/jpeg,image/png,image/jpg,image/gif"
+                className="hidden"
+            />
+            <input
+                type="file"
+                ref={ttdInputRef}
+                onChange={handleTtdChange}
+                accept="image/jpeg,image/png,image/jpg,image/gif"
+                className="hidden"
+            />
+
             {/* Profile Header with Green Background */}
             <div className="bg-gradient-to-b from-green-600 to-green-600 px-4 pt-8 pb-12 text-center text-white">
                 {/* Avatar */}
                 <div className="relative inline-block mb-4">
-                    <div className="w-24 h-24 bg-green-500/40 rounded-full flex items-center justify-center border-4 border-green-400/30">
-                        <i className="fas fa-user-friends text-4xl text-white/90"></i>
+                    <div
+                        className="w-24 h-24 bg-green-500/40 rounded-full flex items-center justify-center border-4 border-green-400/30 overflow-hidden cursor-pointer"
+                        onClick={handlePhotoClick}
+                    >
+                        {uploadingPhoto ? (
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        ) : profile?.foto_url ? (
+                            <img
+                                src={profile.foto_url}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <i className="fas fa-user-friends text-4xl text-white/90"></i>
+                        )}
                     </div>
                     {/* Camera Button */}
-                    <button className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <button
+                        onClick={handlePhotoClick}
+                        disabled={uploadingPhoto}
+                        className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
+                    >
                         <i className="fas fa-camera text-green-600 text-sm"></i>
                     </button>
                 </div>
 
                 {/* Name and Email */}
                 <h2 className="font-bold text-xl">{profile?.name || '-'}</h2>
-                <p className="text-green-200 text-sm">{profile?.email || '-'}</p>
+                <p className="text-green-200 text-sm mb-3">{profile?.email || '-'}</p>
+
+                {/* Print Button */}
+                <button
+                    onClick={() => window.open(`/print/profil?token=${localStorage.getItem('auth_token')}`, '_blank')}
+                    className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full text-sm transition-colors"
+                >
+                    <i className="fas fa-print"></i>
+                    Cetak Profil
+                </button>
             </div>
 
             {/* Tab Navigation - Animated */}
@@ -153,89 +365,160 @@ function Profil() {
             >
                 {/* Identitas Tab */}
                 {activeTab === 'identitas' && (
-                    <div className="divide-y divide-gray-100">
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-user text-green-600 text-sm"></i>
+                    <>
+                        <div className="divide-y divide-gray-100">
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-user text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Nama Lengkap</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.name || '-'}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Nama Lengkap</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.name || '-'}</p>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-id-card text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">NIP</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.nip || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-envelope text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Email</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.email || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-briefcase text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Jabatan</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.jabatan || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-venus-mars text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Jenis Kelamin</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.jenis_kelamin || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-map-marker-alt text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Tempat, Tanggal Lahir</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-home text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Alamat</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.alamat || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-graduation-cap text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Pendidikan</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.pendidikan || '-'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-phone text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Kontak</p>
+                                    <p className="font-medium text-gray-800 text-sm">{profile?.kontak || '-'}</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-id-card text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">NIP</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.nip || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-envelope text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Email</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.email || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-briefcase text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Jabatan</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.jabatan || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-venus-mars text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Jenis Kelamin</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.jenis_kelamin || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-map-marker-alt text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Tempat, Tanggal Lahir</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-home text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Alamat</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.alamat || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-graduation-cap text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Pendidikan</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.pendidikan || '-'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-phone text-green-600 text-sm"></i>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-400">Kontak</p>
-                                <p className="font-medium text-gray-800 text-sm">{profile?.kontak || '-'}</p>
+
+                        {/* TTD Upload Section */}
+                        <div className="px-4 py-4">
+                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i className="fas fa-signature text-green-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-800 text-sm">Tanda Tangan (TTD)</p>
+                                        <p className="text-xs text-gray-400">Digunakan pada cetak hasil rapat</p>
+                                    </div>
+                                </div>
+
+                                {profile?.ttd_url ? (
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="bg-gray-50 rounded-lg p-3 w-full flex justify-center">
+                                            <img
+                                                src={profile.ttd_url}
+                                                alt="Tanda Tangan"
+                                                className="max-h-24 object-contain"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={handleTtdClick}
+                                                disabled={uploadingTtd}
+                                                className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1 disabled:opacity-50"
+                                            >
+                                                <i className="fas fa-cloud-upload-alt text-xs"></i> Upload
+                                            </button>
+                                            <span className="text-gray-300">|</span>
+                                            <button
+                                                onClick={() => setShowSignatureCanvas(true)}
+                                                disabled={uploadingTtd}
+                                                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 disabled:opacity-50"
+                                            >
+                                                <i className="fas fa-pen-fancy text-xs"></i> Tulis TTD
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleTtdClick}
+                                            disabled={uploadingTtd}
+                                            className="flex-1 py-5 border border-gray-200 rounded-xl bg-gray-50 hover:bg-green-50 hover:border-green-300 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {uploadingTtd ? (
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                                            ) : (
+                                                <>
+                                                    <i className="fas fa-cloud-upload-alt text-xl text-gray-400"></i>
+                                                    <span className="text-xs text-gray-500">Upload File</span>
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setShowSignatureCanvas(true)}
+                                            disabled={uploadingTtd}
+                                            className="flex-1 py-5 border border-gray-200 rounded-xl bg-gray-50 hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <i className="fas fa-pen-fancy text-xl text-indigo-400"></i>
+                                            <span className="text-xs text-gray-500">Tulis TTD</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* Keamanan Tab */}
@@ -300,6 +583,14 @@ function Profil() {
 
             {/* Bottom Spacing */}
             <div className="h-16"></div>
+
+            {/* Signature Canvas Modal */}
+            <SignatureCanvas
+                isOpen={showSignatureCanvas}
+                onClose={() => setShowSignatureCanvas(false)}
+                onSave={handleCanvasTtdSave}
+                title="Tulis Tanda Tangan"
+            />
         </div>
     );
 }

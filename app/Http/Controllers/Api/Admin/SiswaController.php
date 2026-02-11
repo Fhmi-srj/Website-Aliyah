@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Siswa;
+use App\Models\SiswaKelas;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -12,9 +14,104 @@ class SiswaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
+        $tahunAjaranId = $request->query('tahun_ajaran_id');
+
+        // Filter by status if provided (for Alumni page)
+        if ($request->has('status')) {
+            $status = $request->status;
+
+            // If filtering Alumni with tahun_ajaran_id, get alumni who graduated from PREVIOUS year
+            // Example: When viewing 2026/2027, show students who graduated at end of 2025/2026
+            if ($status === 'Alumni' && $tahunAjaranId) {
+                // Get the selected tahun_ajaran
+                $selectedTahun = \App\Models\TahunAjaran::find($tahunAjaranId);
+
+                // Find the previous tahun_ajaran (by order or by comparing nama)
+                $previousTahun = \App\Models\TahunAjaran::where('id', '<', $tahunAjaranId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                // If no previous tahun_ajaran, return empty
+                if (!$previousTahun) {
+                    return response()->json([
+                        'success' => true,
+                        'data' => []
+                    ]);
+                }
+
+                // Get students who graduated (Lulus) in the previous tahun_ajaran
+                $siswaKelas = SiswaKelas::where('tahun_ajaran_id', $previousTahun->id)
+                    ->where('status', 'Lulus')
+                    ->with(['siswa', 'kelas', 'tahunAjaran'])
+                    ->get();
+
+                $data = $siswaKelas->map(function ($sk) {
+                    $siswa = $sk->siswa->toArray();
+                    $siswa['kelas'] = $sk->kelas;
+                    $siswa['kelas_id'] = $sk->kelas_id;
+                    $siswa['tahun_lulus'] = $sk->tahunAjaran;
+                    $siswa['kelas_history'] = [
+                        [
+                            'kelas' => $sk->kelas,
+                            'tahun_ajaran' => $sk->tahunAjaran,
+                            'status' => 'Lulus'
+                        ]
+                    ];
+                    return $siswa;
+                })->values();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $data
+                ]);
+            }
+
+            // Default: get all siswa with the specified status
+            $query = Siswa::with(['kelas', 'kelasHistory.kelas', 'kelasHistory.tahunAjaran'])
+                ->where('status', $status)
+                ->orderBy('nama')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $query
+            ]);
+        }
+
+        // If tahun_ajaran_id is provided, get siswa from pivot table
+        if ($tahunAjaranId) {
+            $siswaKelas = SiswaKelas::where('tahun_ajaran_id', $tahunAjaranId)
+                ->whereIn('status', ['Aktif', 'Naik', 'Tinggal', 'Lulus'])
+                ->with(['siswa', 'kelas'])
+                ->get()
+                // Only filter out records where siswa doesn't exist
+                ->filter(function ($sk) {
+                    return $sk->siswa !== null;
+                });
+
+            // Transform data to include kelas for this specific tahun
+            $data = $siswaKelas->map(function ($sk) {
+                $siswa = $sk->siswa->toArray();
+                // Override kelas with the one from this tahun_ajaran
+                $siswa['kelas'] = $sk->kelas;
+                $siswa['kelas_id'] = $sk->kelas_id;
+                $siswa['pivot_status'] = $sk->status;
+                return $siswa;
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        }
+
+        // Default: return all siswa with their direct kelas relation
+        $siswa = Siswa::with(['kelas', 'kelasHistory.kelas', 'kelasHistory.tahunAjaran'])
+            ->orderBy('nama')
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $siswa
@@ -28,7 +125,7 @@ class SiswaController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:100',
-            'status' => 'required|in:Aktif,Tidak Aktif',
+            'status' => 'required|in:Aktif,Tidak Aktif,Alumni,Mutasi',
             'nis' => 'required|string|max:20|unique:siswa,nis',
             'nisn' => 'nullable|string|max:20|unique:siswa,nisn',
             'kelas_id' => 'required|exists:kelas,id',
@@ -37,11 +134,28 @@ class SiswaController extends Controller
             'tanggal_lahir' => 'nullable|date',
             'tempat_lahir' => 'nullable|string|max:100',
             'asal_sekolah' => 'nullable|string|max:100',
+            'nama_ayah' => 'nullable|string|max:100',
+            'nama_ibu' => 'nullable|string|max:100',
             'kontak_ortu' => 'nullable|string|max:20',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
         ]);
 
         $siswa = Siswa::create($validated);
         $siswa->load('kelas');
+
+        // Also create entry in pivot table
+        $kelas = \App\Models\Kelas::find($validated['kelas_id']);
+        if ($kelas) {
+            SiswaKelas::create([
+                'siswa_id' => $siswa->id,
+                'kelas_id' => $validated['kelas_id'],
+                'tahun_ajaran_id' => $validated['tahun_ajaran_id'] ?? $kelas->tahun_ajaran_id,
+                'status' => 'Aktif'
+            ]);
+        }
+
+        // Log activity
+        ActivityLog::logCreate($siswa, "Menambahkan siswa: {$siswa->nama}");
 
         return response()->json([
             'success' => true,
@@ -78,11 +192,19 @@ class SiswaController extends Controller
             'tanggal_lahir' => 'nullable|date',
             'tempat_lahir' => 'nullable|string|max:100',
             'asal_sekolah' => 'nullable|string|max:100',
+            'nama_ayah' => 'nullable|string|max:100',
+            'nama_ibu' => 'nullable|string|max:100',
             'kontak_ortu' => 'nullable|string|max:20',
         ]);
 
+        // Capture old values for logging
+        $oldValues = $siswa->getOriginal();
+
         $siswa->update($validated);
         $siswa->load('kelas');
+
+        // Log activity
+        ActivityLog::logUpdate($siswa, $oldValues, "Mengubah data siswa: {$siswa->nama}");
 
         return response()->json([
             'success' => true,
@@ -96,11 +218,32 @@ class SiswaController extends Controller
      */
     public function destroy(Siswa $siswa): JsonResponse
     {
+        // Log activity before delete
+        ActivityLog::logDelete($siswa, "Menghapus siswa: {$siswa->nama}");
+
         $siswa->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Siswa berhasil dihapus'
+        ]);
+    }
+
+    /**
+     * Remove multiple resources from storage.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:siswa,id'
+        ]);
+
+        $count = Siswa::whereIn('id', $validated['ids'])->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "$count siswa berhasil dihapus"
         ]);
     }
 }

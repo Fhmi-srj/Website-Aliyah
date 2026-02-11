@@ -1,17 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { API_BASE, authFetch } from '../../../config/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_DEFAULT = 10;
 
 function ManajemenKelas() {
     const [data, setData] = useState([]);
     const [guruList, setGuruList] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+
+    // Get Tahun Ajaran from contexts (AuthContext has priority)
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
+
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
@@ -19,9 +27,7 @@ function ManajemenKelas() {
     const [formData, setFormData] = useState({
         nama_kelas: '',
         inisial: '',
-        tingkat: 'X',
         wali_kelas_id: '',
-        kapasitas: 36,
         status: 'Aktif'
     });
 
@@ -30,7 +36,6 @@ function ManajemenKelas() {
     const [sortDirection, setSortDirection] = useState('asc');
 
     // Filter state
-    const [filterTingkat, setFilterTingkat] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [activeFilter, setActiveFilter] = useState(null);
 
@@ -40,6 +45,7 @@ function ManajemenKelas() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_DEFAULT);
 
     // File input ref for import
     const fileInputRef = useRef(null);
@@ -47,7 +53,11 @@ function ManajemenKelas() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await authFetch(`${API_BASE}/kelas`);
+            let url = `${API_BASE}/kelas`;
+            if (tahunAjaranId) {
+                url += `?tahun_ajaran_id=${tahunAjaranId}`;
+            }
+            const response = await authFetch(url);
             const result = await response.json();
             setData(result.data || []);
         } catch (error) {
@@ -68,9 +78,11 @@ function ManajemenKelas() {
     };
 
     useEffect(() => {
-        fetchData();
+        if (tahunAjaranId) {
+            fetchData();
+        }
         fetchGuruList();
-    }, []);
+    }, [tahunAjaranId]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -104,6 +116,13 @@ function ManajemenKelas() {
         return [...dataToSort].sort((a, b) => {
             let valA = a[column];
             let valB = b[column];
+
+            // Handle nested objects (like wali_kelas.nama)
+            if (column === 'wali_kelas') {
+                valA = a.wali_kelas?.nama || '';
+                valB = b.wali_kelas?.nama || '';
+            }
+
             if (typeof valA === 'string') valA = valA.toLowerCase();
             if (typeof valB === 'string') valB = valB.toLowerCase();
             if (valA > valB) return dir;
@@ -122,39 +141,48 @@ function ManajemenKelas() {
         }
     };
 
-    // Filter and sort data
-    let filteredData = data.filter(item => {
-        if (filterTingkat && item.tingkat !== filterTingkat) return false;
-        if (filterStatus && item.status !== filterStatus) return false;
+    const renderStatus = (status) => {
+        const isAktif = status === 'Aktif';
+        return (
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${isAktif
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                }`}>
+                {isAktif && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                {status}
+            </span>
+        );
+    };
 
-        if (!search) return true;
-        const s = search.toLowerCase();
-        return item.nama_kelas?.toLowerCase().includes(s) ||
-            item.inisial?.toLowerCase().includes(s) ||
-            item.wali_kelas?.nama?.toLowerCase().includes(s);
-    });
+    const filteredData = (() => {
+        let result = data.filter(item => {
+            if (filterStatus && item.status !== filterStatus) return false;
+            if (!search) return true;
+            const s = search.toLowerCase();
+            return item.nama_kelas?.toLowerCase().includes(s) ||
+                item.inisial?.toLowerCase().includes(s) ||
+                item.wali_kelas?.nama?.toLowerCase().includes(s);
+        });
 
-    if (sortColumn) {
-        filteredData = sortData(filteredData, sortColumn, sortDirection);
-    }
+        if (sortColumn) {
+            result = sortData(result, sortColumn, sortDirection);
+        }
+        return result;
+    })();
 
     // Pagination
-    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     );
 
     // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, filterTingkat, filterStatus]);
+    }, [search, filterStatus]);
 
     // Import Excel
-    const handleImportClick = () => {
-        fileInputRef.current?.click();
-    };
-
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -175,9 +203,8 @@ function ManajemenKelas() {
                         body: JSON.stringify({
                             nama_kelas: row['Nama Kelas'] || row['nama_kelas'] || '',
                             inisial: row['Inisial'] || row['inisial'] || '',
-                            tingkat: row['Tingkat'] || row['tingkat'] || 'X',
-                            kapasitas: row['Kapasitas'] || row['kapasitas'] || 36,
-                            status: row['Status'] || row['status'] || 'Aktif'
+                            status: row['Status'] || row['status'] || 'Aktif',
+                            tahun_ajaran_id: tahunAjaranId
                         })
                     });
                     if (response.ok) successCount++;
@@ -213,9 +240,7 @@ function ManajemenKelas() {
             'No': idx + 1,
             'Nama Kelas': item.nama_kelas,
             'Inisial': item.inisial,
-            'Tingkat': item.tingkat,
             'Wali Kelas': item.wali_kelas?.nama || '-',
-            'Kapasitas': item.kapasitas,
             'Jumlah Siswa': item.siswa_count || 0,
             'Status': item.status
         }));
@@ -231,9 +256,7 @@ function ManajemenKelas() {
         setFormData({
             nama_kelas: '',
             inisial: '',
-            tingkat: 'X',
             wali_kelas_id: '',
-            kapasitas: 36,
             status: 'Aktif'
         });
         setIsModalClosing(false);
@@ -246,9 +269,7 @@ function ManajemenKelas() {
         setFormData({
             nama_kelas: item.nama_kelas || '',
             inisial: item.inisial || '',
-            tingkat: item.tingkat || 'X',
             wali_kelas_id: item.wali_kelas_id || '',
-            kapasitas: item.kapasitas || 36,
             status: item.status || 'Aktif'
         });
         setIsModalClosing(false);
@@ -268,8 +289,8 @@ function ManajemenKelas() {
         try {
             const url = modalMode === 'add' ? `${API_BASE}/kelas` : `${API_BASE}/kelas/${currentItem.id}`;
             const method = modalMode === 'add' ? 'POST' : 'PUT';
-            const submitData = { ...formData };
-            if (!submitData.wali_kelas_id) submitData.wali_kelas_id = null;
+            const submitData = { ...formData, tahun_ajaran_id: tahunAjaranId };
+            if (!submitData.wali_kelas_id) delete submitData.wali_kelas_id;
 
             const response = await authFetch(url, {
                 method,
@@ -284,8 +305,7 @@ function ManajemenKelas() {
                     title: 'Berhasil!',
                     text: modalMode === 'add' ? 'Data kelas berhasil ditambahkan' : 'Data kelas berhasil diperbarui',
                     timer: 1500,
-                    showConfirmButton: false,
-                    customClass: { container: 'swal-above-modal' }
+                    showConfirmButton: false
                 });
             } else {
                 const error = await response.json();
@@ -294,8 +314,7 @@ function ManajemenKelas() {
                     title: 'Gagal!',
                     text: error.message || 'Terjadi kesalahan',
                     timer: 2000,
-                    showConfirmButton: false,
-                    customClass: { container: 'swal-above-modal' }
+                    showConfirmButton: false
                 });
             }
         } catch (error) {
@@ -305,8 +324,7 @@ function ManajemenKelas() {
                 title: 'Gagal!',
                 text: 'Gagal menyimpan data',
                 timer: 2000,
-                showConfirmButton: false,
-                customClass: { container: 'swal-above-modal' }
+                showConfirmButton: false
             });
         }
     };
@@ -320,8 +338,7 @@ function ManajemenKelas() {
             confirmButtonColor: '#dc2626',
             cancelButtonColor: '#6b7280',
             confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal',
-            customClass: { container: 'swal-above-modal' }
+            cancelButtonText: 'Batal'
         });
 
         if (!result.isConfirmed) return;
@@ -338,8 +355,7 @@ function ManajemenKelas() {
                     title: 'Terhapus!',
                     text: 'Data kelas berhasil dihapus',
                     timer: 1500,
-                    showConfirmButton: false,
-                    customClass: { container: 'swal-above-modal' }
+                    showConfirmButton: false
                 });
             }
         } catch (error) {
@@ -347,49 +363,38 @@ function ManajemenKelas() {
         }
     };
 
-    // Render status with bullet
-    const renderStatus = (status) => {
-        const isAktif = status?.toLowerCase() === 'aktif';
-        return (
-            <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${isAktif ? 'status-aktif' : 'status-tidak-aktif'}`}>
-                <span className="status-bullet"></span>{status}
-            </span>
-        );
-    };
-
-    // Sortable header component with optional filter
+    // Sortable header component
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
         <th
-            className="select-none py-2 px-3 cursor-pointer whitespace-nowrap"
+            className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group"
             onClick={() => !filterable && handleSort(column)}
         >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
                 <span
                     onClick={(e) => { e.stopPropagation(); handleSort(column); }}
-                    className="cursor-pointer"
+                    className="hover:text-primary transition-colors"
                 >
                     {label}
                 </span>
-                {sortColumn === column ? (
-                    <i className={`fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} text-green-700`}></i>
-                ) : (
-                    <i className="fas fa-sort text-green-700 opacity-50"></i>
-                )}
+                <div className="flex flex-col text-[8px] leading-[4px] text-gray-300 dark:text-gray-600">
+                    <i className={`fas fa-caret-up ${sortColumn === column && sortDirection === 'asc' ? 'text-primary' : ''}`}></i>
+                    <i className={`fas fa-caret-down ${sortColumn === column && sortDirection === 'desc' ? 'text-primary' : ''}`}></i>
+                </div>
                 {filterable && (
                     <div className="relative" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setActiveFilter(activeFilter === column ? null : column)}
-                            className={`ml-1 ${filterValue ? 'text-green-700' : 'text-gray-400'}`}
+                            className={`ml-1 transition-colors ${filterValue ? 'text-primary' : 'text-gray-400 hover:text-primary dark:hover:text-gray-200'}`}
                         >
                             <i className="fas fa-filter text-[10px]"></i>
                         </button>
                         {activeFilter === column && (
-                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-[120px]">
+                            <div className="absolute top-full left-0 mt-2 bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl z-20 min-w-[150px] overflow-hidden animate-fadeIn">
                                 {filterOptions.map(opt => (
                                     <button
                                         key={opt.value}
                                         onClick={() => { setFilterValue(opt.value); setActiveFilter(null); }}
-                                        className={`block w-full text-left px-3 py-1 text-[11px] hover:bg-green-50 ${filterValue === opt.value ? 'bg-green-100 text-green-700' : ''}`}
+                                        className={`block w-full text-left px-4 py-2.5 text-[11px] transition-colors hover:bg-primary/5 dark:hover:bg-primary/10 ${filterValue === opt.value ? 'bg-primary/10 text-primary font-bold dark:bg-primary/20' : 'dark:text-dark-text'}`}
                                     >
                                         {opt.label}
                                     </button>
@@ -405,89 +410,89 @@ function ManajemenKelas() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-4">
-                <h1 className="text-[#1f2937] font-semibold text-lg mb-1 select-none">Manajemen Kelas</h1>
-                <p className="text-[11px] text-[#6b7280] select-none">Kelola data kelas di sini</p>
+            <header className="mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <i className="fas fa-school text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
+                                Manajemen Kelas
+                            </h1>
+                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
+                                Kelola data kelas dan pembagian wali kelas
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-                <div className="flex items-center w-full md:w-1/3 border border-[#d1d5db] rounded-md px-3 py-1 text-[12px] text-[#4a4a4a] focus-within:ring-2 focus-within:ring-green-400 focus-within:border-green-400">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
+                <div className="flex items-center w-full md:w-[400px] relative group">
+                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
                     <input
-                        className="w-full border-none focus:ring-0 focus:outline-none bg-transparent"
-                        placeholder="Cari data kelas..."
+                        aria-label="Cari kelas"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
+                        placeholder="Cari nama kelas, inisial atau wali kelas..."
                         type="search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap w-full md:w-auto justify-between md:justify-start">
+                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                    />
                     <button
-                        onClick={handleImportClick}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-file-import"></i> Import Excel
+                        <i className="fas fa-file-import"></i>
+                        <span>Import</span>
                     </button>
                     <button
                         onClick={handleExport}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-file-export"></i> Export Excel
+                        <i className="fas fa-file-export"></i>
+                        <span>Export</span>
                     </button>
                     <button
                         onClick={openAddModal}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-plus"></i> Tambah Kelas
+                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                        <span>Tambah Kelas</span>
                     </button>
                 </div>
             </div>
 
-            {/* Hidden file input for import */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleFileChange}
-            />
-
-            {/* Loading State */}
+            {/* Table Section */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div>
-                    <span className="ml-3 text-gray-600">Memuat data...</span>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400">Memuat data...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full">
-                    <table className={`w-full text-[12px] text-[#4a4a4a] border-separate border-spacing-y-[2px] ${isMobile ? '' : 'min-w-[800px]'}`}>
+                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
+                    <table className={`admin-table ${isMobile ? '' : 'min-w-[800px]'}`}>
                         <thead>
-                            <tr className="text-left text-[#6b7280] select-none">
-                                <th className="select-none pl-3 py-2 px-3 whitespace-nowrap">No</th>
-                                {isMobile && <th className="select-none py-2 px-2 text-center whitespace-nowrap"></th>}
+                            <tr>
+                                <th className="select-none pl-6 py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
+                                {isMobile && <th className="select-none py-4 text-center"></th>}
                                 <SortableHeader label="Nama Kelas" column="nama_kelas" />
                                 {!isMobile && <SortableHeader label="Inisial" column="inisial" />}
-                                {!isMobile && (
-                                    <SortableHeader
-                                        label="Tingkat"
-                                        column="tingkat"
-                                        filterable
-                                        filterOptions={[
-                                            { label: 'Semua', value: '' },
-                                            { label: 'X', value: 'X' },
-                                            { label: 'XI', value: 'XI' },
-                                            { label: 'XII', value: 'XII' }
-                                        ]}
-                                        filterValue={filterTingkat}
-                                        setFilterValue={setFilterTingkat}
-                                    />
-                                )}
                                 <SortableHeader label="Wali Kelas" column="wali_kelas" />
-                                {!isMobile && <SortableHeader label="Kapasitas" column="kapasitas" />}
-                                {!isMobile && <th className="select-none py-2 px-3 whitespace-nowrap">Jumlah Siswa</th>}
+                                {!isMobile && <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest">Jumlah Siswa</th>}
                                 <SortableHeader
                                     label="Status"
                                     column="status"
@@ -500,46 +505,90 @@ function ManajemenKelas() {
                                     filterValue={filterStatus}
                                     setFilterValue={setFilterStatus}
                                 />
-                                <th className="select-none py-2 px-3 text-center whitespace-nowrap">Aksi</th>
+                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-3 align-middle select-none whitespace-nowrap">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                                    <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
+                                        <td className="pl-6 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
+                                            {(currentPage - 1) * itemsPerPage + idx + 1}
+                                        </td>
                                         {isMobile && (
                                             <td
-                                                className="py-2 px-2 align-middle select-none text-center cursor-pointer"
+                                                className="py-4 align-middle text-center cursor-pointer px-2"
                                                 onClick={() => toggleRowExpand(idx)}
                                             >
-                                                <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-green-700`}></i>
+                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
+                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                                </div>
                                             </td>
                                         )}
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.nama_kelas}</td>
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.inisial}</td>}
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.tingkat}</td>}
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.wali_kelas?.nama || '-'}</td>
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.kapasitas}</td>}
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.siswa_count || 0}</td>}
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-2 px-3 align-middle text-center select-none whitespace-nowrap">
-                                            <button onClick={() => openEditModal(item)} className="text-green-700 hover:text-green-900 mr-2 cursor-pointer" title="Ubah">
-                                                <i className="fas fa-edit"></i>
-                                            </button>
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 cursor-pointer" title="Hapus">
-                                                <i className="fas fa-trash"></i>
-                                            </button>
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">
+                                                {item.nama_kelas}
+                                            </span>
+                                        </td>
+                                        {!isMobile && (
+                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                                <span className="px-2 py-1 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                                                    {item.inisial}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                    <i className="fas fa-user-tie text-[10px]"></i>
+                                                </div>
+                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text">
+                                                    {item.wali_kelas?.nama || 'Belum Ditentukan'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        {!isMobile && (
+                                            <td className="py-4 px-2 align-middle text-center whitespace-nowrap">
+                                                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-100 dark:border-emerald-900/20">
+                                                    <i className="fas fa-user-graduate text-[10px]"></i>
+                                                    <span className="text-xs font-black">{item.siswa_count || 0}</span>
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            {renderStatus(item.status)}
+                                        </td>
+                                        <td className="py-4 px-6 align-middle text-center">
+                                            <div className="flex items-center justify-center gap-2 transition-opacity">
+                                                <button
+                                                    onClick={() => openEditModal(item)}
+                                                    className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95"
+                                                    title="Edit Data"
+                                                >
+                                                    <i className="fas fa-edit text-[10px]"></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95"
+                                                    title="Hapus Data"
+                                                >
+                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-green-50">
-                                            <td colSpan="6" className="px-4 py-3">
-                                                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                                    <div><strong>Inisial:</strong> {item.inisial}</div>
-                                                    <div><strong>Tingkat:</strong> {item.tingkat}</div>
-                                                    <div><strong>Kapasitas:</strong> {item.kapasitas}</div>
-                                                    <div><strong>Jumlah Siswa:</strong> {item.siswa_count || 0}</div>
+                                        <tr className="bg-gray-50/50 dark:bg-dark-bg/30">
+                                            <td colSpan="6" className="px-6 py-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Inisial</span>
+                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.inisial}</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Siswa</span>
+                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.siswa_count || 0} Siswa</span>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -548,148 +597,162 @@ function ManajemenKelas() {
                             ))}
                             {filteredData.length === 0 && (
                                 <tr>
-                                    <td colSpan={isMobile ? 6 : 9} className="text-center py-8 text-gray-500">
-                                        {search || filterTingkat || filterStatus ? 'Tidak ada data yang sesuai filter/pencarian' : 'Belum ada data kelas'}
+                                    <td colSpan={isMobile ? 6 : 8} className="py-20 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="w-16 h-16 bg-gray-50 dark:bg-dark-bg/20 rounded-2xl flex items-center justify-center">
+                                                <i className="fas fa-folder-open text-2xl text-gray-300 dark:text-gray-600"></i>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-400 dark:text-gray-500">Data Kelas Kosong</p>
+                                                <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-medium">
+                                                    {search || filterStatus
+                                                        ? 'Tidak ada data yang sesuai filter/pencarian Anda'
+                                                        : 'Belum ada data kelas yang tersedia'}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        totalItems={filteredData.length}
-                        itemsPerPage={ITEMS_PER_PAGE}
-                    />
+
+                    {/* Footer / Pagination */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-6 border-t border-gray-100 dark:border-dark-border bg-gray-50/30 dark:bg-dark-bg/10">
+                        <div className="flex items-center gap-3 order-2 md:order-1">
+                            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                Total {filteredData.length} Kelas Terdaftar
+                            </span>
+                        </div>
+
+                        <div className="order-1 md:order-2">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                totalItems={filteredData.length}
+                                itemsPerPage={itemsPerPage}
+                                onLimitChange={(limit) => {
+                                    setItemsPerPage(limit);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Modal with Portal - renders at body level like SweetAlert */}
+            {/* Modal with Portal */}
             {showModal && ReactDOM.createPortal(
                 <div
-                    className={`fixed inset-0 flex items-center justify-center p-4 transition-opacity duration-200 ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 9999 }}
+                    className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                     onClick={closeModal}
                 >
                     <div
-                        className={`bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col relative transition-all duration-200 ${isModalClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
+                        className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-lg w-full flex flex-col relative overflow-hidden transform transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ animation: isModalClosing ? 'none' : 'modalIn 0.2s ease-out' }}
                     >
-                        {/* Header */}
-                        <div className="p-4 border-b border-gray-200">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
                             <button
                                 onClick={closeModal}
-                                className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 cursor-pointer"
+                                className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20"
                                 type="button"
+                                aria-label="Tutup Modal"
                             >
-                                <i className="fas fa-times fa-lg"></i>
+                                <i className="fas fa-times text-lg"></i>
                             </button>
-                            <h3 className="text-lg font-semibold text-[#1f2937] select-none">
-                                {modalMode === 'add' ? 'Tambah Kelas' : 'Edit Kelas'}
-                            </h3>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold">
+                                        {modalMode === 'add' ? 'Tambah Kelas Baru' : 'Perbarui Data Kelas'}
+                                    </h2>
+                                    <p className="text-xs text-white/80 mt-0.5 italic">Lengkapi informasi detail unit kelas</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Form content */}
-                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-                                {/* Row 1: Nama Kelas, Inisial */}
+                        {/* Modal Body */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Informasi Dasar</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Nama Kelas *</label>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Kelas *</label>
                                         <input
                                             type="text"
                                             required
                                             value={formData.nama_kelas}
                                             onChange={(e) => setFormData({ ...formData, nama_kelas: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
+                                            className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
                                             placeholder="Contoh: X IPA 1"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Inisial *</label>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Inisial *</label>
                                         <input
                                             type="text"
                                             required
                                             value={formData.inisial}
                                             onChange={(e) => setFormData({ ...formData, inisial: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
+                                            className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
                                             placeholder="Contoh: XIPA1"
                                         />
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Row 2: Tingkat, Status */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Tingkat *</label>
-                                        <select
-                                            required
-                                            value={formData.tingkat}
-                                            onChange={(e) => setFormData({ ...formData, tingkat: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
-                                        >
-                                            <option value="X">X (Kelas 10)</option>
-                                            <option value="XI">XI (Kelas 11)</option>
-                                            <option value="XII">XII (Kelas 12)</option>
-                                        </select>
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Personalia & Status</label>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Wali Kelas</label>
+                                        <div className="relative">
+                                            <i className="fas fa-user-tie absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                            <select
+                                                value={formData.wali_kelas_id}
+                                                onChange={(e) => setFormData({ ...formData, wali_kelas_id: e.target.value })}
+                                                className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text outline-none appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Pilih Wali Kelas (Opsional)</option>
+                                                {guruList.filter(g => g.status === 'Aktif').map(guru => (
+                                                    <option key={guru.id} value={guru.id}>{guru.nama}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Status *</label>
+
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Keaktifan *</label>
                                         <select
-                                            required
                                             value={formData.status}
                                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
+                                            className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text outline-none appearance-none cursor-pointer"
                                         >
                                             <option value="Aktif">Aktif</option>
                                             <option value="Tidak Aktif">Tidak Aktif</option>
                                         </select>
                                     </div>
                                 </div>
-
-                                {/* Row 3: Wali Kelas, Kapasitas */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Wali Kelas</label>
-                                        <select
-                                            value={formData.wali_kelas_id}
-                                            onChange={(e) => setFormData({ ...formData, wali_kelas_id: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
-                                        >
-                                            <option value="">-- Pilih Wali Kelas --</option>
-                                            {guruList.filter(g => g.status === 'Aktif').map(guru => (
-                                                <option key={guru.id} value={guru.id}>{guru.nama}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-gray-700 mb-1">Kapasitas</label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max="100"
-                                            value={formData.kapasitas}
-                                            onChange={(e) => setFormData({ ...formData, kapasitas: parseInt(e.target.value) || 36 })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 focus:outline-none"
-                                        />
-                                    </div>
-                                </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex justify-end gap-3 rounded-b-2xl">
+                            {/* Modal Footer */}
+                            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-dark-border">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="px-4 py-2 rounded border border-green-600 text-green-700 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-400 cursor-pointer"
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-dark-surface transition-all text-xs font-black uppercase tracking-widest"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-400 cursor-pointer"
+                                    className="btn-primary flex-1 px-4 py-2.5 rounded-xl shadow-lg shadow-primary/20 text-xs font-black uppercase tracking-widest"
                                 >
                                     {modalMode === 'add' ? 'Simpan' : 'Perbarui'}
                                 </button>
@@ -699,20 +762,6 @@ function ManajemenKelas() {
                 </div>,
                 document.body
             )}
-
-            {/* CSS Animation Keyframes */}
-            <style>{`
-                @keyframes modalIn {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.95) translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1) translateY(0);
-                    }
-                }
-            `}</style>
         </div>
     );
 }

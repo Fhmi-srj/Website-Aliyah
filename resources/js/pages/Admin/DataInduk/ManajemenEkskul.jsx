@@ -5,13 +5,15 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_DEFAULT = 10;
+
 function ManajemenEkskul() {
     const [data, setData] = useState([]);
     const [guruList, setGuruList] = useState([]);
     const [siswaList, setSiswaList] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
@@ -44,6 +46,7 @@ function ManajemenEkskul() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_DEFAULT);
 
     // Anggota modal state
     const [showAnggotaModal, setShowAnggotaModal] = useState(false);
@@ -91,7 +94,6 @@ function ManajemenEkskul() {
         return () => document.body.removeEventListener('click', handleClick);
     }, []);
 
-    // Toggle row expand for mobile
     const toggleRowExpand = (idx) => {
         setExpandedRows(prev => {
             const newSet = new Set(prev);
@@ -104,7 +106,6 @@ function ManajemenEkskul() {
         });
     };
 
-    // Sort function
     const sortData = (dataToSort, column, direction) => {
         if (!column) return dataToSort;
         const dir = direction === 'asc' ? 1 : -1;
@@ -132,7 +133,19 @@ function ManajemenEkskul() {
         }
     };
 
-    // Filter and sort data
+    const renderStatus = (status) => {
+        const isAktif = status === 'Aktif';
+        return (
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${isAktif
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                }`}>
+                {isAktif && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                {status}
+            </span>
+        );
+    };
+
     const filteredData = (() => {
         let result = data.filter(item => {
             if (filterKategori && item.kategori !== filterKategori) return false;
@@ -146,111 +159,47 @@ function ManajemenEkskul() {
                 item.pembina?.nama?.toLowerCase().includes(s)
             );
         });
-        return sortData(result, sortColumn, sortDirection);
+
+        if (sortColumn) {
+            result = sortData(result, sortColumn, sortDirection);
+        }
+        return result;
     })();
 
-    // Pagination
-    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     );
 
-    // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [search, filterKategori, filterHari, filterStatus]);
 
-    // Format time
-    const formatTime = (time) => {
-        if (!time) return '-';
-        return time.substring(0, 5);
+    const handleExport = () => {
+        const exportData = filteredData.map((item, idx) => ({
+            'No': idx + 1,
+            'Nama Ekskul': item.nama_ekskul,
+            'Kategori': item.kategori,
+            'Pembina': item.pembina?.nama || '',
+            'Jadwal': `${item.hari}, ${item.jam_mulai} - ${item.jam_selesai}`,
+            'Tempat': item.tempat,
+            'Status': item.status
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data Ekskul');
+        XLSX.writeFile(wb, `Data_Ekskul_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    // Render status badge
-    const renderStatus = (status) => {
-        const isAktif = status?.toLowerCase() === 'aktif';
-        return (
-            <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${isAktif ? 'status-aktif' : 'status-tidak-aktif'}`}>
-                <span className="status-bullet"></span>{status}
-            </span>
-        );
-    };
-
-    // Render kategori badge
-    const renderKategori = (kategori) => {
-        const kategoriClass = {
-            'Olahraga': 'bg-blue-100 text-blue-700',
-            'Seni': 'bg-purple-100 text-purple-700',
-            'Akademik': 'bg-green-100 text-green-700',
-            'Keagamaan': 'bg-yellow-100 text-yellow-700'
-        };
-        return (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${kategoriClass[kategori] || 'bg-gray-100 text-gray-700'}`}>
-                {kategori}
-            </span>
-        );
-    };
-
-    // SortableHeader component
-    const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th
-            className="select-none py-2 px-2 cursor-pointer whitespace-nowrap"
-            onClick={() => !filterable && handleSort(column)}
-        >
-            <div className="flex items-center gap-1">
-                <span
-                    onClick={(e) => { e.stopPropagation(); handleSort(column); }}
-                    className="cursor-pointer"
-                >
-                    {label}
-                </span>
-                {sortColumn === column ? (
-                    <i className={`fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} text-green-700`}></i>
-                ) : (
-                    <i className="fas fa-sort text-green-700 opacity-50"></i>
-                )}
-                {filterable && (
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={() => setActiveFilter(activeFilter === column ? null : column)}
-                            className={`ml-1 ${filterValue ? 'text-green-700' : 'text-gray-400'}`}
-                        >
-                            <i className="fas fa-filter text-[10px]"></i>
-                        </button>
-                        {activeFilter === column && (
-                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-[120px]">
-                                {filterOptions.map(opt => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => { setFilterValue(opt.value); setActiveFilter(null); }}
-                                        className={`block w-full text-left px-3 py-1 text-[11px] hover:bg-green-50 ${filterValue === opt.value ? 'bg-green-100 text-green-700' : ''}`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </th>
-    );
-
-    // Modal functions
     const openAddModal = () => {
         setModalMode('add');
         setFormData({
-            nama_ekskul: '',
-            kategori: 'Olahraga',
-            pembina_id: '',
-            hari: 'Senin',
-            jam_mulai: '14:00',
-            jam_selesai: '16:00',
-            tempat: '',
-            deskripsi: '',
-            status: 'Aktif'
+            nama_ekskul: '', kategori: 'Olahraga', pembina_id: guruList[0]?.id || '',
+            hari: 'Senin', jam_mulai: '14:00', jam_selesai: '16:00', tempat: '',
+            deskripsi: '', status: 'Aktif'
         });
+        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -262,12 +211,13 @@ function ManajemenEkskul() {
             kategori: item.kategori || 'Olahraga',
             pembina_id: item.pembina_id || '',
             hari: item.hari || 'Senin',
-            jam_mulai: item.jam_mulai ? item.jam_mulai.substring(0, 5) : '14:00',
-            jam_selesai: item.jam_selesai ? item.jam_selesai.substring(0, 5) : '16:00',
+            jam_mulai: item.jam_mulai || '14:00',
+            jam_selesai: item.jam_selesai || '16:00',
             tempat: item.tempat || '',
             deskripsi: item.deskripsi || '',
             status: item.status || 'Aktif'
         });
+        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -284,281 +234,201 @@ function ManajemenEkskul() {
         try {
             const url = modalMode === 'add' ? `${API_BASE}/ekskul` : `${API_BASE}/ekskul/${currentItem.id}`;
             const method = modalMode === 'add' ? 'POST' : 'PUT';
-            const response = await authFetch(url, {
+            const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    pembina_id: formData.pembina_id || null
-                })
+                body: JSON.stringify(formData)
             });
-            if (response.ok) {
+            if (res.ok) {
                 closeModal();
                 fetchData();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: modalMode === 'add' ? 'Ekstrakurikuler berhasil ditambahkan' : 'Ekstrakurikuler berhasil diperbarui',
-                    timer: 1500,
-                    showConfirmButton: false,
-                    customClass: { container: 'swal-above-modal' }
-                });
-            } else {
-                const error = await response.json();
-                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Terjadi kesalahan', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Data ekskul tersimpan', timer: 1500, showConfirmButton: false });
             }
-        } catch (error) {
-            console.error('Error saving:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan data', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
-        }
+        } catch (error) { console.error('Error saving:', error); }
     };
 
     const handleDelete = async (id) => {
-        const result = await Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: 'Yakin ingin menghapus data ini?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal',
-            customClass: { container: 'swal-above-modal' }
-        });
-        if (!result.isConfirmed) return;
-
-        try {
-            const response = await authFetch(`${API_BASE}/ekskul/${id}`, {
-                method: 'DELETE',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (response.ok) {
-                fetchData();
-                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data berhasil dihapus', timer: 1500, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
-            }
-        } catch (error) {
-            console.error('Error deleting:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
+        const result = await Swal.fire({ title: 'Hapus Ekskul?', text: 'Data tidak dapat dikembalikan!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal' });
+        if (result.isConfirmed) {
+            try {
+                const res = await authFetch(`${API_BASE}/ekskul/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+                if (res.ok) {
+                    fetchData();
+                    Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Ekskul telah dihapus', timer: 1500, showConfirmButton: false });
+                }
+            } catch (error) { console.error('Error deleting:', error); }
         }
     };
 
-    // Anggota management functions
+    // Anggota Management
     const openAnggotaModal = async (ekskul) => {
         setSelectedEkskul(ekskul);
         setShowAnggotaModal(true);
+        setIsModalClosing(false);
+        fetchAnggota(ekskul.id);
+    };
+
+    const fetchAnggota = async (ekskulId) => {
         setAnggotaLoading(true);
         try {
-            const response = await authFetch(`${API_BASE}/ekskul/${ekskul.id}/anggota`);
-            const result = await response.json();
-            setAnggotaList(result.data || []);
-        } catch (error) {
-            console.error('Error fetching anggota:', error);
-        } finally {
-            setAnggotaLoading(false);
-        }
+            const res = await authFetch(`${API_BASE}/ekskul/${ekskulId}/anggota`);
+            const json = await res.json();
+            setAnggotaList(json.data || []);
+        } catch (error) { console.error('Error fetching anggota:', error); }
+        setAnggotaLoading(false);
     };
 
     const handleAddAnggota = async () => {
-        if (!selectedSiswa) {
-            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Pilih siswa terlebih dahulu', customClass: { container: 'swal-above-modal' } });
-            return;
-        }
+        if (!selectedSiswa) return;
         try {
-            const response = await authFetch(`${API_BASE}/ekskul/${selectedEkskul.id}/anggota`, {
+            const res = await authFetch(`${API_BASE}/ekskul/${selectedEkskul.id}/anggota`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify({ siswa_id: selectedSiswa })
             });
-            if (response.ok) {
+            if (res.ok) {
                 setSelectedSiswa('');
-                openAnggotaModal(selectedEkskul); // Refresh list
-                fetchData(); // Refresh count
-                Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Anggota berhasil ditambahkan', timer: 1500, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
+                fetchAnggota(selectedEkskul.id);
             } else {
-                const error = await response.json();
-                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Gagal menambahkan anggota', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
+                const err = await res.json();
+                Swal.fire({ icon: 'error', title: 'Gagal!', text: err.message || 'Siswa mungkin sudah terdaftar', timer: 2000, showConfirmButton: false });
             }
-        } catch (error) {
-            console.error('Error adding anggota:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menambahkan anggota', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
-        }
+        } catch (error) { console.error('Error adding anggota:', error); }
     };
 
-    const handleRemoveAnggota = async (siswaId) => {
-        const result = await Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: 'Hapus siswa ini dari ekskul?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal',
-            customClass: { container: 'swal-above-modal' }
-        });
-        if (!result.isConfirmed) return;
-
+    const handleRemoveAnggota = async (anggotaId) => {
         try {
-            const response = await authFetch(`${API_BASE}/ekskul/${selectedEkskul.id}/anggota/${siswaId}`, {
-                method: 'DELETE',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (response.ok) {
-                openAnggotaModal(selectedEkskul); // Refresh list
-                fetchData(); // Refresh count
-                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Anggota berhasil dihapus', timer: 1500, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
-            }
-        } catch (error) {
-            console.error('Error removing anggota:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus anggota', timer: 2000, showConfirmButton: false, customClass: { container: 'swal-above-modal' } });
-        }
+            const res = await authFetch(`${API_BASE}/ekskul-anggota/${anggotaId}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+            if (res.ok) fetchAnggota(selectedEkskul.id);
+        } catch (error) { console.error('Error removing anggota:', error); }
     };
 
-    // Get available siswa (not already member) - only filter after 3+ chars typed
-    const availableSiswa = (() => {
-        if (anggotaSearch.length < 3 || selectedSiswa) return [];
-        const search = anggotaSearch.toLowerCase();
-        return siswaList.filter(s =>
-            s.status === 'Aktif' &&
-            !anggotaList.some(a => a.id === s.id) &&
-            (s.nama?.toLowerCase().includes(search) || s.nis?.toLowerCase().includes(search))
-        );
-    })();
-
-    // Import Excel
-    const handleImportExcel = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const jsonData = XLSX.utils.sheet_to_json(ws);
-
-                Swal.fire({ icon: 'info', title: 'Import', text: `Ditemukan ${jsonData.length} data. Fitur import ekskul memerlukan format khusus.` });
-            } catch (error) {
-                console.error('Error reading Excel:', error);
-                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal membaca file Excel' });
-            }
-        };
-        reader.readAsBinaryString(file);
-        e.target.value = '';
+    const closeAnggotaModal = () => {
+        setIsModalClosing(true);
+        setTimeout(() => {
+            setShowAnggotaModal(false);
+            setIsModalClosing(false);
+            setSelectedEkskul(null);
+            setAnggotaList([]);
+        }, 200);
     };
 
-    // Export Excel
-    const handleExportExcel = () => {
-        const exportData = filteredData.map((item, idx) => ({
-            'No': idx + 1,
-            'Nama Ekskul': item.nama_ekskul,
-            'Kategori': item.kategori,
-            'Pembina': item.pembina?.nama || '-',
-            'Hari': item.hari,
-            'Jam': `${formatTime(item.jam_mulai)} - ${formatTime(item.jam_selesai)}`,
-            'Tempat': item.tempat || '-',
-            'Jumlah Anggota': item.anggota_count || 0,
-            'Status': item.status
-        }));
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Data Ekskul');
-        XLSX.writeFile(wb, `Data_Ekskul_${new Date().toISOString().split('T')[0]}.xlsx`);
-    };
+    const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
+        <th className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
+            <div className="flex items-center gap-1.5">
+                <span onClick={(e) => { e.stopPropagation(); handleSort(column); }} className="hover:text-primary transition-colors">
+                    {label}
+                </span>
+                <div className="flex flex-col text-[8px] leading-[4px] text-gray-300 dark:text-gray-600">
+                    <i className={`fas fa-caret-up ${sortColumn === column && sortDirection === 'asc' ? 'text-primary' : ''}`}></i>
+                    <i className={`fas fa-caret-down ${sortColumn === column && sortDirection === 'desc' ? 'text-primary' : ''}`}></i>
+                </div>
+                {filterable && (
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => setActiveFilter(activeFilter === column ? null : column)} className={`ml-1 transition-colors ${filterValue ? 'text-primary' : 'text-gray-400 hover:text-primary dark:hover:text-gray-200'}`}>
+                            <i className="fas fa-filter text-[10px]"></i>
+                        </button>
+                        {activeFilter === column && (
+                            <div className="absolute top-full left-0 mt-2 bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl z-20 min-w-[150px] overflow-hidden animate-fadeIn">
+                                {filterOptions.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => { setFilterValue(opt.value); setActiveFilter(null); }}
+                                        className={`block w-full text-left px-4 py-2.5 text-[11px] transition-colors hover:bg-primary/5 dark:hover:bg-primary/10 ${filterValue === opt.value ? 'bg-primary/10 text-primary font-bold dark:bg-primary/20' : 'dark:text-dark-text'}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </th>
+    );
 
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
-            <header className="mb-4">
-                <h1 className="text-[#1f2937] font-semibold text-lg mb-1 select-none">Manajemen Ekstrakurikuler</h1>
-                <p className="text-[11px] text-[#6b7280] select-none">Kelola kegiatan ekstrakurikuler sekolah</p>
+            {/* Header */}
+            <header className="mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <i className="fas fa-volleyball-ball text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Ekstrakurikuler</h1>
+                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Wadah kreativitas dan bakat siswa</p>
+                        </div>
+                    </div>
+                </div>
             </header>
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-                <div className="flex items-center w-full md:w-1/3 border border-[#d1d5db] rounded-md px-3 py-1 text-[12px] focus-within:ring-1 focus-within:ring-green-400">
+            {/* Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
+                <div className="flex items-center w-full md:w-[400px] relative group">
+                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
                     <input
-                        className="w-full border-none focus:ring-0 focus:outline-none bg-transparent"
-                        placeholder="Cari ekskul..."
+                        aria-label="Cari ekskul"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
+                        placeholder="Cari nama ekskul, pembina..."
                         type="search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap w-full md:w-auto justify-between md:justify-start">
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImportExcel}
-                        accept=".xlsx,.xls"
-                        className="hidden"
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
-                        type="button"
-                    >
-                        <i className="fas fa-file-import"></i> Import Excel
+                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
+                    <button onClick={handleExport} className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+                        <i className="fas fa-file-export"></i>
+                        <span>Export</span>
                     </button>
-                    <button
-                        onClick={handleExportExcel}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
-                        type="button"
-                    >
-                        <i className="fas fa-file-export"></i> Export Excel
-                    </button>
-                    <button
-                        onClick={openAddModal}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
-                        type="button"
-                    >
-                        <i className="fas fa-plus"></i> Tambah Ekskul
+                    <button onClick={openAddModal} className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest">
+                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                        <span>Tambah Ekskul</span>
                     </button>
                 </div>
             </div>
 
-            {/* Loading State */}
+            {/* Table Section */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div>
-                    <span className="ml-3 text-gray-600">Memuat data...</span>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">Menyiapkan Agenda...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full">
-                    <table className={`w-full text-[12px] text-[#4a4a4a] border-separate border-spacing-y-[2px] ${isMobile ? '' : 'min-w-[1000px]'}`}>
+                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
+                    <table className={`admin-table ${isMobile ? '' : 'min-w-[1000px]'}`}>
                         <thead>
-                            <tr className="text-left text-[#6b7280] select-none">
-                                <th className="select-none pl-3 py-2 px-2 whitespace-nowrap">No</th>
-                                {isMobile && <th className="select-none py-2 px-2 text-center whitespace-nowrap"></th>}
+                            <tr>
+                                <th className="select-none pl-8 py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
+                                {isMobile && <th className="select-none py-4 text-center"></th>}
                                 <SortableHeader label="Nama Ekskul" column="nama_ekskul" />
                                 <SortableHeader
                                     label="Kategori"
                                     column="kategori"
                                     filterable
                                     filterOptions={[
-                                        { label: 'Semua', value: '' },
+                                        { label: 'Semua Kategori', value: '' },
                                         ...kategoriList.map(k => ({ label: k, value: k }))
                                     ]}
                                     filterValue={filterKategori}
                                     setFilterValue={setFilterKategori}
                                 />
-                                {!isMobile && <SortableHeader label="Pembina" column="pembina" />}
+                                <SortableHeader label="Pembina" column="pembina" />
                                 {!isMobile && (
                                     <SortableHeader
                                         label="Hari"
                                         column="hari"
                                         filterable
                                         filterOptions={[
-                                            { label: 'Semua', value: '' },
+                                            { label: 'Semua Hari', value: '' },
                                             ...hariList.map(h => ({ label: h, value: h }))
                                         ]}
                                         filterValue={filterHari}
                                         setFilterValue={setFilterHari}
                                     />
                                 )}
-                                {!isMobile && <th className="select-none py-2 px-2 whitespace-nowrap">Jam</th>}
-                                {!isMobile && <SortableHeader label="Tempat" column="tempat" />}
-                                {!isMobile && <th className="select-none py-2 px-2 whitespace-nowrap text-center">Anggota</th>}
+                                {!isMobile && <th className="select-none py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Jam</th>}
                                 <SortableHeader
                                     label="Status"
                                     column="status"
@@ -571,219 +441,206 @@ function ManajemenEkskul() {
                                     filterValue={filterStatus}
                                     setFilterValue={setFilterStatus}
                                 />
-                                <th className="select-none py-2 px-2 text-center whitespace-nowrap">Aksi</th>
+                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest px-6">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-2 align-middle select-none whitespace-nowrap">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                                    <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
+                                        <td className="pl-8 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
+                                            {(currentPage - 1) * itemsPerPage + idx + 1}
+                                        </td>
                                         {isMobile && (
-                                            <td
-                                                className="py-2 px-2 align-middle select-none text-center cursor-pointer"
-                                                onClick={() => toggleRowExpand(idx)}
-                                            >
-                                                <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-green-700`}></i>
+                                            <td className="py-4 align-middle text-center cursor-pointer px-2" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
+                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                                </div>
                                             </td>
                                         )}
-                                        <td className="py-2 px-2 align-middle select-none">{item.nama_ekskul}</td>
-                                        <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{renderKategori(item.kategori)}</td>
-                                        {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.pembina?.nama || '-'}</td>}
-                                        {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.hari}</td>}
-                                        {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{formatTime(item.jam_mulai)} - {formatTime(item.jam_selesai)}</td>}
-                                        {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{item.tempat || '-'}</td>}
-                                        {!isMobile && <td className="py-2 px-2 align-middle select-none whitespace-nowrap text-center">{item.anggota_count || 0}</td>}
-                                        <td className="py-2 px-2 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-2 px-2 align-middle text-center select-none whitespace-nowrap">
-                                            <button onClick={() => openAnggotaModal(item)} className="text-blue-600 hover:text-blue-800 mr-2 cursor-pointer" title="Kelola Anggota">
-                                                <i className="fas fa-users"></i>
-                                            </button>
-                                            <button onClick={() => openEditModal(item)} className="text-green-700 hover:text-green-900 mr-2 cursor-pointer" title="Ubah">
-                                                <i className="fas fa-edit"></i>
-                                            </button>
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 cursor-pointer" title="Hapus">
-                                                <i className="fas fa-trash"></i>
-                                            </button>
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.nama_ekskul}</span>
+                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Tempat: {item.tempat || '-'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.kategori === 'Olahraga' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
+                                                item.kategori === 'Seni' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
+                                                    item.kategori === 'Akademik' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
+                                                        'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                                                }`}>
+                                                {item.kategori}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.pembina?.nama || '-'}</span>
+                                        </td>
+                                        {!isMobile && (
+                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                                <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">{item.hari}</span>
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-400">
+                                                    <i className="fas fa-clock text-[10px] text-gray-400"></i>
+                                                    {item.jam_mulai} - {item.jam_selesai}
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>
+                                        <td className="py-4 px-6 align-middle text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button onClick={() => openAnggotaModal(item)} className="w-8 h-8 rounded-xl bg-primary/10 text-primary hover:bg-primary transition-all hover:text-white flex items-center justify-center dark:bg-primary/20 dark:text-primary-light hover:scale-110 active:scale-95" title="Manajemen Anggota">
+                                                    <i className="fas fa-users text-[10px]"></i>
+                                                </button>
+                                                <button onClick={() => openEditModal(item)} className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95" title="Edit Data">
+                                                    <i className="fas fa-edit text-[10px]"></i>
+                                                </button>
+                                                <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95" title="Hapus Data">
+                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-green-50">
-                                            <td colSpan="6" className="px-4 py-3">
-                                                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                                    <div><strong>Pembina:</strong> {item.pembina?.nama || '-'}</div>
-                                                    <div><strong>Hari:</strong> {item.hari}</div>
-                                                    <div><strong>Jam:</strong> {formatTime(item.jam_mulai)} - {formatTime(item.jam_selesai)}</div>
-                                                    <div><strong>Tempat:</strong> {item.tempat || '-'}</div>
-                                                    <div><strong>Anggota:</strong> {item.anggota_count || 0} siswa</div>
-                                                    {item.deskripsi && <div className="col-span-2"><strong>Deskripsi:</strong> {item.deskripsi}</div>}
+                                        <tr className="bg-gray-50/50 dark:bg-dark-bg/30 border-b border-gray-100 dark:border-dark-border">
+                                            <td colSpan="8" className="px-8 py-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1">
+                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Jadwal</span>
+                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.hari}, {item.jam_mulai} - {item.jam_selesai}</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Tempat</span>
+                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.tempat || '-'}</span>
+                                                    </div>
+                                                    <div className="col-span-2 space-y-1">
+                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Deskripsi</span>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium italic">{item.deskripsi || 'Tidak ada deskripsi'}</p>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
                                     )}
                                 </React.Fragment>
                             ))}
-                            {filteredData.length === 0 && (
-                                <tr>
-                                    <td colSpan={isMobile ? 6 : 11} className="text-center py-8 text-gray-500">
-                                        {search || filterKategori || filterHari || filterStatus ? 'Tidak ada data yang sesuai filter/pencarian' : 'Belum ada data ekstrakurikuler'}
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        totalItems={filteredData.length}
-                        itemsPerPage={ITEMS_PER_PAGE}
-                    />
+
+                    {/* Pagination Section */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 border-t border-gray-100 dark:border-dark-border bg-gray-50/30 dark:bg-dark-bg/10">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[11px] font-black text-gray-400 focus:text-primary transition-colors uppercase tracking-widest flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                {filteredData.length} Ekskul Terdaftar
+                            </span>
+                        </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            totalItems={filteredData.length}
+                            itemsPerPage={itemsPerPage}
+                            onLimitChange={(limit) => {
+                                setItemsPerPage(limit);
+                                setCurrentPage(1);
+                            }}
+                        />
+                    </div>
                 </div>
             )}
 
-            {/* Modal with Portal */}
+            {/* Modal Manajemen Ekskul */}
             {showModal && ReactDOM.createPortal(
-                <div
-                    className={`fixed inset-0 flex items-center justify-center p-4 transition-opacity duration-200 ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 9999 }}
-                    onClick={closeModal}
-                >
-                    <div
-                        className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col transition-all duration-200 ${isModalClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
-                        style={{ animation: isModalClosing ? 'popup-out 0.2s ease' : 'popup-in 0.3s ease' }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <h2 className="text-lg font-semibold text-gray-800 select-none">
-                                {modalMode === 'add' ? 'Tambah Ekstrakurikuler' : 'Edit Ekstrakurikuler'}
-                            </h2>
-                            <button
-                                onClick={closeModal}
-                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                            >
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
+                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeModal}>
+                    <div className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`} onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
+                            <button onClick={closeModal} className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20" type="button"><i className="fas fa-times text-lg"></i></button>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold">{modalMode === 'add' ? 'Ekskul Baru' : 'Perbarui Ekskul'}</h2>
+                                    <p className="text-xs text-white/80 mt-0.5 italic">Detail informasi kegiatan ekstrakurikuler</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Modal Body - Scrollable */}
                         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Nama Ekstrakurikuler *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.nama_ekskul}
-                                            onChange={(e) => setFormData({ ...formData, nama_ekskul: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="Pramuka, Futsal, PMR, dll"
-                                        />
+                            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] scrollbar-hide">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Informasi Dasar</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5 md:col-span-2">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ekskul *</label>
+                                            <input type="text" required value={formData.nama_ekskul} onChange={(e) => setFormData({ ...formData, nama_ekskul: e.target.value })} className="input-standard" placeholder="Contoh: Sepak Bola, Paduan Suara..." />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori *</label>
+                                            <select value={formData.kategori} onChange={(e) => setFormData({ ...formData, kategori: e.target.value })} className="input-standard outline-none">
+                                                {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pembina *</label>
+                                            <select required value={formData.pembina_id} onChange={(e) => setFormData({ ...formData, pembina_id: e.target.value })} className="input-standard outline-none text-xs">
+                                                <option value="">-- Pilih Guru Pembina --</option>
+                                                {guruList.map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Kategori *</label>
-                                        <select
-                                            required
-                                            value={formData.kategori}
-                                            onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
-                                        </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Jadwal & Lokasi</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hari Pelaksanaan *</label>
+                                            <select value={formData.hari} onChange={(e) => setFormData({ ...formData, hari: e.target.value })} className="input-standard outline-none">
+                                                {hariList.map(h => <option key={h} value={h}>{h}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mulai *</label>
+                                                <input type="time" value={formData.jam_mulai} onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })} className="input-standard py-2" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Selesai *</label>
+                                                <input type="time" value={formData.jam_selesai} onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })} className="input-standard py-2" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5 md:col-span-2">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tempat / Lokasi *</label>
+                                            <input type="text" required value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Gedung Olahraga, Aula Utama, dll..." />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Status *</label>
-                                        <select
-                                            required
-                                            value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            <option value="Aktif">Aktif</option>
-                                            <option value="Tidak Aktif">Tidak Aktif</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Pembina</label>
-                                        <select
-                                            value={formData.pembina_id}
-                                            onChange={(e) => setFormData({ ...formData, pembina_id: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            <option value="">-- Pilih Guru --</option>
-                                            {guruList.filter(g => g.status === 'Aktif').map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Hari *</label>
-                                        <select
-                                            required
-                                            value={formData.hari}
-                                            onChange={(e) => setFormData({ ...formData, hari: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        >
-                                            {hariList.map(h => <option key={h} value={h}>{h}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Mulai</label>
-                                        <input
-                                            type="time"
-                                            value={formData.jam_mulai}
-                                            onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Jam Selesai</label>
-                                        <input
-                                            type="time"
-                                            value={formData.jam_selesai}
-                                            onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Tempat</label>
-                                        <input
-                                            type="text"
-                                            value={formData.tempat}
-                                            onChange={(e) => setFormData({ ...formData, tempat: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="Lapangan, Aula, Lab, dll"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Deskripsi</label>
-                                        <textarea
-                                            value={formData.deskripsi}
-                                            onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
-                                            rows={3}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="Deskripsi singkat ekskul..."
-                                        />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Tambahan</label>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Kegiatan</label>
+                                            <div className="flex gap-3">
+                                                {['Aktif', 'Tidak Aktif'].map(s => (
+                                                    <button key={s} type="button" onClick={() => setFormData({ ...formData, status: s })} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-2xl border transition-all ${formData.status === s ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>{s}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deskripsi Singkat</label>
+                                            <textarea value={formData.deskripsi} onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })} className="input-standard min-h-[100px] py-3 text-xs" placeholder="Ceritakan sedikit tentang kegiatan ekskul ini..."></textarea>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Modal Footer - Sticky */}
-                            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-md hover:bg-green-800 flex items-center gap-2 cursor-pointer"
-                                >
-                                    <i className="fas fa-save"></i>
-                                    {modalMode === 'add' ? 'Simpan' : 'Perbarui'}
-                                </button>
+                            <div className="p-6 border-t border-gray-100 dark:border-dark-border flex gap-3 bg-gray-50/50 dark:bg-dark-bg/10">
+                                <button type="button" onClick={closeModal} className="flex-1 px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white transition-all text-[10px] font-black uppercase tracking-[0.2em]">Batal</button>
+                                <button type="submit" className="flex-1 px-4 py-3.5 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-[10px] font-black uppercase tracking-[0.2em]">{modalMode === 'add' ? 'Daftarkan Ekskul' : 'Simpan Perubahan'}</button>
                             </div>
                         </form>
                     </div>
@@ -791,159 +648,140 @@ function ManajemenEkskul() {
                 document.body
             )}
 
-            {/* Anggota Modal with Portal */}
+            {/* Modal Manajemen Anggota */}
             {showAnggotaModal && ReactDOM.createPortal(
-                <div
-                    className="fixed inset-0 flex items-center justify-center p-4"
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 9999 }}
-                    onClick={() => setShowAnggotaModal(false)}
-                >
-                    <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-                        style={{ animation: 'popup-in 0.3s ease' }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-800 select-none">
-                                    Kelola Anggota - {selectedEkskul?.nama_ekskul}
-                                </h2>
-                                <p className="text-[11px] text-gray-500 select-none mt-1">
-                                    Total anggota aktif: {anggotaList.length} siswa
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setShowAnggotaModal(false)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                            >
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
-                        </div>
-
-                        {/* Add Member Section */}
-                        <div className="p-4 border-b border-gray-100 bg-gray-50">
-                            <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Tambah Anggota</label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Ketik minimal 3 huruf untuk mencari siswa..."
-                                    value={anggotaSearch}
-                                    onChange={(e) => setAnggotaSearch(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                />
-                                {/* Autocomplete dropdown */}
-                                {anggotaSearch.length >= 3 && availableSiswa.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
-                                        {availableSiswa.slice(0, 10).map(s => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => {
-                                                    setSelectedSiswa(s.id);
-                                                    setAnggotaSearch(`${s.nama} (${s.nis})`);
-                                                }}
-                                                className={`block w-full text-left px-3 py-2 text-sm hover:bg-green-50 ${selectedSiswa === s.id ? 'bg-green-100 text-green-700' : ''}`}
-                                            >
-                                                <span className="font-medium">{s.nama}</span>
-                                                <span className="text-gray-500 ml-2">({s.nis})</span>
-                                            </button>
-                                        ))}
-                                        {availableSiswa.length > 10 && (
-                                            <div className="px-3 py-2 text-[10px] text-gray-500 border-t">
-                                                Menampilkan 10 dari {availableSiswa.length} hasil. Ketik lebih spesifik.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {anggotaSearch.length >= 3 && availableSiswa.length === 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 px-3 py-2 text-sm text-gray-500">
-                                        Tidak ditemukan siswa yang cocok
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex gap-2 mt-2">
-                                <button
-                                    onClick={handleAddAnggota}
-                                    disabled={!selectedSiswa}
-                                    className={`flex-1 px-4 py-2 text-sm font-semibold rounded-md flex items-center justify-center gap-2 cursor-pointer ${selectedSiswa ? 'bg-green-700 text-white hover:bg-green-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                                >
-                                    <i className="fas fa-plus"></i> Tambah Anggota
-                                </button>
-                                {selectedSiswa && (
-                                    <button
-                                        onClick={() => { setSelectedSiswa(''); setAnggotaSearch(''); }}
-                                        className="px-3 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
-                                        title="Batal"
-                                    >
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                )}
+                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeAnggotaModal}>
+                    <div className={`bg-white dark:bg-dark-surface rounded-[2.5rem] shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`} onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-br from-primary to-green-700 px-8 py-8 text-white relative">
+                            <button onClick={closeAnggotaModal} className="absolute top-6 right-6 text-white/80 hover:text-white cursor-pointer transition w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/20" type="button"><i className="fas fa-times text-xl"></i></button>
+                            <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 bg-white/20 rounded-[1.25rem] flex items-center justify-center backdrop-blur-md shadow-inner">
+                                    <i className="fas fa-users-cog text-xl"></i>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-1">Manajemen Peserta</p>
+                                    <h2 className="text-2xl font-black uppercase tracking-tight leading-none">{selectedEkskul?.nama_ekskul}</h2>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Members List */}
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {anggotaLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-700"></div>
-                                    <span className="ml-2 text-gray-600 text-sm">Memuat anggota...</span>
+                        <div className="flex flex-col flex-1 overflow-hidden p-8">
+                            {/* Form Tambah Anggota */}
+                            <div className="bg-gray-50/50 dark:bg-dark-bg/20 rounded-3xl p-6 border border-gray-100 dark:border-dark-border mb-8">
+                                <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 px-1">Registrasi Siswa Baru ke Ekskul</label>
+                                <div className="flex gap-3">
+                                    <div className="relative flex-1 group">
+                                        <i className="fas fa-user-plus absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
+                                        <select
+                                            value={selectedSiswa}
+                                            onChange={(e) => setSelectedSiswa(e.target.value)}
+                                            className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-2xl text-xs font-bold text-gray-700 dark:text-dark-text outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all appearance-none"
+                                        >
+                                            <option value="">-- Cari Nama Siswa --</option>
+                                            {siswaList.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.kelas?.nama_kelas})</option>)}
+                                        </select>
+                                        <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 text-[10px] pointer-events-none group-focus-within:text-primary transition-colors"></i>
+                                    </div>
+                                    <button onClick={handleAddAnggota} className="bg-primary hover:bg-green-600 text-white px-8 rounded-2xl shadow-lg shadow-primary/20 transition-all font-black text-[10px] uppercase tracking-widest active:scale-95">Daftarkan</button>
                                 </div>
-                            ) : anggotaList.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 text-sm">
-                                    Belum ada anggota di ekskul ini
+                            </div>
+
+                            {/* Daftar Anggota */}
+                            <div className="flex-1 overflow-hidden flex flex-col">
+                                <div className="flex items-center justify-between mb-4 px-2">
+                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Daftar Anggota Aktif</h3>
+                                    <div className="relative group">
+                                        <i className="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px] group-focus-within:text-primary transition-colors"></i>
+                                        <input
+                                            type="text"
+                                            placeholder="Cari di daftar..."
+                                            value={anggotaSearch}
+                                            onChange={(e) => setAnggotaSearch(e.target.value)}
+                                            className="pl-8 pr-4 py-2 bg-gray-50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-xl text-[10px] font-bold text-gray-600 dark:text-dark-text outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            ) : (
-                                <table className="w-full text-[12px] text-[#4a4a4a]">
-                                    <thead>
-                                        <tr className="text-left text-[#6b7280] border-b">
-                                            <th className="py-2 px-2">No</th>
-                                            <th className="py-2 px-2">NIS</th>
-                                            <th className="py-2 px-2">Nama</th>
-                                            <th className="py-2 px-2">Tgl Daftar</th>
-                                            <th className="py-2 px-2 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {anggotaList.map((anggota, idx) => (
-                                            <tr key={anggota.id} className="border-b hover:bg-gray-50">
-                                                <td className="py-2 px-2">{idx + 1}</td>
-                                                <td className="py-2 px-2">{anggota.nis}</td>
-                                                <td className="py-2 px-2">{anggota.nama}</td>
-                                                <td className="py-2 px-2">
-                                                    {anggota.pivot?.tanggal_daftar ? new Date(anggota.pivot.tanggal_daftar).toLocaleDateString('id-ID') : '-'}
-                                                </td>
-                                                <td className="py-2 px-2 text-center">
+
+                                <div className="flex-1 overflow-y-auto scrollbar-hide border border-gray-100 dark:border-dark-border rounded-3xl bg-white dark:bg-dark-surface shadow-inner">
+                                    {anggotaLoading ? (
+                                        <div className="h-full flex flex-col items-center justify-center gap-4 py-12">
+                                            <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Memverifikasi Peserta...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-50 dark:divide-dark-border/50">
+                                            {anggotaList.filter(a => a.siswa?.nama?.toLowerCase().includes(anggotaSearch.toLowerCase())).map((anggota, idx) => (
+                                                <div key={anggota.id} className="flex items-center justify-between p-5 hover:bg-gray-50 dark:hover:bg-dark-bg/20 transition-all group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-dark-bg flex items-center justify-center text-[10px] font-black text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                            {(idx + 1).toString().padStart(2, '0')}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <p className="text-sm font-black text-gray-700 dark:text-dark-text uppercase tracking-tight">{anggota.siswa?.nama}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[9px] font-black text-primary bg-primary/5 px-1.5 py-0.5 rounded uppercase tracking-widest">{anggota.siswa?.kelas?.nama_kelas || 'N/A'}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-gray-200"></span>
+                                                                <span className="text-[10px] text-gray-400 font-medium">SIS: {anggota.siswa?.nis}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <button
                                                         onClick={() => handleRemoveAnggota(anggota.id)}
-                                                        className="text-red-600 hover:text-red-800 cursor-pointer"
-                                                        title="Hapus dari Ekskul"
+                                                        className="w-10 h-10 rounded-[1.25rem] bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all scale-0 group-hover:scale-100 active:scale-95 shadow-lg shadow-rose-500/10"
+                                                        title="Keluarkan Peserta"
                                                     >
-                                                        <i className="fas fa-user-minus"></i>
+                                                        <i className="fas fa-user-minus text-xs"></i>
                                                     </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
+                                                </div>
+                                            ))}
+                                            {anggotaList.length === 0 && (
+                                                <div className="h-full flex flex-col items-center justify-center gap-3 py-16 opacity-40">
+                                                    <i className="fas fa-users-slash text-4xl text-gray-300"></i>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest">Belum Ada Peserta Terdaftar</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                            <button
-                                onClick={() => setShowAnggotaModal(false)}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
-                            >
-                                Tutup
-                            </button>
+                        <div className="px-8 pb-8 pt-2">
+                            <button onClick={closeAnggotaModal} className="w-full py-4 rounded-2xl border border-gray-100 dark:border-dark-border text-gray-400 hover:text-gray-600 dark:hover:text-dark-text transition-all text-[10px] font-black uppercase tracking-[0.3em]">Selesai Konfigurasi</button>
                         </div>
                     </div>
                 </div>,
                 document.body
             )}
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .input-standard {
+                    width: 100%;
+                    background-color: #f9fafb;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 1rem;
+                    padding: 0.75rem 1rem;
+                    font-size: 0.8125rem;
+                    font-weight: 700;
+                    color: #374151;
+                    transition: all 0.2s;
+                }
+                .dark .input-standard {
+                    background-color: rgba(17, 24, 39, 0.5);
+                    border-color: #374151;
+                    color: #f3f4f6;
+                }
+                .input-standard:focus {
+                    outline: none;
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+                    border-color: #10b981;
+                }
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            ` }} />
         </div>
     );
 }
 
 export default ManajemenEkskul;
-

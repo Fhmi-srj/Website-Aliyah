@@ -8,8 +8,60 @@
 @source "../**/*.vue";
 
 @theme {
-    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+    --color-primary: #5c67f2;
+    --color-secondary: #ff708b;
+    --color-accent: #feb052;
+    --color-success: #22c55e;
+    --color-info: #0ea5e9;
+
+    --radius-3xl: 1.5rem;
+
+    --shadow-soft: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+    --shadow-deep: 0 20px 50px -12px rgba(0, 0, 0, 0.1);
+
+    /* Dark Mode Colors */
+    --color-dark-bg: #0f172a;
+    --color-dark-surface: #1e293b;
+    --color-dark-border: #334155;
+    --color-dark-text: #f1f5f9;
+    --color-dark-muted: #94a3b8;
+}
+
+@utility admin-table {
+    @apply w-full border-separate border-spacing-0;
+
+    thead th {
+        @apply px-6 py-4 bg-gray-50 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 first:rounded-tl-2xl last:rounded-tr-2xl dark:bg-dark-surface dark:text-dark-muted dark:border-dark-border;
+    }
+
+    tbody td {
+        @apply px-6 py-4 text-sm text-gray-600 border-b border-gray-50 transition-colors dark:text-dark-text dark:border-dark-border;
+    }
+
+    tbody tr:last-child td:first-child {
+        @apply rounded-bl-2xl;
+    }
+
+    tbody tr:last-child td:last-child {
+        @apply rounded-br-2xl;
+    }
+
+    tbody tr:hover td {
+        @apply bg-gray-50/50 dark:bg-dark-bg/50;
+    }
+}
+
+@utility btn-primary {
+    @apply px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2;
+}
+
+@utility btn-secondary {
+    @apply px-5 py-2.5 bg-white text-gray-700 text-xs font-bold rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2 dark:bg-dark-surface dark:border-dark-border dark:text-dark-text dark:hover:bg-dark-bg;
+}
+
+@utility btn-danger {
+    @apply px-5 py-2.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40;
 }
 
 /* Global scrollbar hide - for entire website */
@@ -144,9 +196,8 @@ th.sortable i {
 }
 
 .dashboard-card:hover {
-    background-color: rgb(240, 253, 244);
-    /* green-50 */
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    box-shadow: var(--shadow-deep);
     transform: translateY(-4px);
 }
 
@@ -264,9 +315,22 @@ aside {
         opacity: 0;
         transform: translateY(20px) scale(0.98);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
 }
 
@@ -275,6 +339,7 @@ aside {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+
     to {
         opacity: 0;
         transform: translateY(20px) scale(0.98);
@@ -291,13 +356,23 @@ aside {
 
 /* Backdrop fade animation */
 @keyframes backdropFadeIn {
-    from { background-color: rgba(0, 0, 0, 0); }
-    to { background-color: rgba(0, 0, 0, 0.5); }
+    from {
+        background-color: rgba(0, 0, 0, 0);
+    }
+
+    to {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
 }
 
 @keyframes backdropFadeOut {
-    from { background-color: rgba(0, 0, 0, 0.5); }
-    to { background-color: rgba(0, 0, 0, 0); }
+    from {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    to {
+        background-color: rgba(0, 0, 0, 0);
+    }
 }
 
 .animate-backdropIn {
@@ -311,7 +386,7 @@ aside {
 /* Smooth modal focus for better UX */
 .modal-content {
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.3s ease-out;
+        opacity 0.3s ease-out;
 }
 
 /* Button press effect for modals */
@@ -322,4 +397,95 @@ aside {
 /* SweetAlert above modal */
 .swal-above-modal {
     z-index: 10001 !important;
+}
+
+/* Force 24-hour time format display */
+input[type="time"] {
+    /* Hide the AM/PM spinner in Chrome/Edge */
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Hide AM/PM text in webkit browsers */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+    display: none !important;
+}
+
+/* Ensure proper spacing for time display */
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field {
+    padding: 0 2px;
+}
+
+/* Force 24-hour on the clock picker */
+input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+/* Dark Mode Base Styles */
+.dark body {
+    background-color: var(--color-dark-bg) !important;
+    color: var(--color-dark-text);
+}
+
+.dark .bg-white {
+    background-color: var(--color-dark-surface) !important;
+}
+
+.dark .border-gray-50,
+.dark .border-gray-100 {
+    border-color: var(--color-dark-border) !important;
+}
+
+.dark .text-gray-800,
+.dark .text-gray-700 {
+    color: var(--color-dark-text) !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-gray-400 {
+    color: var(--color-dark-muted) !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100/50 {
+    background-color: var(--color-dark-bg) !important;
+}
+
+.dark .shadow-soft,
+.dark .shadow-sm {
+    box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .shadow-deep {
+    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Standard Input with Icon */
+.input-standard {
+    @apply w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm outline-none;
+}
+
+.input-container {
+    @apply relative flex flex-col gap-1.5;
+}
+
+.input-label {
+    @apply block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1;
+}
+
+.input-icon {
+    @apply absolute left-4 top-[42px] -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors z-10;
+}
+
+/* Global table action icons visibility */
+.action-icons {
+    @apply opacity-100 !important;
+}
+
+/* Force show icons in tables that use group-hover */
+.group:hover .opacity-0,
+.group .opacity-0 {
+    opacity: 1 !important;
 }

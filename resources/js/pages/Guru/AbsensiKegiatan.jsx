@@ -222,6 +222,21 @@ function AbsensiKegiatan() {
                                         <p className="text-xs text-gray-500 truncate">
                                             <i className="fas fa-map-marker-alt mr-1"></i>{item.tempat || '-'}
                                         </p>
+                                        {/* Row 3: Kelas & Guru Pendamping */}
+                                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+                                            {item.kelas_peserta_list?.length > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <i className="fas fa-users"></i>
+                                                    {item.kelas_peserta_list.map(k => k.nama_kelas).join(', ')}
+                                                </span>
+                                            )}
+                                            {item.guru_pendamping_list?.length > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <i className="fas fa-chalkboard-teacher"></i>
+                                                    {item.guru_pendamping_list.length} guru
+                                                </span>
+                                            )}
+                                        </div>
                                         {/* Row 3: Badge PJ + Date + Time + Status */}
                                         <div className="flex items-center justify-between mt-1.5">
                                             <div className="flex items-center gap-2">

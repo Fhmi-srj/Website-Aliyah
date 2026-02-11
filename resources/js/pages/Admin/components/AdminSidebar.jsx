@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
+import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
 
 const menuItems = [
@@ -15,14 +18,30 @@ const menuItems = [
         icon: 'fa-database',
         children: [
             { id: 'siswa', label: 'Manajemen Siswa', path: '/data-induk/siswa', icon: 'fa-user-graduate' },
+            { id: 'absensi-siswa', label: 'Absensi Siswa', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
+            { id: 'alumni', label: 'Data Alumni', path: '/data-induk/alumni', icon: 'fa-graduation-cap' },
             { id: 'guru', label: 'Manajemen Guru', path: '/data-induk/guru', icon: 'fa-chalkboard-teacher' },
             { id: 'kelas', label: 'Manajemen Kelas', path: '/data-induk/kelas', icon: 'fa-door-open' },
             { id: 'mapel', label: 'Manajemen Mapel', path: '/data-induk/mapel', icon: 'fa-book' },
             { id: 'jadwal', label: 'Manajemen Jadwal', path: '/data-induk/jadwal', icon: 'fa-calendar-alt' },
+            { id: 'jam-pelajaran', label: 'Jam Pelajaran', path: '/data-induk/jam-pelajaran', icon: 'fa-clock' },
             { id: 'kegiatan', label: 'Manajemen Kegiatan', path: '/data-induk/kegiatan', icon: 'fa-tasks' },
             { id: 'ekskul', label: 'Manajemen Ekstrakurikuler', path: '/data-induk/ekskul', icon: 'fa-futbol' },
             { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
+            { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
         ],
+    },
+    {
+        id: 'manajemen-role',
+        label: 'Manajemen Role',
+        icon: 'fa-user-shield',
+        path: '/manajemen-role',
+    },
+    {
+        id: 'log-aktivitas',
+        label: 'Log Aktivitas',
+        icon: 'fa-history',
+        path: '/log-aktivitas',
     },
     {
         id: 'profil',
@@ -58,8 +77,13 @@ function SidebarToggleIcon({ size = 14 }) {
     );
 }
 
-function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
+function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName, institutionLogo }) {
     const location = useLocation();
+    const navigate = useNavigate();
+    // Use AuthContext tahunAjaran with fallback to TahunAjaranContext
+    const { logout, tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaran = authTahunAjaran || activeTahunAjaran;
     const [expandedMenus, setExpandedMenus] = useState(['data-induk']);
 
     const toggleMenu = (menuId) => {
@@ -72,6 +96,25 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
 
     const isChildActive = (children) => children?.some(child => location.pathname === child.path);
 
+    const handleLogout = async () => {
+        const result = await Swal.fire({
+            title: 'Keluar dari Aplikasi?',
+            text: 'Anda akan keluar dari akun ini',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Ya, Keluar',
+            cancelButtonText: 'Batal',
+            reverseButtons: true,
+        });
+
+        if (result.isConfirmed) {
+            await logout();
+            navigate('/login');
+        }
+    };
+
     return (
         <div
             className="h-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
@@ -80,73 +123,54 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
             }}
         >
             <div
-                className="bg-[rgb(243,250,240)] h-full flex flex-col p-6 text-[12px] text-green-800 select-none transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-y-auto"
+                className="bg-white dark:bg-dark-surface h-full flex flex-col p-6 text-[13px] text-gray-600 dark:text-dark-text select-none transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] border-r border-gray-100 dark:border-dark-border"
                 style={{
                     width: isCollapsed ? '70px' : '280px',
                     transform: isCollapsed ? 'translateX(0)' : 'translateX(0)'
                 }}
             >
                 {/* Header - different layout based on collapsed state */}
-                <div className={`flex items-center mb-6 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                <div className={`flex items-center mb-8 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                     {isCollapsed ? (
-                        /* Collapsed mode: Toggle button replaces logo - same styling as menu items */
+                        /* Collapsed mode: Toggle button replaces logo */
                         <button
                             onClick={onToggleCollapse}
-                            className="flex items-center justify-center px-3 py-2 rounded-lg hover:bg-white/50 transition-all duration-200 ease-in-out cursor-pointer"
+                            className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-bg transition-all duration-200 ease-in-out cursor-pointer text-gray-400 dark:text-dark-muted hover:text-primary"
                             title="Expand Sidebar"
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="-1 -1 26 26"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="text-green-700"
-                            >
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                <line x1="9" y1="3" x2="9" y2="21" />
-                            </svg>
+                            <i className="fas fa-bars text-lg"></i>
                         </button>
                     ) : (
                         /* Expanded mode: Logo + Text + Toggle button */
                         <>
-                            <div className="flex items-center">
-                                <img
-                                    alt="Logo utama MA ALHIKAM"
-                                    className="w-6 h-6 flex-shrink-0"
-                                    height="24"
-                                    width="24"
-                                    src={logoImage}
-                                />
-                                <span className="font-semibold text-green-800 text-lg ml-2 whitespace-nowrap">
-                                    MA ALHIKAM
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                                    {institutionLogo ? (
+                                        <img src={institutionLogo} alt="Logo" className="w-6 h-6 object-contain" />
+                                    ) : (
+                                        <i className="fas fa-university text-white text-lg"></i>
+                                    )}
+                                </div>
+                                <span className="font-bold text-gray-800 dark:text-dark-text text-xl tracking-tight whitespace-nowrap">
+                                    {institutionName || 'Aliyah'}
                                 </span>
                             </div>
 
                             <button
                                 onClick={onToggleCollapse}
-                                className="p-1.5 rounded-lg hover:bg-white/70 transition-all duration-200 ease-in-out cursor-pointer"
+                                className="p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-bg transition-all duration-200 ease-in-out cursor-pointer text-gray-400 dark:text-dark-muted hover:text-primary"
                                 title="Collapse Sidebar"
                             >
-                                <SidebarToggleIcon size={18} />
+                                <i className="fas fa-chevron-left text-xs"></i>
                             </button>
                         </>
                     )}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex flex-col space-y-2 text-green-800 flex-1">
-                    {!isCollapsed && (
-                        <h6 className="text-[11px] font-semibold mb-2 select-none whitespace-nowrap">
-                            Main Menu
-                        </h6>
-                    )}
-
+                <nav className="flex flex-col space-y-1 text-gray-500 flex-1">
                     {menuItems.map(item => (
-                        <div key={item.id}>
+                        <div key={item.id} className="relative">
                             {item.children ? (
                                 // Parent menu with children
                                 <>
@@ -159,21 +183,20 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
                                             }
                                         }}
                                         className={`
-                                        flex items-center px-3 pr-4 py-2 rounded-lg w-full cursor-pointer
-                                        focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-400
-                                        transition-all duration-200 ease-in-out
-                                        ${isChildActive(item.children) ? 'bg-white text-green-800 font-semibold' : 'hover:bg-white/50'}
-                                        ${isCollapsed ? 'justify-center' : 'space-x-2'}
+                                        flex items-center px-4 py-3 rounded-xl w-full cursor-pointer
+                                        focus:outline-none transition-all duration-200 ease-in-out group
+                                        ${isChildActive(item.children) ? 'text-primary font-semibold' : 'hover:bg-gray-50 dark:hover:bg-dark-bg hover:text-gray-900 dark:hover:text-dark-text'}
+                                        ${isCollapsed ? 'justify-center' : 'space-x-3'}
                                     `}
                                         title={isCollapsed ? item.label : ''}
                                     >
-                                        <i className={`fas ${item.icon} text-[14px] text-green-700 flex-shrink-0`}></i>
+                                        <i className={`fas ${item.icon} text-[18px] ${isChildActive(item.children) ? 'text-primary' : 'text-gray-400 group-hover:text-primary'} flex-shrink-0`}></i>
                                         {!isCollapsed && (
                                             <>
                                                 <span className="whitespace-nowrap flex-1 text-left">
                                                     {item.label}
                                                 </span>
-                                                <i className={`fas fa-chevron-down text-[10px] text-green-600 transition-transform duration-300 ${expandedMenus.includes(item.id) ? 'rotate-180' : ''
+                                                <i className={`fas fa-chevron-right text-[10px] transition-transform duration-300 ${expandedMenus.includes(item.id) ? 'rotate-90' : ''
                                                     }`}></i>
                                             </>
                                         )}
@@ -184,26 +207,24 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
                                         <div
                                             className={`
                                             overflow-hidden transition-all duration-300 ease-in-out
-                                            ${expandedMenus.includes(item.id) ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
+                                            ${expandedMenus.includes(item.id) ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}
                                         `}
                                         >
-                                            <div className="ml-6 mt-1 space-y-1">
+                                            <div className="ml-10 space-y-1 border-l-2 border-gray-100 dark:border-dark-border pl-4 py-1">
                                                 {item.children.map(child => (
                                                     <NavLink
                                                         key={child.id}
                                                         to={child.path}
                                                         onClick={onClose}
                                                         className={({ isActive }) => `
-                                                        flex items-center space-x-2 px-3 pr-4 py-2 rounded-lg whitespace-nowrap cursor-pointer
-                                                        focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-400
-                                                        transition-all duration-200 ease-in-out
+                                                        flex items-center space-x-2 py-2 rounded-lg whitespace-nowrap cursor-pointer
+                                                        focus:outline-none transition-all duration-200 ease-in-out
                                                         ${isActive
-                                                                ? 'bg-white text-green-800 font-semibold'
-                                                                : 'hover:bg-white/50'
+                                                                ? 'text-primary font-semibold'
+                                                                : 'text-gray-400 dark:text-dark-muted hover:text-gray-900 dark:hover:text-dark-text'
                                                             }
                                                     `}
                                                     >
-                                                        <i className={`fas ${child.icon} text-[14px] text-green-700 flex-shrink-0`}></i>
                                                         <span className="whitespace-nowrap">{child.label}</span>
                                                     </NavLink>
                                                 ))}
@@ -224,26 +245,62 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse }) {
                                         }
                                     }}
                                     className={({ isActive }) => `
-                                    flex items-center px-3 pr-4 py-2 rounded-lg cursor-pointer
-                                    focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-400
-                                    transition-all duration-200 ease-in-out
+                                    flex items-center px-4 py-3 rounded-xl cursor-pointer
+                                    focus:outline-none transition-all duration-200 ease-in-out group relative
                                     ${isActive
-                                            ? 'bg-white text-green-800 font-semibold'
-                                            : 'hover:bg-white/50'
+                                            ? 'bg-primary/5 text-primary font-semibold'
+                                            : 'hover:bg-gray-50 dark:hover:bg-dark-bg hover:text-gray-900 dark:hover:text-dark-text'
                                         }
-                                    ${isCollapsed ? 'justify-center' : 'space-x-2'}
+                                    ${isCollapsed ? 'justify-center' : 'space-x-3'}
                                 `}
                                     title={isCollapsed ? item.label : ''}
                                 >
-                                    <i className={`fas ${item.icon} text-[14px] text-green-700 flex-shrink-0`}></i>
-                                    {!isCollapsed && (
-                                        <span className="whitespace-nowrap">{item.label}</span>
+                                    {({ isActive }) => (
+                                        <>
+                                            {isActive && !isCollapsed && (
+                                                <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-primary rounded-r-full"></div>
+                                            )}
+                                            <i className={`fas ${item.icon} text-[18px] ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-primary'} flex-shrink-0`}></i>
+                                            {!isCollapsed && (
+                                                <span className="whitespace-nowrap">{item.label}</span>
+                                            )}
+                                        </>
                                     )}
                                 </NavLink>
                             )}
                         </div>
                     ))}
                 </nav>
+
+                {/* Bottom Section */}
+                <div className="mt-auto pt-6 border-t border-gray-100 dark:border-dark-border">
+                    {/* User Profile Info - Expanded version */}
+                    {!isCollapsed && (
+                        <div className="mb-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <i className="fas fa-university text-4xl text-primary"></i>
+                            </div>
+                            <p className="text-[11px] font-bold text-primary uppercase tracking-wider mb-1 truncate">{institutionName || 'MA Aliyah'}</p>
+                            <p className="text-[10px] text-primary/60 dark:text-primary/70 leading-tight">Sistem Informasi Terpadu</p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleLogout}
+                        className={`
+                            flex items-center px-4 py-3 rounded-xl w-full cursor-pointer
+                            focus:outline-none transition-all duration-200 ease-in-out
+                            hover:bg-red-50 text-gray-400 hover:text-red-500 group
+                            ${isCollapsed ? 'justify-center' : 'space-x-3'}
+                        `}
+                        title={isCollapsed ? 'Keluar' : ''}
+                    >
+                        <i className="fas fa-sign-out-alt text-[18px] group-hover:text-red-500 flex-shrink-0"></i>
+                        {!isCollapsed && (
+                            <span className="whitespace-nowrap">Keluar</span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

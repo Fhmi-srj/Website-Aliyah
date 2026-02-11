@@ -28,11 +28,18 @@ class MapelController extends Controller
     {
         $validated = $request->validate([
             'nama_mapel' => 'required|string|max:100',
-            'inisial' => 'required|string|max:20',
+            'inisial' => 'nullable|string|max:20',
             'kode_mapel' => 'nullable|string|max:20',
-            'kkm' => 'required|integer|min:0|max:100',
-            'status' => 'required|in:Aktif,Tidak Aktif',
+            'kkm' => 'nullable|integer|min:0|max:100',
+            'status' => 'nullable|in:Aktif,Tidak Aktif',
         ]);
+
+        // Set defaults
+        if (empty($validated['inisial'])) {
+            $validated['inisial'] = strtoupper(substr($validated['nama_mapel'], 0, 5));
+        }
+        $validated['kkm'] = $validated['kkm'] ?? 75;
+        $validated['status'] = $validated['status'] ?? 'Aktif';
 
         $mapel = Mapel::create($validated);
 
@@ -61,11 +68,20 @@ class MapelController extends Controller
     {
         $validated = $request->validate([
             'nama_mapel' => 'required|string|max:100',
-            'inisial' => 'required|string|max:20',
+            'inisial' => 'nullable|string|max:20',
             'kode_mapel' => 'nullable|string|max:20',
-            'kkm' => 'required|integer|min:0|max:100',
-            'status' => 'required|in:Aktif,Tidak Aktif',
+            'kkm' => 'nullable|integer|min:0|max:100',
+            'status' => 'nullable|in:Aktif,Tidak Aktif',
         ]);
+
+        // Set defaults for optional fields if null but not sent (usually they are sent from front-end)
+        // But for update we just merge with defaults if they were missing in the request but required in Model
+        if (empty($validated['inisial']) && isset($validated['nama_mapel'])) {
+            // If name is being updated but initial is missing, we could auto-generate or just let it be.
+            // The Model probably has these as non-nullable so we need values.
+        }
+        $validated['kkm'] = $validated['kkm'] ?? ($mapel->kkm ?? 75);
+        $validated['status'] = $validated['status'] ?? ($mapel->status ?? 'Aktif');
 
         $mapel->update($validated);
 

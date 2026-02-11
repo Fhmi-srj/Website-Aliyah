@@ -8,6 +8,8 @@ use App\Models\AbsensiKegiatan;
 use App\Models\Guru;
 use App\Models\Kelas;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -30,8 +32,12 @@ class GuruKegiatanController extends Controller
             $today = Carbon::today();
             $tanggal = Carbon::now()->locale('id')->translatedFormat('l, d F Y');
 
+            // Get tahun ajaran from user or active
+            $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
+
             // Get kegiatan where guru is PJ or pendamping AND today is within waktu_mulai and waktu_berakhir
             $kegiatan = Kegiatan::where('status', 'Aktif')
+                ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
                 ->whereDate('waktu_mulai', '<=', $today)
                 ->whereDate('waktu_berakhir', '>=', $today)
                 ->where(function ($query) use ($guru) {
@@ -169,8 +175,12 @@ class GuruKegiatanController extends Controller
 
             $today = Carbon::today('Asia/Jakarta');
 
+            // Get tahun ajaran from user or active
+            $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
+
             // Get kegiatan where guru is PJ or pendamping, from today onwards
             $kegiatanList = Kegiatan::where('status', 'Aktif')
+                ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
                 ->whereDate('waktu_berakhir', '>=', $today) // Kegiatan that hasn't ended yet
                 ->where(function ($query) use ($guru) {
                     $query->where('penanggung_jawab_id', $guru->id)
@@ -196,7 +206,7 @@ class GuruKegiatanController extends Controller
                 // Calculate the dates this kegiatan spans (from max(start, today) to end)
                 $startDate = Carbon::parse($item->waktu_mulai)->startOfDay();
                 $endActivityDate = Carbon::parse($item->waktu_berakhir)->startOfDay();
-                
+
                 // Start from today if kegiatan started before today
                 $effectiveStart = $startDate->lt($today) ? $today->copy() : $startDate->copy();
 
@@ -204,9 +214,27 @@ class GuruKegiatanController extends Controller
                 $currentDate = $effectiveStart->copy();
                 while ($currentDate->lte($endActivityDate)) {
                     $dateStr = $currentDate->format('Y-m-d');
-                    
+
                     // Calculate status for THIS specific date
                     $statusAbsensi = $this->getKegiatanAbsensiStatusForDate($item, $guru, $absensi, $isPj, $dateStr);
+
+                    // Get guru pendamping names
+                    $guruPendamping = is_array($item->guru_pendamping) ? $item->guru_pendamping : [];
+                    $guruPendampingList = [];
+                    if (!empty($guruPendamping)) {
+                        $guruPendampingList = Guru::whereIn('id', $guruPendamping)
+                            ->select('id', 'nama', 'nip')
+                            ->get();
+                    }
+
+                    // Get kelas peserta names
+                    $kelasPeserta = is_array($item->kelas_peserta) ? $item->kelas_peserta : [];
+                    $kelasPesertaList = [];
+                    if (!empty($kelasPeserta)) {
+                        $kelasPesertaList = Kelas::whereIn('id', $kelasPeserta)
+                            ->select('id', 'nama_kelas')
+                            ->get();
+                    }
 
                     $kegiatanData = [
                         'id' => $item->id,
@@ -219,6 +247,8 @@ class GuruKegiatanController extends Controller
                         'is_pendamping' => $isPendamping,
                         'role' => $role,
                         'status_absensi' => $statusAbsensi,
+                        'guru_pendamping_list' => $guruPendampingList,
+                        'kelas_peserta_list' => $kelasPesertaList,
                     ];
 
                     if (!isset($kegiatanByDate[$dateStr])) {
@@ -286,7 +316,7 @@ class GuruKegiatanController extends Controller
     {
         $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
         $now = Carbon::now('Asia/Jakarta');
-        
+
         // Check if already attended
         if ($absensi) {
             if ($isPj) {
@@ -307,13 +337,13 @@ class GuruKegiatanController extends Controller
         if ($targetDate > $today) {
             return 'belum_mulai';
         }
-        
+
         // NOTE: 'terlewat' for past dates disabled for now
         // Will be useful for Riwayat page later
         // if ($targetDate < $today) {
         //     return 'terlewat';
         // }
-        
+
         // Target date is today - check time
         $mulai = Carbon::parse($kegiatan->waktu_mulai);
         $selesai = Carbon::parse($kegiatan->waktu_berakhir);
@@ -427,6 +457,7 @@ class GuruKegiatanController extends Controller
             'berita_acara' => 'nullable|string',
             'foto_kegiatan' => 'required|array|min:2|max:4',
             'foto_kegiatan.*' => 'required|string', // Base64 images
+            'is_unlocked' => 'nullable|boolean', // Flag for unlocked attendance update
         ]);
 
         $kegiatan = Kegiatan::find($validated['kegiatan_id']);
@@ -441,7 +472,10 @@ class GuruKegiatanController extends Controller
         // Check if already submitted for this activity (not per day - one attendance for entire multi-day activity)
         $existing = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
 
-        if ($existing && $existing->status === 'submitted') {
+        // Check if attendance is unlocked (either from request or admin setting)
+        $isUnlocked = $request->input('is_unlocked', false) || \App\Models\AppSetting::isAttendanceUnlocked();
+
+        if ($existing && $existing->status === 'submitted' && !$isUnlocked) {
             return response()->json(['error' => 'Absensi kegiatan ini sudah dilakukan'], 422);
         }
 
@@ -470,6 +504,9 @@ class GuruKegiatanController extends Controller
             }
         }
 
+        // Compress foto_kegiatan images before saving
+        $compressedFotos = \App\Services\ImageService::compressBase64Multiple($validated['foto_kegiatan']);
+
         if ($existing) {
             // Update existing draft record to submitted
             $existing->update([
@@ -478,7 +515,7 @@ class GuruKegiatanController extends Controller
                 'absensi_pendamping' => $mergedPendamping,
                 'absensi_siswa' => $validated['absensi_siswa'] ?? [],
                 'berita_acara' => $validated['berita_acara'] ?? null,
-                'foto_kegiatan' => $validated['foto_kegiatan'],
+                'foto_kegiatan' => $compressedFotos,
                 'status' => 'submitted',
             ]);
             $absensi = $existing;
@@ -493,10 +530,17 @@ class GuruKegiatanController extends Controller
                 'absensi_pendamping' => $mergedPendamping,
                 'absensi_siswa' => $validated['absensi_siswa'] ?? [],
                 'berita_acara' => $validated['berita_acara'] ?? null,
-                'foto_kegiatan' => $validated['foto_kegiatan'],
+                'foto_kegiatan' => $compressedFotos,
                 'status' => 'submitted',
             ]);
         }
+
+        // Log activity
+        ActivityLog::log(
+            'attendance',
+            $absensi,
+            "Menyimpan absensi kegiatan: {$kegiatan->nama_kegiatan}"
+        );
 
         return response()->json([
             'success' => true,
@@ -588,6 +632,13 @@ class GuruKegiatanController extends Controller
             ]);
         }
 
+        // Log activity
+        ActivityLog::log(
+            'attendance',
+            $absensi,
+            "Absensi pendamping kegiatan: {$kegiatan->nama_kegiatan} (Status: {$validated['status']})"
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Absensi Anda berhasil disimpan',
@@ -620,7 +671,7 @@ class GuruKegiatanController extends Controller
     }
 
     /**
-     * Check if pendamping already self-attended for a kegiatan.
+     * Check pendamping status for a kegiatan (from PJ submission or self-attendance).
      */
     public function checkPendampingStatus(Request $request, $id): JsonResponse
     {
@@ -638,26 +689,87 @@ class GuruKegiatanController extends Controller
             return response()->json([
                 'success' => true,
                 'attended' => false,
+                'submitted' => false,
+                'self_attended' => false,
                 'status' => null
             ]);
         }
 
         $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
+
+        // Find this guru's entry in pendamping absensi
         foreach ($pendampingAbsensi as $entry) {
-            if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+            if ($entry['guru_id'] == $guru->id) {
                 return response()->json([
                     'success' => true,
                     'attended' => true,
+                    'submitted' => $absensi->status === 'submitted',
+                    'self_attended' => !empty($entry['self_attended']),
                     'status' => $entry['status'],
                     'keterangan' => $entry['keterangan'] ?? null,
                 ]);
             }
         }
 
+        // Guru not found in pendamping list - return submitted status for read-only check
         return response()->json([
             'success' => true,
             'attended' => false,
+            'submitted' => $absensi->status === 'submitted',
+            'self_attended' => false,
             'status' => null
+        ]);
+    }
+
+    /**
+     * Get existing absensi data for a kegiatan (for loading into modal).
+     */
+    public function getAbsensiKegiatan(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        $guru = Guru::find($user->guru_id);
+
+        if (!$guru) {
+            return response()->json(['error' => 'Guru tidak ditemukan'], 404);
+        }
+
+        $kegiatan = Kegiatan::find($id);
+
+        if (!$kegiatan) {
+            return response()->json(['error' => 'Kegiatan tidak ditemukan'], 404);
+        }
+
+        // Check if guru is authorized (PJ or pendamping)
+        $isPj = $kegiatan->penanggung_jawab_id === $guru->id;
+        $isPendamping = in_array($guru->id, $kegiatan->guru_pendamping ?? []);
+
+        if (!$isPj && !$isPendamping) {
+            return response()->json(['error' => 'Anda tidak memiliki akses ke kegiatan ini'], 403);
+        }
+
+        // Get existing absensi
+        $absensi = AbsensiKegiatan::where('kegiatan_id', $id)->first();
+
+        if (!$absensi) {
+            return response()->json([
+                'success' => true,
+                'has_absensi' => false,
+                'data' => null
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'has_absensi' => true,
+            'data' => [
+                'pj_status' => $absensi->pj_status,
+                'pj_keterangan' => $absensi->pj_keterangan,
+                'absensi_pendamping' => $absensi->absensi_pendamping ?? [],
+                'absensi_siswa' => $absensi->absensi_siswa ?? [],
+                'berita_acara' => $absensi->berita_acara,
+                'foto_kegiatan' => $absensi->foto_kegiatan ?? [],
+                'status' => $absensi->status,
+            ]
         ]);
     }
 }

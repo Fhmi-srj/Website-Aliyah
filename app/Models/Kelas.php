@@ -18,14 +18,28 @@ class Kelas extends Model
         'wali_kelas_id',
         'kapasitas',
         'status',
+        'tahun_ajaran_id',
     ];
 
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+
     /**
-     * Get the siswa for this kelas.
+     * Get the siswa for this kelas (direct relation - legacy).
      */
     public function siswa()
     {
         return $this->hasMany(Siswa::class);
+    }
+
+    /**
+     * Get siswa through SiswaKelas pivot table for this kelas and tahun_ajaran.
+     */
+    public function siswaKelas()
+    {
+        return $this->hasMany(SiswaKelas::class);
     }
 
     /**
@@ -45,10 +59,13 @@ class Kelas extends Model
     }
 
     /**
-     * Get jumlah siswa count.
+     * Get jumlah siswa count from SiswaKelas pivot table for same tahun_ajaran.
      */
     public function getJumlahSiswaAttribute()
     {
-        return $this->siswa()->count();
+        return SiswaKelas::where('kelas_id', $this->id)
+            ->where('tahun_ajaran_id', $this->tahun_ajaran_id)
+            ->whereIn('status', ['Aktif', 'Naik', 'Tinggal'])
+            ->count();
     }
 }

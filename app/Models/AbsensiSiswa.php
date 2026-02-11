@@ -12,19 +12,16 @@ class AbsensiSiswa extends Model
     protected $table = 'absensi_siswa';
 
     protected $fillable = [
-        'absensi_mengajar_id',
         'siswa_id',
+        'kelas_id',
+        'tanggal',
         'status',
         'keterangan',
     ];
 
-    /**
-     * Get the absensi mengajar parent.
-     */
-    public function absensiMengajar()
-    {
-        return $this->belongsTo(AbsensiMengajar::class);
-    }
+    protected $casts = [
+        'tanggal' => 'date',
+    ];
 
     /**
      * Get the siswa for this absensi.
@@ -32,5 +29,13 @@ class AbsensiSiswa extends Model
     public function siswa()
     {
         return $this->belongsTo(Siswa::class);
+    }
+
+    /**
+     * Get the kelas for this absensi.
+     */
+    public function kelas()
+    {
+        return $this->belongsTo(Kelas::class);
     }
 }

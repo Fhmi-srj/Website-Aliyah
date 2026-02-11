@@ -12,13 +12,21 @@ class KelasController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $kelas = Kelas::with('waliKelas:id,nama')
-            ->withCount('siswa')
+        $query = Kelas::with('waliKelas:id,nama')
             ->orderBy('tingkat')
-            ->orderBy('nama_kelas')
-            ->get();
+            ->orderBy('nama_kelas');
+
+        // Filter by tahun_ajaran_id if provided
+        if ($request->has('tahun_ajaran_id')) {
+            $query->where('tahun_ajaran_id', $request->tahun_ajaran_id);
+        }
+
+        $kelas = $query->get()->map(function ($item) {
+            $item->siswa_count = $item->jumlah_siswa;
+            return $item;
+        });
 
         return response()->json([
             'success' => true,
@@ -44,13 +52,14 @@ class KelasController extends Controller
             $validated = validator($data, [
                 'nama_kelas' => 'required|string|max:100',
                 'inisial' => 'required|string|max:20',
-                'tingkat' => 'required|in:X,XI,XII',
+                'tingkat' => 'nullable|in:X,XI,XII',
                 'wali_kelas_id' => 'nullable|integer|exists:guru,id',
                 'kapasitas' => 'nullable|integer|min:1|max:100',
-                'status' => 'nullable|in:Aktif,Tidak Aktif',
+                'status' => 'nullable|in:Aktif,Tidak Ajktif',
             ])->validate();
 
             // Set defaults
+            $validated['tingkat'] = $validated['tingkat'] ?? 'X';
             $validated['kapasitas'] = $validated['kapasitas'] ?? 36;
             $validated['status'] = $validated['status'] ?? 'Aktif';
 
@@ -108,7 +117,7 @@ class KelasController extends Controller
             $validator = validator($data, [
                 'nama_kelas' => 'required|string|max:100',
                 'inisial' => 'required|string|max:20',
-                'tingkat' => 'required|in:X,XI,XII',
+                'tingkat' => 'nullable|in:X,XI,XII',
                 'wali_kelas_id' => 'nullable|integer|exists:guru,id',
                 'kapasitas' => 'nullable|integer|min:1|max:100',
                 'status' => 'nullable|in:Aktif,Tidak Aktif',

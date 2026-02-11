@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Siswa;
+use App\Models\SiswaKelas;
 use App\Models\Guru;
 use App\Models\Kelas;
 use App\Models\Mapel;
@@ -11,6 +12,7 @@ use App\Models\Jadwal;
 use App\Models\Kegiatan;
 use App\Models\Ekskul;
 use App\Models\Rapat;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
 
@@ -19,26 +21,43 @@ class DashboardController extends Controller
     /**
      * Get dashboard statistics
      */
-    public function statistics(): JsonResponse
+    public function statistics(Request $request): JsonResponse
     {
         try {
             $now = Carbon::now();
             $startOfMonth = $now->copy()->startOfMonth();
             $endOfMonth = $now->copy()->endOfMonth();
+            $tahunAjaranId = $request->query('tahun_ajaran_id');
+
+            // Count siswa based on tahun_ajaran_id if provided
+            if ($tahunAjaranId) {
+                $totalSiswa = SiswaKelas::where('tahun_ajaran_id', $tahunAjaranId)->distinct('siswa_id')->count('siswa_id');
+                $siswaAktif = SiswaKelas::where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereIn('status', ['Aktif', 'Naik', 'Tinggal'])
+                    ->distinct('siswa_id')
+                    ->count('siswa_id');
+            } else {
+                $totalSiswa = Siswa::count();
+                $siswaAktif = Siswa::where('status', 'Aktif')->count();
+            }
 
             // Count statistics
             $stats = [
-                'total_siswa' => Siswa::count(),
-                'siswa_aktif' => Siswa::where('status', 'Aktif')->count(),
+                'total_siswa' => $totalSiswa,
+                'siswa_aktif' => $siswaAktif,
                 'total_guru' => Guru::count(),
                 'guru_aktif' => Guru::where('status', 'Aktif')->count(),
-                'total_kelas' => Kelas::count(),
-                'kelas_aktif' => Kelas::where('status', 'Aktif')->count(),
+                'total_kelas' => $tahunAjaranId ? Kelas::where('tahun_ajaran_id', $tahunAjaranId)->count() : Kelas::count(),
+                'kelas_aktif' => $tahunAjaranId
+                    ? Kelas::where('tahun_ajaran_id', $tahunAjaranId)->where('status', 'Aktif')->count()
+                    : Kelas::where('status', 'Aktif')->count(),
                 'total_mapel' => Mapel::count(),
                 'mapel_aktif' => Mapel::where('status', 'Aktif')->count(),
-                'total_jadwal' => Jadwal::count(),
-                'total_kegiatan' => Kegiatan::count(),
-                'kegiatan_aktif' => Kegiatan::where('status', 'Aktif')->count(),
+                'total_jadwal' => $tahunAjaranId ? Jadwal::where('tahun_ajaran_id', $tahunAjaranId)->count() : Jadwal::count(),
+                'total_kegiatan' => $tahunAjaranId ? Kegiatan::where('tahun_ajaran_id', $tahunAjaranId)->count() : Kegiatan::count(),
+                'kegiatan_aktif' => $tahunAjaranId
+                    ? Kegiatan::where('tahun_ajaran_id', $tahunAjaranId)->where('status', 'Aktif')->count()
+                    : Kegiatan::where('status', 'Aktif')->count(),
                 'total_ekskul' => Ekskul::count(),
                 'ekskul_aktif' => Ekskul::where('status', 'Aktif')->count(),
                 'total_rapat' => Rapat::count(),

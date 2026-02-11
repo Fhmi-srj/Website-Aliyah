@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     {
         // Call all seeders in order (dependencies first)
         $this->call([
+            TahunAjaranSeeder::class, // Must be first (academic year data)
             KelasSeeder::class,
             MapelSeeder::class,
             GuruSeeder::class,
@@ -21,7 +22,8 @@ class DatabaseSeeder extends Seeder
             KegiatanSeeder::class,
             EkstrakurikulerSeeder::class,
             RapatSeeder::class,
-            UserSeeder::class, // Must be last or after GuruSeeder
+            UserSeeder::class, // Must be after GuruSeeder
+            HistoricalDataSeeder::class, // Generate historical data for 2024/2025
         ]);
     }
 }

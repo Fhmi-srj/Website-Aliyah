@@ -15,12 +15,15 @@ class Jadwal extends Model
         'jam_ke',
         'jam_mulai',
         'jam_selesai',
+        'jam_pelajaran_id',
+        'jam_pelajaran_sampai_id',
         'guru_id',
         'mapel_id',
         'kelas_id',
         'hari',
         'semester',
         'tahun_ajaran',
+        'tahun_ajaran_id',
         'status',
     ];
 
@@ -46,5 +49,29 @@ class Jadwal extends Model
     public function kelas()
     {
         return $this->belongsTo(Kelas::class);
+    }
+
+    /**
+     * Get the tahun ajaran for this jadwal.
+     */
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+
+    /**
+     * Get the jam pelajaran (start) for this jadwal.
+     */
+    public function jamPelajaran()
+    {
+        return $this->belongsTo(JamPelajaran::class);
+    }
+
+    /**
+     * Get the jam pelajaran sampai (end) for this jadwal.
+     */
+    public function jamPelajaranSampai()
+    {
+        return $this->belongsTo(JamPelajaran::class, 'jam_pelajaran_sampai_id');
     }
 }

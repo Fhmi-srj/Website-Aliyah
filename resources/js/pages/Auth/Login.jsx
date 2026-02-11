@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_BASE } from '../../config/api';
 import logoImage from '../../../images/logo.png';
 
 function Login() {
@@ -11,15 +12,47 @@ function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // Tahun Ajaran state
+    const [tahunAjaranId, setTahunAjaranId] = useState('');
+    const [tahunAjaranList, setTahunAjaranList] = useState([]);
+    const [loadingTahun, setLoadingTahun] = useState(true);
+
     const { login } = useAuth();
     const navigate = useNavigate();
+
+    // Fetch tahun ajaran list on mount
+    useEffect(() => {
+        const fetchTahunAjaran = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/tahun-ajaran`);
+                const data = await res.json();
+                if (data.success) {
+                    setTahunAjaranList(data.data || []);
+                    // Auto-select the active one
+                    const active = data.data?.find(t => t.is_active);
+                    if (active) setTahunAjaranId(active.id.toString());
+                }
+            } catch (error) {
+                console.error('Error fetching tahun ajaran:', error);
+            } finally {
+                setLoadingTahun(false);
+            }
+        };
+        fetchTahunAjaran();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!tahunAjaranId) {
+            setError('Pilih tahun ajaran terlebih dahulu');
+            return;
+        }
+
         setLoading(true);
 
-        const result = await login(username, password, remember);
+        const result = await login(username, password, remember, parseInt(tahunAjaranId));
 
         if (result.success) {
             // Always redirect to dashboard after login
@@ -107,6 +140,40 @@ function Login() {
                             </div>
                         </div>
 
+                        {/* Tahun Ajaran */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tahun Ajaran
+                            </label>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                    <i className="fas fa-calendar-alt"></i>
+                                </span>
+                                {loadingTahun ? (
+                                    <div className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-400 bg-gray-50">
+                                        <i className="fas fa-spinner fa-spin mr-2"></i>Memuat...
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={tahunAjaranId}
+                                        onChange={(e) => setTahunAjaranId(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm appearance-none bg-white cursor-pointer"
+                                        required
+                                    >
+                                        <option value="">-- Pilih Tahun Ajaran --</option>
+                                        {tahunAjaranList.map(t => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.nama} {t.is_active ? '(Aktif)' : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 pointer-events-none">
+                                    <i className="fas fa-chevron-down text-xs"></i>
+                                </span>
+                            </div>
+                        </div>
+
                         {/* Remember Me */}
                         <div className="mb-6">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -140,6 +207,65 @@ function Login() {
                         </button>
                     </form>
                 </div>
+
+                {/* Quick Login for Testing */}
+                {process.env.NODE_ENV === 'development' || true ? (
+                    <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 text-yellow-700 mb-3">
+                            <i className="fas fa-flask"></i>
+                            <span className="text-sm font-medium">Quick Login (Testing Only)</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUsername('admin');
+                                    setPassword('password');
+                                }}
+                                className="py-2 px-3 bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-user-shield"></i>
+                                <span>Admin</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUsername('akromadabi');
+                                    setPassword('password');
+                                }}
+                                className="py-2 px-3 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-chalkboard-teacher"></i>
+                                <span>Guru (Akrom)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUsername('adibkaromi');
+                                    setPassword('password');
+                                }}
+                                className="py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-user-tie"></i>
+                                <span>Guru (Adib)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setUsername('fathina');
+                                    setPassword('password');
+                                }}
+                                className="py-2 px-3 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-female"></i>
+                                <span>Guru (Dewi)</span>
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-yellow-600 mt-2 text-center">
+                            Klik tombol lalu klik "Masuk"
+                        </p>
+                    </div>
+                ) : null}
 
                 {/* Footer */}
                 <p className="text-center text-gray-400 text-xs mt-6">

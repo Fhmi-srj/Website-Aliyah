@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Guru;
+use App\Models\User;
+use App\Models\Role;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class GuruController extends Controller
 {
@@ -15,7 +19,17 @@ class GuruController extends Controller
      */
     public function index(): JsonResponse
     {
-        $guru = Guru::orderBy('nama')->get();
+        $guru = Guru::with(['user:id,name,username,is_active', 'user.roles:id,name,display_name'])
+            ->orderBy('nama')
+            ->get()
+            ->map(function ($item) {
+                // Add roles array for frontend display (jabatan)
+                $item->roles = $item->user?->roles?->pluck('display_name')->toArray() ?? [];
+                // Add TTD URL
+                $item->ttd_url = $item->ttd ? asset('storage/' . $item->ttd) : null;
+                return $item;
+            });
+
         return response()->json([
             'success' => true,
             'data' => $guru
@@ -24,11 +38,12 @@ class GuruController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     * Auto-creates user account with role "guru"
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'username' => 'required|string|max:50|unique:guru,username',
+            'username' => 'required|string|max:50|unique:users,username',
             'password' => 'required|string|min:6',
             'nama' => 'required|string|max:100',
             'nip' => 'nullable|string|max:50|unique:guru,nip',
@@ -45,14 +60,60 @@ class GuruController extends Controller
             'status' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
-        $guru = Guru::create($validated);
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Guru berhasil ditambahkan',
-            'data' => $guru
-        ], 201);
+            // 1. Create user account
+            $user = User::create([
+                'name' => $validated['nama'],
+                'username' => $validated['username'],
+                'password' => Hash::make($validated['password']),
+                'is_active' => $validated['status'] === 'Aktif',
+            ]);
+
+            // 2. Assign "guru" role to user
+            $guruRole = Role::where('name', 'guru')->first();
+            if ($guruRole) {
+                $user->roles()->attach($guruRole->id);
+            }
+
+            // 3. Create guru profile linked to user
+            $guru = Guru::create([
+                'user_id' => $user->id,
+                'username' => $validated['username'],
+                'password' => Hash::make($validated['password']),
+                'nama' => $validated['nama'],
+                'nip' => $validated['nip'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'sk' => $validated['sk'] ?? null,
+                'jenis_kelamin' => $validated['jenis_kelamin'],
+                'tempat_lahir' => $validated['tempat_lahir'] ?? null,
+                'tanggal_lahir' => $validated['tanggal_lahir'] ?? null,
+                'alamat' => $validated['alamat'] ?? null,
+                'pendidikan' => $validated['pendidikan'] ?? null,
+                'kontak' => $validated['kontak'] ?? null,
+                'tmt' => $validated['tmt'] ?? null,
+                'jabatan' => $validated['jabatan'] ?? null,
+                'status' => $validated['status'],
+            ]);
+
+            // Log activity
+            ActivityLog::logCreate($guru, "Menambahkan guru: {$guru->nama}");
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru dan akun user berhasil dibuat',
+                'data' => $guru->load('user')
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat guru: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -62,17 +123,18 @@ class GuruController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $guru
+            'data' => $guru->load('user')
         ]);
     }
 
     /**
      * Update the specified resource in storage.
+     * Also updates linked user account
      */
     public function update(Request $request, Guru $guru): JsonResponse
     {
         $validated = $request->validate([
-            'username' => 'required|string|max:50|unique:guru,username,' . $guru->id,
+            'username' => 'required|string|max:50|unique:users,username,' . ($guru->user_id ?? 0),
             'password' => 'nullable|string|min:6',
             'nama' => 'required|string|max:100',
             'nip' => 'nullable|string|max:50|unique:guru,nip,' . $guru->id,
@@ -89,31 +151,217 @@ class GuruController extends Controller
             'status' => 'required|in:Aktif,Tidak Aktif',
         ]);
 
-        if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        try {
+            DB::beginTransaction();
+
+            // Capture old values before update
+            $oldValues = $guru->getOriginal();
+
+            // Update linked user if exists
+            if ($guru->user_id && $guru->user) {
+                $userUpdate = [
+                    'name' => $validated['nama'],
+                    'username' => $validated['username'],
+                    'is_active' => $validated['status'] === 'Aktif',
+                ];
+
+                if (!empty($validated['password'])) {
+                    $userUpdate['password'] = Hash::make($validated['password']);
+                }
+
+                $guru->user->update($userUpdate);
+            }
+
+            // Update guru profile
+            $guruUpdate = $validated;
+            if (!empty($validated['password'])) {
+                $guruUpdate['password'] = Hash::make($validated['password']);
+            } else {
+                unset($guruUpdate['password']);
+            }
+
+            $guru->update($guruUpdate);
+
+            // Log activity
+            ActivityLog::logUpdate($guru, $oldValues, "Mengubah data guru: {$guru->nama}");
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru berhasil diperbarui',
+                'data' => $guru->load('user')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui guru: ' . $e->getMessage()
+            ], 500);
         }
-
-        $guru->update($validated);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Guru berhasil diperbarui',
-            'data' => $guru
-        ]);
     }
 
     /**
      * Remove the specified resource from storage.
+     * Also deactivates linked user account (doesn't delete to preserve history)
      */
     public function destroy(Guru $guru): JsonResponse
     {
-        $guru->delete();
+        try {
+            DB::beginTransaction();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Guru berhasil dihapus'
+            // Deactivate linked user instead of deleting
+            if ($guru->user_id && $guru->user) {
+                $guru->user->update(['is_active' => false]);
+            }
+
+            // Log activity before delete
+            ActivityLog::logDelete($guru, "Menghapus guru: {$guru->nama}");
+
+            $guru->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus guru: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Link existing guru to existing user
+     */
+    public function linkUser(Request $request, Guru $guru): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id'
         ]);
+
+        try {
+            $guru->update(['user_id' => $validated['user_id']]);
+
+            // Ensure user has guru role
+            $user = User::find($validated['user_id']);
+            $guruRole = Role::where('name', 'guru')->first();
+            if ($guruRole && !$user->hasRole('guru')) {
+                $user->roles()->attach($guruRole->id);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru berhasil dihubungkan dengan user',
+                'data' => $guru->load('user')
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghubungkan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove multiple resources from storage.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:guru,id'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Get all users linked to these guru records
+            $guruRecords = Guru::whereIn('id', $validated['ids'])->get();
+            $userIds = $guruRecords->pluck('user_id')->filter()->toArray();
+
+            // Delete guru records
+            $count = Guru::whereIn('id', $validated['ids'])->delete();
+
+            // Optionally delete linked users (commented out for safety)
+            // User::whereIn('id', $userIds)->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "$count guru berhasil dihapus"
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Upload TTD (signature) for a guru
+     */
+    public function uploadTtd(Request $request, Guru $guru): JsonResponse
+    {
+        // Accept either file upload or base64
+        if (!$request->hasFile('ttd') && !$request->input('ttd_base64')) {
+            return response()->json(['message' => 'TTD file atau base64 data diperlukan'], 422);
+        }
+
+        try {
+            // Delete old TTD if exists
+            if ($guru->ttd && \Storage::disk('public')->exists($guru->ttd)) {
+                \Storage::disk('public')->delete($guru->ttd);
+            }
+
+            $path = null; // Initialize path variable
+
+            if ($request->input('ttd_base64')) {
+                // Handle base64 canvas data
+                $base64 = $request->input('ttd_base64');
+                $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
+                $imageData = base64_decode($base64);
+                if (!$imageData) {
+                    return response()->json(['message' => 'Data base64 tidak valid'], 422);
+                }
+                $filename = 'ttd_' . $guru->id . '_' . time() . '.png';
+                $path = 'ttd/guru/' . $filename;
+                \Storage::disk('public')->put($path, $imageData);
+            } else {
+                // Handle file upload
+                $request->validate([
+                    'ttd' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+                ]);
+                $file = $request->file('ttd');
+                $extension = $file->getClientOriginalExtension() ?: 'png';
+                $filename = 'ttd_' . $guru->id . '_' . time() . '.' . $extension;
+                $path = $file->storeAs('ttd/guru', $filename, 'public');
+            }
+
+            if (!$path) {
+                return response()->json(['message' => 'Gagal menyimpan TTD'], 500);
+            }
+
+            $guru->update(['ttd' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tanda tangan guru berhasil diperbarui',
+                'ttd_url' => asset('storage/' . $path),
+                'ttd' => $path
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupload TTD: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

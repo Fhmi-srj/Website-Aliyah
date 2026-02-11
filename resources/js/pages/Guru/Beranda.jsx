@@ -23,6 +23,10 @@ function Beranda() {
         reminders: [],
     });
 
+    // State for upcoming events (next 7 days)
+    const [upcomingEvents, setUpcomingEvents] = useState([]);
+    const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+
     // Stats tab state
     const [statsTab, setStatsTab] = useState("mengajar");
 
@@ -52,7 +56,21 @@ function Beranda() {
             }
         };
 
+        // Fetch upcoming events for next 7 days
+        const fetchUpcomingEvents = async () => {
+            try {
+                setLoadingUpcoming(true);
+                const response = await api.get('/guru-panel/upcoming-events');
+                setUpcomingEvents(response.data.events || []);
+            } catch (err) {
+                console.error('Error fetching upcoming events:', err);
+            } finally {
+                setLoadingUpcoming(false);
+            }
+        };
+
         fetchDashboard();
+        fetchUpcomingEvents();
     }, []);
 
     // Loading state
@@ -96,8 +114,12 @@ function Beranda() {
             <div className="bg-gradient-to-br from-green-600 to-green-700 px-4 pt-4 pb-8 text-white">
                 {/* User Info */}
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <i className="fas fa-user text-xl"></i>
+                    <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm overflow-hidden">
+                        {userData.foto_url ? (
+                            <img src={userData.foto_url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <i className="fas fa-user text-xl"></i>
+                        )}
                     </div>
                     <div className="flex-1">
                         <p className="text-green-100 text-xs">
@@ -137,7 +159,7 @@ function Beranda() {
                 <div>
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                         <i className="fas fa-chart-pie text-green-500"></i>
-                        Statistik Bulan Ini
+                        Statistik
                     </h3>
 
                     {/* Stats Tabs - Animated sliding indicator */}
@@ -150,8 +172,11 @@ function Beranda() {
 
                     {/* Stats Display - Horizontal layout */}
                     <div className="flex items-center gap-4 bg-white rounded-2xl p-4">
-                        {/* Progress Circle */}
-                        <div className="relative w-20 h-20 flex-shrink-0">
+                        {/* Progress Circle - clickable */}
+                        <div
+                            className="relative w-20 h-20 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
+                        >
                             <svg
                                 className="w-full h-full transform -rotate-90"
                                 viewBox="0 0 36 36"
@@ -193,9 +218,12 @@ function Beranda() {
                             </div>
                         </div>
 
-                        {/* Stats Grid */}
+                        {/* Stats Grid - clickable boxes */}
                         <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-green-50 rounded-xl p-2.5 text-center">
+                            <div
+                                className="bg-green-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-green-100 transition-colors hover:scale-[1.02]"
+                                onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
+                            >
                                 <p className="text-green-600 font-bold text-lg">
                                     {currentStats.hadir}
                                 </p>
@@ -203,7 +231,10 @@ function Beranda() {
                                     Hadir
                                 </p>
                             </div>
-                            <div className="bg-yellow-50 rounded-xl p-2.5 text-center">
+                            <div
+                                className="bg-yellow-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-yellow-100 transition-colors hover:scale-[1.02]"
+                                onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
+                            >
                                 <p className="text-yellow-600 font-bold text-lg">
                                     {currentStats.izin}
                                 </p>
@@ -211,7 +242,10 @@ function Beranda() {
                                     Izin
                                 </p>
                             </div>
-                            <div className="bg-red-50 rounded-xl p-2.5 text-center">
+                            <div
+                                className="bg-red-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-red-100 transition-colors hover:scale-[1.02]"
+                                onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
+                            >
                                 <p className="text-red-600 font-bold text-lg">
                                     {currentStats.alpha}
                                 </p>
@@ -219,7 +253,10 @@ function Beranda() {
                                     Alpha
                                 </p>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                            <div
+                                className="bg-gray-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-gray-100 transition-colors hover:scale-[1.02]"
+                                onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
+                            >
                                 <p className="text-gray-600 font-bold text-lg">
                                     {currentStats.total}
                                 </p>
@@ -301,7 +338,94 @@ function Beranda() {
                                 Download
                             </span>
                         </button>
+                        <button
+                            onClick={() => navigate("/guru/jurnal-kelas")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-book-open text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Jurnal Kelas
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => navigate("/guru/absen-kelas")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-clipboard-list text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Absen Kelas
+                            </span>
+                        </button>
                     </div>
+                </div>
+
+                {/* Agenda Mendatang - Next 7 Days */}
+                <div>
+                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <i className="fas fa-calendar-alt text-green-500"></i>
+                        Agenda 7 Hari Ke Depan
+                    </h3>
+                    {loadingUpcoming ? (
+                        <div className="flex items-center justify-center py-6">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
+                        </div>
+                    ) : upcomingEvents.length > 0 ? (
+                        <div className="space-y-2">
+                            {upcomingEvents.map((event, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (event.type === 'mengajar') {
+                                            navigate('/guru/absensi/mengajar');
+                                        } else if (event.type === 'kegiatan') {
+                                            navigate('/guru/absensi/kegiatan');
+                                        } else if (event.type === 'rapat') {
+                                            navigate('/guru/absensi/rapat');
+                                        }
+                                    }}
+                                    className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] text-left"
+                                >
+                                    <div
+                                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${event.type === 'mengajar' ? 'bg-green-100' :
+                                            event.type === 'kegiatan' ? 'bg-blue-100' : 'bg-purple-100'
+                                            }`}
+                                    >
+                                        <i
+                                            className={`fas ${event.type === 'mengajar' ? 'fa-chalkboard-teacher text-green-600' :
+                                                event.type === 'kegiatan' ? 'fa-calendar-check text-blue-600' :
+                                                    'fa-users text-purple-600'
+                                                }`}
+                                        ></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-gray-800 text-sm font-medium truncate">{event.title}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[10px] text-gray-400">{event.date}</span>
+                                            {event.time && (
+                                                <span className="text-[10px] text-gray-400">{event.time}</span>
+                                            )}
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${event.type === 'mengajar' ? 'bg-green-100 text-green-700' :
+                                                event.type === 'kegiatan' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-purple-100 text-purple-700'
+                                                }`}>
+                                                {event.type === 'mengajar' ? 'Mengajar' :
+                                                    event.type === 'kegiatan' ? 'Kegiatan' : 'Rapat'}
+                                            </span>
+                                        </div>
+                                        {event.subtitle && (
+                                            <p className="text-xs text-gray-500 truncate mt-0.5">{event.subtitle}</p>
+                                        )}
+                                    </div>
+                                    <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-gray-50 rounded-xl p-6 text-center">
+                            <i className="fas fa-calendar-check text-gray-300 text-2xl mb-2"></i>
+                            <p className="text-gray-500 text-sm">Tidak ada agenda dalam 7 hari ke depan</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Pengingat - Compact list without card */}
@@ -327,30 +451,27 @@ function Beranda() {
                                     className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] text-left"
                                 >
                                     <div
-                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                            reminder.priority === "high"
-                                                ? "bg-red-100"
-                                                : reminder.type === "next"
-                                                  ? "bg-blue-100"
-                                                  : "bg-yellow-100"
-                                        }`}
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${reminder.priority === "high"
+                                            ? "bg-red-100"
+                                            : reminder.type === "next"
+                                                ? "bg-blue-100"
+                                                : "bg-yellow-100"
+                                            }`}
                                     >
                                         <i
-                                            className={`fas ${
-                                                reminder.type === "mengajar"
-                                                    ? "fa-chalkboard-teacher"
-                                                    : reminder.type === "kegiatan"
-                                                      ? "fa-calendar-check"
-                                                      : reminder.type === "rapat"
+                                            className={`fas ${reminder.type === "mengajar"
+                                                ? "fa-chalkboard-teacher"
+                                                : reminder.type === "kegiatan"
+                                                    ? "fa-calendar-check"
+                                                    : reminder.type === "rapat"
                                                         ? "fa-users"
                                                         : "fa-clock"
-                                            } ${
-                                                reminder.priority === "high"
+                                                } ${reminder.priority === "high"
                                                     ? "text-red-500"
                                                     : reminder.type === "next"
-                                                      ? "text-blue-500"
-                                                      : "text-yellow-500"
-                                            }`}
+                                                        ? "text-blue-500"
+                                                        : "text-yellow-500"
+                                                }`}
                                         ></i>
                                     </div>
                                     <div className="flex-1 min-w-0">

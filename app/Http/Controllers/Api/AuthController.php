@@ -23,6 +23,7 @@ class AuthController extends Controller
             'username' => 'required|string',
             'password' => 'required|string',
             'remember' => 'boolean',
+            'tahun_ajaran_id' => 'required|exists:tahun_ajaran,id',
         ]);
 
         // Rate limiting: 5 attempts per 15 minutes per IP
@@ -121,6 +122,13 @@ class AuthController extends Controller
         RateLimiter::clear($key);
         $user->resetFailedAttempts();
 
+        // Save selected tahun_ajaran to user
+        $user->tahun_ajaran_id = $request->tahun_ajaran_id;
+        $user->save();
+
+        // Load tahun_ajaran data
+        $tahunAjaran = \App\Models\TahunAjaran::find($request->tahun_ajaran_id);
+
         // Token expiration: 2 hours default, 30 days if remember
         $expiration = $request->remember ? now()->addDays(30) : now()->addHours(2);
 
@@ -136,6 +144,11 @@ class AuthController extends Controller
             'username' => $user->username,
             'name' => $user->name,
             'role' => $user->role,
+            'roles' => $user->roles->map(fn($r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'display_name' => $r->display_name,
+            ])->toArray(),
         ];
 
         // Add guru-specific data
@@ -154,6 +167,11 @@ class AuthController extends Controller
                 'user' => $userData,
                 'token' => $token,
                 'expires_at' => $expiration->toISOString(),
+                'tahun_ajaran' => $tahunAjaran ? [
+                    'id' => $tahunAjaran->id,
+                    'nama' => $tahunAjaran->nama,
+                    'is_active' => $tahunAjaran->is_active,
+                ] : null,
             ]
         ]);
     }
@@ -176,7 +194,7 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user()->load('roles');
 
         return response()->json([
             'success' => true,
@@ -185,6 +203,11 @@ class AuthController extends Controller
                 'username' => $user->username,
                 'name' => $user->name,
                 'role' => $user->role,
+                'roles' => $user->roles->map(fn($r) => [
+                    'id' => $r->id,
+                    'name' => $r->name,
+                    'display_name' => $r->display_name,
+                ])->toArray(),
                 'is_active' => $user->is_active,
                 'last_login_at' => $user->last_login_at,
             ]

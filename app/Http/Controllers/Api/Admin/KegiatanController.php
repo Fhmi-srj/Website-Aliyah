@@ -4,20 +4,45 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kegiatan;
+use App\Models\Kalender;
 use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\TahunAjaran;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class KegiatanController extends Controller
 {
     /**
+     * Get the active tahun ajaran ID for the current user.
+     */
+    private function getActiveTahunAjaranId(Request $request): ?int
+    {
+        $user = $request->user();
+        if ($user && $user->tahun_ajaran_id) {
+            return $user->tahun_ajaran_id;
+        }
+        $current = TahunAjaran::getCurrent();
+        return $current ? $current->id : null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $kegiatan = Kegiatan::with('penanggungjawab:id,nama')
-            ->orderBy('waktu_mulai', 'desc')
+        $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $this->getActiveTahunAjaranId($request);
+
+        $query = Kegiatan::with(['penanggungjawab:id,nama', 'tahunAjaran:id,nama', 'absensiKegiatan:id,kegiatan_id'])
+            ->withCount('absensiKegiatan');
+
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        $kegiatan = $query->orderBy('waktu_mulai', 'desc')
             ->get()
             ->map(function ($item) {
                 // Add guru pendamping names
@@ -38,6 +63,11 @@ class KegiatanController extends Controller
                 }
                 $item->kelas_peserta_names = $kelasPesertaNames;
 
+                // Add absensi info for print functionality
+                $firstAbsensi = $item->absensiKegiatan->first();
+                $item->absensi_id = $firstAbsensi?->id;
+                $item->has_absensi = $firstAbsensi && $firstAbsensi->status === 'submitted';
+
                 return $item;
             });
 
@@ -55,7 +85,7 @@ class KegiatanController extends Controller
         try {
             $validated = $request->validate([
                 'nama_kegiatan' => 'required|string|max:200',
-                'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental',
+                'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental,Reguler',
                 'waktu_mulai' => 'required|date',
                 'waktu_berakhir' => 'required|date|after_or_equal:waktu_mulai',
                 'tempat' => 'nullable|string|max:100',
@@ -67,7 +97,15 @@ class KegiatanController extends Controller
                 'peserta' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Selesai,Dibatalkan',
+                'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
             ]);
+
+            DB::beginTransaction();
+
+            // Auto-assign tahun_ajaran_id if not provided
+            if (empty($validated['tahun_ajaran_id'])) {
+                $validated['tahun_ajaran_id'] = $this->getActiveTahunAjaranId($request);
+            }
 
             // Set penanggung_jawab based on penanggung_jawab_id
             if (!empty($validated['penanggung_jawab_id'])) {
@@ -84,6 +122,20 @@ class KegiatanController extends Controller
             }
 
             $kegiatan = Kegiatan::create($validated);
+
+            // Create linked kalender entry
+            Kalender::create([
+                'tanggal_mulai' => date('Y-m-d', strtotime($validated['waktu_mulai'])),
+                'tanggal_berakhir' => date('Y-m-d', strtotime($validated['waktu_berakhir'])),
+                'kegiatan' => $validated['nama_kegiatan'],
+                'status_kbm' => 'Aktif',
+                'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                'kegiatan_id' => $kegiatan->id,
+                'keterangan' => 'Kegiatan',
+            ]);
+
+            DB::commit();
+
             $kegiatan->load('penanggungjawab:id,nama');
 
             return response()->json([
@@ -92,6 +144,7 @@ class KegiatanController extends Controller
                 'data' => $kegiatan
             ], 201);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
@@ -119,7 +172,7 @@ class KegiatanController extends Controller
         try {
             $validated = $request->validate([
                 'nama_kegiatan' => 'required|string|max:200',
-                'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental',
+                'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental,Reguler',
                 'waktu_mulai' => 'required|date',
                 'waktu_berakhir' => 'required|date|after_or_equal:waktu_mulai',
                 'tempat' => 'nullable|string|max:100',
@@ -132,6 +185,11 @@ class KegiatanController extends Controller
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Selesai,Dibatalkan',
             ]);
+
+            DB::beginTransaction();
+
+            // Capture old values for logging
+            $oldValues = $kegiatan->getOriginal();
 
             // Set penanggung_jawab based on penanggung_jawab_id
             if (!empty($validated['penanggung_jawab_id'])) {
@@ -148,6 +206,20 @@ class KegiatanController extends Controller
             }
 
             $kegiatan->update($validated);
+
+            // Update linked kalender entry if exists
+            $linkedKalender = Kalender::where('kegiatan_id', $kegiatan->id)->first();
+            if ($linkedKalender) {
+                $linkedKalender->update([
+                    'tanggal_mulai' => date('Y-m-d', strtotime($validated['waktu_mulai'])),
+                    'tanggal_berakhir' => date('Y-m-d', strtotime($validated['waktu_berakhir'])),
+                    'kegiatan' => $validated['nama_kegiatan'],
+                    'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                ]);
+            }
+
+            DB::commit();
+
             $kegiatan->load('penanggungjawab:id,nama');
 
             return response()->json([
@@ -156,6 +228,7 @@ class KegiatanController extends Controller
                 'data' => $kegiatan
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
@@ -168,12 +241,87 @@ class KegiatanController extends Controller
      */
     public function destroy(Kegiatan $kegiatan): JsonResponse
     {
-        $kegiatan->delete();
+        DB::beginTransaction();
+        try {
+            // Delete linked kalender entry (cascade should handle this but let's be explicit)
+            Kalender::where('kegiatan_id', $kegiatan->id)->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Kegiatan berhasil dihapus'
+            // Log activity before delete
+            ActivityLog::logDelete($kegiatan, "Menghapus kegiatan: {$kegiatan->nama_kegiatan}");
+
+            $kegiatan->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Kegiatan berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk delete kegiatan entries.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:kegiatan,id'
         ]);
+
+        DB::beginTransaction();
+        try {
+            // Delete linked kalender entries
+            Kalender::whereIn('kegiatan_id', $validated['ids'])->delete();
+
+            // Delete kegiatan entries
+            Kegiatan::whereIn('id', $validated['ids'])->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($validated['ids']) . ' kegiatan berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk update jenis kegiatan.
+     */
+    public function bulkUpdateJenis(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:kegiatan,id',
+            'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental'
+        ]);
+
+        try {
+            Kegiatan::whereIn('id', $validated['ids'])->update(['jenis_kegiatan' => $validated['jenis_kegiatan']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => count($validated['ids']) . ' kegiatan berhasil diubah menjadi ' . $validated['jenis_kegiatan']
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
-

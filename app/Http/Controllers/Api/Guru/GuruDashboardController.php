@@ -10,6 +10,7 @@ use App\Models\Guru;
 use App\Models\AbsensiKegiatan;
 use App\Models\AbsensiMengajar;
 use App\Models\AbsensiRapat;
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -32,6 +33,7 @@ class GuruDashboardController extends Controller
                     'name' => $user->name,
                     'nip' => '-',
                     'jabatan' => $user->role ?? 'User',
+                    'foto_url' => null,
                 ],
                 'today' => [
                     'date' => $today->locale('id')->translatedFormat('l, d F Y'),
@@ -248,15 +250,22 @@ class GuruDashboardController extends Controller
                 ];
             });
 
-        // Calculate REAL monthly statistics
-        $startOfMonth = Carbon::now('Asia/Jakarta')->startOfMonth();
-        $endOfMonth = Carbon::now('Asia/Jakarta')->endOfMonth();
+        // Calculate statistics for the entire tahun ajaran
+        $tahunAjaranId = $user->tahun_ajaran_id ?? null;
+        $tahunAjaran = $tahunAjaranId
+            ? TahunAjaran::find($tahunAjaranId)
+            : (TahunAjaran::getActive() ?? TahunAjaran::getCurrent());
+
+        // Use tahun ajaran date range
+        $startDate = $tahunAjaran ? Carbon::parse($tahunAjaran->tanggal_mulai)->startOfDay() : Carbon::now('Asia/Jakarta')->startOfYear();
+        $endDate = $tahunAjaran ? Carbon::parse($tahunAjaran->tanggal_selesai)->endOfDay() : Carbon::now('Asia/Jakarta')->endOfYear();
         $today = Carbon::now('Asia/Jakarta')->startOfDay();
 
         // ============ STATS MENGAJAR ============
-        // Get all jadwal for this guru
+        // Get all jadwal for this guru (filtered by tahun ajaran)
         $guruJadwal = Jadwal::where('guru_id', $guru->id)
             ->where('status', 'Aktif')
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->get();
 
         // Calculate all teaching dates this month based on jadwal
@@ -266,25 +275,31 @@ class GuruDashboardController extends Controller
         $mengajarAlpha = 0;
 
         $dayMapping = [
-            'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
-            'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6
+            'Minggu' => 0,
+            'Senin' => 1,
+            'Selasa' => 2,
+            'Rabu' => 3,
+            'Kamis' => 4,
+            'Jumat' => 5,
+            'Sabtu' => 6
         ];
 
         foreach ($guruJadwal as $jadwal) {
             $dayOfWeek = $dayMapping[$jadwal->hari] ?? null;
-            if ($dayOfWeek === null) continue;
+            if ($dayOfWeek === null)
+                continue;
 
-            // Find all dates of this day in current month up to today
-            $currentDate = $startOfMonth->copy();
-            while ($currentDate->lte($today) && $currentDate->lte($endOfMonth)) {
+            // Find all dates of this day in tahun ajaran up to today
+            $currentDate = $startDate->copy();
+            while ($currentDate->lte($today) && $currentDate->lte($endDate)) {
                 if ($currentDate->dayOfWeek === $dayOfWeek) {
                     $mengajarTotal++;
-                    
+
                     // Check if absensi exists for this date
                     $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
                         ->where('tanggal', $currentDate->toDateString())
                         ->first();
-                    
+
                     if ($absensi) {
                         // Check guru status from absensi record
                         if ($absensi->guru_status === 'I') {
@@ -306,21 +321,28 @@ class GuruDashboardController extends Controller
 
         // ============ STATS KEGIATAN ============
         // Get all kegiatan where guru is PJ or pendamping, that have ended
-        $kegiatanThisMonth = Kegiatan::where(function ($q) use ($guru) {
+        $kegiatanThisYear = Kegiatan::where(function ($q) use ($guru) {
             $q->where('penanggung_jawab_id', $guru->id)
                 ->orWhereJsonContains('guru_pendamping', $guru->id)
                 ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
         })
-            ->whereBetween('waktu_mulai', [$startOfMonth, $endOfMonth])
+            // Only filter by tahun_ajaran if the field is not null AND matches
+            ->when($tahunAjaranId, function ($q) use ($tahunAjaranId) {
+                $q->where(function ($sq) use ($tahunAjaranId) {
+                    $sq->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->orWhereNull('tahun_ajaran_id');
+                });
+            })
+            // Only count kegiatan that have ended
             ->where('waktu_berakhir', '<=', Carbon::now('Asia/Jakarta'))
             ->get();
 
-        $kegiatanTotal = $kegiatanThisMonth->count();
+        $kegiatanTotal = $kegiatanThisYear->count();
         $kegiatanHadir = 0;
         $kegiatanIzin = 0;
         $kegiatanAlpha = 0;
 
-        foreach ($kegiatanThisMonth as $kegiatan) {
+        foreach ($kegiatanThisYear as $kegiatan) {
             $absensiKeg = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
             $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
             $attended = false;
@@ -337,19 +359,18 @@ class GuruDashboardController extends Controller
                         }
                     }
                 } else {
-                    // Check pendamping status
+                    // Check pendamping status - check ANY status set (by PJ or self)
                     $pendampingAbsensi = $absensiKeg->absensi_pendamping ?? [];
                     foreach ($pendampingAbsensi as $entry) {
                         if ($entry['guru_id'] == $guru->id) {
-                            if (!empty($entry['self_attended'])) {
-                                if (isset($entry['status']) && $entry['status'] === 'I') {
-                                    $izin = true;
-                                } else {
-                                    $attended = true;
-                                }
-                            } elseif (isset($entry['status']) && $entry['status'] === 'I') {
+                            // Check status regardless of who set it
+                            $status = $entry['status'] ?? 'A';
+                            if ($status === 'H') {
+                                $attended = true;
+                            } elseif ($status === 'I') {
                                 $izin = true;
                             }
+                            // If status is 'A', neither attended nor izin is true, so it stays alpha
                             break;
                         }
                     }
@@ -367,19 +388,25 @@ class GuruDashboardController extends Controller
 
         // ============ STATS RAPAT ============
         // Get all rapat where guru is involved, that have ended
-        $rapatThisMonth = Rapat::where(function ($q) use ($guru) {
+        $rapatThisYear = Rapat::where(function ($q) use ($guru) {
             $q->where('pimpinan_id', $guru->id)
                 ->orWhere('sekretaris_id', $guru->id)
                 ->orWhereJsonContains('peserta_rapat', $guru->id)
                 ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
         })
-            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            // Only filter by tahun_ajaran if the field is not null AND matches
+            ->when($tahunAjaranId, function ($q) use ($tahunAjaranId) {
+                $q->where(function ($sq) use ($tahunAjaranId) {
+                    $sq->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->orWhereNull('tahun_ajaran_id');
+                });
+            })
             ->get()
             ->filter(function ($rapat) {
                 // Only count rapat that have ended
                 try {
-                    $tanggal = $rapat->tanggal instanceof \Carbon\Carbon 
-                        ? $rapat->tanggal->format('Y-m-d') 
+                    $tanggal = $rapat->tanggal instanceof \Carbon\Carbon
+                        ? $rapat->tanggal->format('Y-m-d')
                         : (is_string($rapat->tanggal) ? substr($rapat->tanggal, 0, 10) : date('Y-m-d'));
                     $endTime = Carbon::parse($tanggal . ' ' . $rapat->waktu_selesai, 'Asia/Jakarta');
                     return Carbon::now('Asia/Jakarta')->gt($endTime);
@@ -388,12 +415,12 @@ class GuruDashboardController extends Controller
                 }
             });
 
-        $rapatTotal = $rapatThisMonth->count();
+        $rapatTotal = $rapatThisYear->count();
         $rapatHadir = 0;
         $rapatIzin = 0;
         $rapatAlpha = 0;
 
-        foreach ($rapatThisMonth as $rapat) {
+        foreach ($rapatThisYear as $rapat) {
             $absensiRapat = \App\Models\AbsensiRapat::where('rapat_id', $rapat->id)->first();
             $isPimpinan = $rapat->pimpinan_id == $guru->id;
             $isSekretaris = $rapat->sekretaris_id == $guru->id;
@@ -402,35 +429,33 @@ class GuruDashboardController extends Controller
 
             if ($absensiRapat) {
                 if ($isPimpinan) {
-                    if ($absensiRapat->pimpinan_self_attended) {
-                        if ($absensiRapat->pimpinan_status === 'I') {
-                            $izin = true;
-                        } else {
-                            $attended = true;
-                        }
-                    } elseif ($absensiRapat->pimpinan_status === 'I') {
+                    // Check pimpinan status (regardless of who set it)
+                    $status = $absensiRapat->pimpinan_status ?? 'A';
+                    if ($status === 'H') {
+                        $attended = true;
+                    } elseif ($status === 'I' || $status === 'S') {
                         $izin = true;
                     }
                 } elseif ($isSekretaris) {
+                    // Sekretaris: Check if submitted
                     if ($absensiRapat->status === 'submitted') {
-                        if ($absensiRapat->sekretaris_status === 'I') {
-                            $izin = true;
-                        } else {
+                        $status = $absensiRapat->sekretaris_status ?? 'A';
+                        if ($status === 'H') {
                             $attended = true;
+                        } elseif ($status === 'I' || $status === 'S') {
+                            $izin = true;
                         }
                     }
                 } else {
-                    // Check peserta array
+                    // Check peserta array - check ANY status set (by Sekretaris or self)
                     $pesertaAbsensi = $absensiRapat->absensi_peserta ?? [];
                     foreach ($pesertaAbsensi as $entry) {
                         if (isset($entry['guru_id']) && $entry['guru_id'] == $guru->id) {
-                            if (!empty($entry['self_attended'])) {
-                                if (isset($entry['status']) && $entry['status'] === 'I') {
-                                    $izin = true;
-                                } else {
-                                    $attended = true;
-                                }
-                            } elseif (isset($entry['status']) && $entry['status'] === 'I') {
+                            // Check status regardless of who set it
+                            $status = $entry['status'] ?? 'A';
+                            if ($status === 'H') {
+                                $attended = true;
+                            } elseif ($status === 'I' || $status === 'S') {
                                 $izin = true;
                             }
                             break;
@@ -480,6 +505,8 @@ class GuruDashboardController extends Controller
                 'name' => $guru->nama,
                 'nip' => $guru->nip,
                 'jabatan' => $guru->jabatan ?? 'Guru',
+                'foto_url' => $guru->foto ? asset('storage/' . $guru->foto) : null,
+                'ttd_url' => $guru->ttd ? asset('storage/' . $guru->ttd) : null,
             ],
             'today' => [
                 'date' => $today->locale('id')->translatedFormat('l, d F Y'),
@@ -690,13 +717,13 @@ class GuruDashboardController extends Controller
             }
 
             $today = Carbon::today();
-            
+
             $kegiatan = $kegiatanQuery->limit(10)->get()->map(function ($item) use ($guru, $today) {
                 $isPJ = $guru && $item->penanggung_jawab_id == $guru->id;
                 $time = 'N/A';
                 $tanggal = null;
                 $isToday = false;
-                
+
                 try {
                     if ($item->waktu_mulai) {
                         $waktuMulai = Carbon::parse($item->waktu_mulai);
@@ -707,7 +734,7 @@ class GuruDashboardController extends Controller
                 } catch (\Exception $e) {
                     $time = 'N/A';
                 }
-                
+
                 return [
                     'id' => $item->id,
                     'type' => 'kegiatan',
@@ -753,7 +780,7 @@ class GuruDashboardController extends Controller
             }
 
             $today = Carbon::today();
-            
+
             $rapat = $rapatQuery->limit(10)->get()->map(function ($item) use ($guru, $today) {
                 // Determine role
                 $role = 'Peserta';
@@ -764,16 +791,16 @@ class GuruDashboardController extends Controller
                         $role = 'Sekretaris';
                     }
                 }
-                
+
                 $time = 'N/A';
                 $tanggalStr = null;
                 $isToday = false;
-                
+
                 try {
-                    $tanggalDate = $item->tanggal instanceof \Carbon\Carbon 
+                    $tanggalDate = $item->tanggal instanceof \Carbon\Carbon
                         ? $item->tanggal
                         : (is_string($item->tanggal) ? Carbon::parse(substr($item->tanggal, 0, 10)) : null);
-                    
+
                     if ($tanggalDate) {
                         $tanggalStr = $tanggalDate->format('Y-m-d');
                         $time = $tanggalDate->format('d M Y') . ', ' . substr($item->waktu_mulai ?? '00:00', 0, 5);
@@ -782,7 +809,7 @@ class GuruDashboardController extends Controller
                 } catch (\Exception $e) {
                     $time = 'N/A';
                 }
-                
+
                 return [
                     'id' => $item->id,
                     'type' => 'rapat',
@@ -854,7 +881,8 @@ class GuruDashboardController extends Controller
 
             foreach ($jadwalList as $jadwal) {
                 $dayNumber = $dayMap[$jadwal->hari] ?? null;
-                if ($dayNumber === null) continue;
+                if ($dayNumber === null)
+                    continue;
 
                 // Find most recent occurrence
                 $checkDate = $today->copy();
@@ -868,7 +896,8 @@ class GuruDashboardController extends Controller
                     $checkDate->subWeek();
                 }
 
-                if ($checkDate->lt($thirtyDaysAgo)) continue;
+                if ($checkDate->lt($thirtyDaysAgo))
+                    continue;
 
                 $key = $jadwal->id . '-' . $checkDate->format('Y-m-d');
                 $absensi = $existingAbsensi->get($key);
@@ -890,7 +919,7 @@ class GuruDashboardController extends Controller
             // Also search Kegiatan records (similar to riwayat)
             $kegiatanQuery = Kegiatan::with('absensiKegiatan')
                 ->whereNotNull('waktu_mulai');
-            
+
             if ($guru) {
                 $kegiatanQuery->where(function ($q) use ($guru) {
                     $q->where('penanggung_jawab_id', $guru->id)
@@ -903,12 +932,13 @@ class GuruDashboardController extends Controller
             }
 
             $kegiatanList = $kegiatanQuery->orderBy('waktu_mulai', 'desc')->limit(10)->get();
-            
+
             foreach ($kegiatanList as $kegiatan) {
                 // Check if this kegiatan has ended
                 try {
                     $waktuMulai = Carbon::parse($kegiatan->waktu_mulai);
-                    if ($waktuMulai->gt($today)) continue; // Skip future kegiatan
+                    if ($waktuMulai->gt($today))
+                        continue; // Skip future kegiatan
                 } catch (\Exception $e) {
                     continue;
                 }
@@ -916,7 +946,7 @@ class GuruDashboardController extends Controller
                 // Get absensi record (absensiKegiatan is a collection, need first())
                 $absensiKeg = $kegiatan->absensiKegiatan->first() ?? AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
                 $isPJ = $guru && $kegiatan->penanggung_jawab_id == $guru->id;
-                
+
                 $status = 'Alpha';
                 if ($absensiKeg) {
                     if ($isPJ) {
@@ -938,7 +968,8 @@ class GuruDashboardController extends Controller
                 $time = 'N/A';
                 try {
                     $time = Carbon::parse($kegiatan->waktu_mulai)->format('d M Y, H:i');
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
 
                 $absensiResults[] = [
                     'id' => $kegiatan->id,
@@ -954,7 +985,7 @@ class GuruDashboardController extends Controller
             // Also search Rapat records (similar to riwayat)
             $rapatQuery = Rapat::with('absensiRapat')
                 ->whereNotNull('tanggal');
-            
+
             if ($guru) {
                 $rapatQuery->where(function ($q) use ($guru) {
                     $q->where('pimpinan_id', $guru->id)
@@ -975,11 +1006,12 @@ class GuruDashboardController extends Controller
             foreach ($rapatList as $rapat) {
                 // Check if rapat has started (not future)
                 try {
-                    $tanggal = $rapat->tanggal instanceof Carbon 
-                        ? $rapat->tanggal->format('Y-m-d') 
+                    $tanggal = $rapat->tanggal instanceof Carbon
+                        ? $rapat->tanggal->format('Y-m-d')
                         : substr($rapat->tanggal, 0, 10);
                     $rapatDate = Carbon::parse($tanggal);
-                    if ($rapatDate->gt($today)) continue; // Skip future rapat
+                    if ($rapatDate->gt($today))
+                        continue; // Skip future rapat
                 } catch (\Exception $e) {
                     continue;
                 }
@@ -988,10 +1020,10 @@ class GuruDashboardController extends Controller
                 $absensiRapat = $rapat->absensiRapat->first() ?? AbsensiRapat::where('rapat_id', $rapat->id)->first();
                 $isPimpinan = $guru && $rapat->pimpinan_id == $guru->id;
                 $isSekretaris = $guru && $rapat->sekretaris_id == $guru->id;
-                
+
                 $status = 'Alpha';
                 $role = 'Peserta';
-                
+
                 if ($isPimpinan) {
                     $role = 'Pimpinan';
                     if ($absensiRapat) {
@@ -1020,7 +1052,8 @@ class GuruDashboardController extends Controller
                 $time = 'N/A';
                 try {
                     $time = Carbon::parse($tanggal)->format('d M Y') . ', ' . substr($rapat->waktu_mulai, 0, 5);
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
 
                 $absensiResults[] = [
                     'id' => $rapat->id,
@@ -1083,6 +1116,275 @@ class GuruDashboardController extends Controller
                 'kontak' => $guru->kontak ?? '-',
                 'tmt' => $guru->tmt ? $guru->tmt->format('d F Y') : '-',
                 'status' => $guru->status ?? 'Aktif',
+                'foto_url' => $guru->foto ? asset('storage/' . $guru->foto) : null,
+                'ttd_url' => $guru->ttd ? asset('storage/' . $guru->ttd) : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get upcoming events for next 7 days
+     */
+    public function upcomingEvents(Request $request)
+    {
+        $user = $request->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return response()->json(['events' => []]);
+        }
+
+        $today = Carbon::today();
+        $endDate = Carbon::today()->addDays(7);
+
+        // Get active tahun ajaran
+        $tahunAjaran = TahunAjaran::where('is_active', true)->first();
+
+        $events = [];
+
+        // 1. Get jadwal (mengajar) for next 7 days based on day of week
+        if ($tahunAjaran) {
+            $jadwals = Jadwal::with(['mapel', 'kelas'])
+                ->where('guru_id', $guru->id)
+                ->where('tahun_ajaran_id', $tahunAjaran->id)
+                ->get();
+
+            // Loop through next 7 days
+            for ($date = $today->copy(); $date->lte($endDate); $date->addDay()) {
+                $dayName = $this->getDayName($date->dayOfWeek);
+
+                foreach ($jadwals as $jadwal) {
+                    if ($jadwal->hari === $dayName) {
+                        $events[] = [
+                            'type' => 'mengajar',
+                            'title' => $jadwal->mapel->nama ?? 'Mengajar',
+                            'subtitle' => $jadwal->kelas->nama_kelas ?? '',
+                            'date' => $date->locale('id')->translatedFormat('l, d M'),
+                            'date_raw' => $date->toDateString(),
+                            'time' => substr($jadwal->jam_mulai, 0, 5) . ' - ' . substr($jadwal->jam_selesai, 0, 5),
+                            'sort_key' => $date->toDateString() . ' ' . $jadwal->jam_mulai,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 2. Get kegiatan for next 7 days
+        $kegiatanQuery = Kegiatan::where('status', 'Aktif')
+            ->where(function ($q) use ($today, $endDate) {
+                $q->whereBetween('waktu_mulai', [$today, $endDate])
+                    ->orWhereBetween('waktu_berakhir', [$today, $endDate])
+                    ->orWhere(function ($q2) use ($today, $endDate) {
+                        $q2->where('waktu_mulai', '<=', $today)
+                            ->where('waktu_berakhir', '>=', $endDate);
+                    });
+            });
+
+        $kegiatans = $kegiatanQuery->get();
+
+        foreach ($kegiatans as $kegiatan) {
+            // Check if this guru is related: penanggung_jawab_id OR in guru_pendamping array
+            $guruPendamping = $kegiatan->guru_pendamping ?? [];
+            $isRelated = $kegiatan->penanggung_jawab_id == $guru->id ||
+                in_array($guru->id, $guruPendamping);
+
+            if ($isRelated) {
+                $events[] = [
+                    'type' => 'kegiatan',
+                    'title' => $kegiatan->nama_kegiatan ?? $kegiatan->nama ?? 'Kegiatan',
+                    'subtitle' => $kegiatan->tempat ?? '',
+                    'date' => Carbon::parse($kegiatan->waktu_mulai)->locale('id')->translatedFormat('l, d M'),
+                    'date_raw' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateString() : null,
+                    'time' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('H:i') : null,
+                    'sort_key' => ($kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateTimeString() : '9999-12-31'),
+                ];
+            }
+        }
+
+        // 3. Get rapat for next 7 days
+        $rapatQuery = Rapat::where('status', 'Aktif')
+            ->whereBetween('tanggal', [$today, $endDate]);
+
+        $rapats = $rapatQuery->get();
+
+        foreach ($rapats as $rapat) {
+            // Check if this guru is related (pimpinan, sekretaris, notulis, or in peserta_rapat array)
+            $pesertaRapat = $rapat->peserta_rapat ?? [];
+            $isRelated = $rapat->pimpinan_id == $guru->id ||
+                $rapat->sekretaris_id == $guru->id ||
+                $rapat->notulis_id == $guru->id ||
+                in_array($guru->id, $pesertaRapat);
+
+            if ($isRelated) {
+                $events[] = [
+                    'type' => 'rapat',
+                    'title' => $rapat->agenda_rapat ?? $rapat->nama ?? 'Rapat',
+                    'subtitle' => $rapat->tempat ?? '',
+                    'date' => Carbon::parse($rapat->tanggal)->locale('id')->translatedFormat('l, d M'),
+                    'date_raw' => $rapat->tanggal,
+                    'time' => $rapat->waktu_mulai ? substr($rapat->waktu_mulai, 0, 5) : null,
+                    'sort_key' => $rapat->tanggal . ' ' . ($rapat->waktu_mulai ?? '00:00:00'),
+                ];
+            }
+        }
+
+        // Sort by type priority (rapat=1, kegiatan=2, mengajar=3) then by date/time
+        $typePriority = ['rapat' => 1, 'kegiatan' => 2, 'mengajar' => 3];
+        usort($events, function ($a, $b) use ($typePriority) {
+            $priorityA = $typePriority[$a['type']] ?? 99;
+            $priorityB = $typePriority[$b['type']] ?? 99;
+            if ($priorityA !== $priorityB) {
+                return $priorityA - $priorityB;
+            }
+            return strcmp($a['sort_key'], $b['sort_key']);
+        });
+
+        // Remove sort_key from output and limit to 10 items
+        $events = array_map(function ($event) {
+            unset($event['sort_key']);
+            return $event;
+        }, array_slice($events, 0, 10));
+
+        return response()->json(['events' => $events]);
+    }
+
+    /**
+     * Upload profile photo
+     */
+    public function uploadPhoto(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        $user = $request->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return response()->json(['message' => 'Data guru tidak ditemukan'], 404);
+        }
+
+        try {
+            // Delete old photo if exists
+            if ($guru->foto && \Storage::disk('public')->exists($guru->foto)) {
+                \Storage::disk('public')->delete($guru->foto);
+            }
+
+            // Compress and store new photo using ImageService
+            $file = $request->file('photo');
+            $filename = 'guru_' . $guru->id . '_' . time() . '.jpg';
+            $path = \App\Services\ImageService::compressAndStore($file, 'photos/guru', $filename);
+
+            if (!$path) {
+                return response()->json(['message' => 'Gagal memproses foto'], 500);
+            }
+
+            // Update guru with new photo path
+            $guru->update(['foto' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto profil berhasil diperbarui',
+                'photo_url' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Gagal mengupload foto: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Upload signature (TTD) image
+     */
+    public function uploadTtd(Request $request)
+    {
+        $user = $request->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return response()->json(['message' => 'Data guru tidak ditemukan'], 404);
+        }
+
+        // Accept either file upload or base64
+        if (!$request->hasFile('ttd') && !$request->input('ttd_base64')) {
+            return response()->json(['message' => 'TTD file atau base64 data diperlukan'], 422);
+        }
+
+        try {
+            // Delete old TTD if exists
+            if ($guru->ttd && \Storage::disk('public')->exists($guru->ttd)) {
+                \Storage::disk('public')->delete($guru->ttd);
+            }
+
+            if ($request->input('ttd_base64')) {
+                // Handle base64 canvas data
+                $base64 = $request->input('ttd_base64');
+                $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $base64);
+                $imageData = base64_decode($base64);
+                if (!$imageData) {
+                    return response()->json(['message' => 'Data base64 tidak valid'], 422);
+                }
+                $filename = 'ttd_' . $guru->id . '_' . time() . '.png';
+                $path = 'ttd/guru/' . $filename;
+                \Storage::disk('public')->put($path, $imageData);
+            } else {
+                // Handle file upload
+                $request->validate([
+                    'ttd' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+                ]);
+                $file = $request->file('ttd');
+                $extension = $file->getClientOriginalExtension() ?: 'png';
+                $filename = 'ttd_' . $guru->id . '_' . time() . '.' . $extension;
+                $path = $file->storeAs('ttd/guru', $filename, 'public');
+            }
+
+            if (!$path) {
+                return response()->json(['message' => 'Gagal menyimpan TTD'], 500);
+            }
+
+            // Update guru with new TTD path
+            $guru->update(['ttd' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tanda tangan berhasil diperbarui',
+                'ttd_url' => asset('storage/' . $path)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Gagal mengupload TTD: ' . $e->getMessage()], 500);
+        }
+    }
+    /**
+     * Get wali kelas info for the logged-in guru
+     */
+    public function waliKelasInfo(Request $request)
+    {
+        $user = $request->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return response()->json(['success' => false, 'data' => null]);
+        }
+
+        $tahunAjaran = TahunAjaran::where('is_active', true)->first();
+        if (!$tahunAjaran) {
+            return response()->json(['success' => false, 'data' => null]);
+        }
+
+        $kelas = \App\Models\Kelas::where('wali_kelas_id', $guru->id)
+            ->where('tahun_ajaran_id', $tahunAjaran->id)
+            ->where('status', 'Aktif')
+            ->first();
+
+        if (!$kelas) {
+            return response()->json(['success' => false, 'data' => null]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'kelas_id' => $kelas->id,
+                'nama_kelas' => $kelas->nama_kelas,
+                'jumlah_siswa' => $kelas->jumlah_siswa,
             ],
         ]);
     }

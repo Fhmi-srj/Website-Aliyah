@@ -19,6 +19,7 @@ function AbsensiMengajar() {
     const [loading, setLoading] = useState(true);
     const [weeklySchedule, setWeeklySchedule] = useState({});
     const [tanggalHariIni, setTanggalHariIni] = useState('');
+    const [tanggalRaw, setTanggalRaw] = useState('');
     const [guruData, setGuruData] = useState({ name: '', nip: '' });
 
     // Modal states
@@ -34,6 +35,7 @@ function AbsensiMengajar() {
                 const response = await api.get('/guru-panel/jadwal-seminggu');
                 setWeeklySchedule(response.data.jadwal || {});
                 setTanggalHariIni(response.data.tanggal || '');
+                setTanggalRaw(response.data.tanggal_raw || '');
             } catch (err) {
                 console.error('Error fetching weekly schedule:', err);
                 // Fallback: fetch jadwal hari ini saja
@@ -42,6 +44,7 @@ function AbsensiMengajar() {
                     const todayName = getTodayName();
                     setWeeklySchedule({ [todayName]: todayResponse.data.jadwal || [] });
                     setTanggalHariIni(todayResponse.data.tanggal || '');
+                    setTanggalRaw(todayResponse.data.tanggal_raw || '');
                 } catch (e) {
                     console.error('Error fetching today schedule:', e);
                 }
@@ -225,54 +228,54 @@ function AbsensiMengajar() {
 
                 {/* Class List */}
                 <div className="p-4 space-y-3">
-                {currentSchedule.length > 0 ? (
-                    currentSchedule.map(jadwal => {
-                        const colors = getStatusColor(jadwal.status);
-                        const canInteract = isToday && jadwal.status !== 'sudah_absen';
+                    {currentSchedule.length > 0 ? (
+                        currentSchedule.map(jadwal => {
+                            const colors = getStatusColor(jadwal.status);
+                            const canInteract = isToday && jadwal.status !== 'sudah_absen';
 
-                        return (
-                            <button
-                                key={jadwal.id}
-                                onClick={() => isToday && handleJadwalClick(jadwal)}
-                                disabled={!isToday}
-                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-                                    } ${jadwal.status === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                        <i className={`fas fa-door-open ${colors.icon}`}></i>
-                                    </div>
-                                    <div className="flex-1 min-w-0 text-left">
-                                        {/* Row 1: Mapel */}
-                                        <p className="font-semibold text-gray-800 truncate">{jadwal.mapel}</p>
-                                        {/* Row 2: Kelas */}
-                                        <p className="text-xs text-gray-500 truncate">{jadwal.kelas}</p>
-                                        {/* Row 3: Badge JP + Time + Status */}
-                                        <div className="flex items-center justify-between mt-1.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">{jadwal.jam_ke} JP</span>
-                                                <span className="text-[10px] text-gray-400">
-                                                    {jadwal.jam_mulai?.substring(0, 5)} - {jadwal.jam_selesai?.substring(0, 5)}
+                            return (
+                                <button
+                                    key={jadwal.id}
+                                    onClick={() => isToday && handleJadwalClick(jadwal)}
+                                    disabled={!isToday}
+                                    className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+                                        } ${jadwal.status === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                            <i className={`fas fa-door-open ${colors.icon}`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0 text-left">
+                                            {/* Row 1: Mapel */}
+                                            <p className="font-semibold text-gray-800 truncate">{jadwal.mapel}</p>
+                                            {/* Row 2: Kelas */}
+                                            <p className="text-xs text-gray-500 truncate">{jadwal.kelas}</p>
+                                            {/* Row 3: Badge JP + Time + Status */}
+                                            <div className="flex items-center justify-between mt-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Jam ke {jadwal.jam_ke}</span>
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {jadwal.jam_mulai?.substring(0, 5)} - {jadwal.jam_selesai?.substring(0, 5)}
+                                                    </span>
+                                                </div>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
+                                                    {colors.label}
                                                 </span>
                                             </div>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
-                                                {colors.label}
-                                            </span>
                                         </div>
                                     </div>
-                                </div>
-                            </button>
-                        );
-                    })
-                ) : (
-                    <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i className="fas fa-calendar-times text-gray-400 text-2xl"></i>
+                                </button>
+                            );
+                        })
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fas fa-calendar-times text-gray-400 text-2xl"></i>
+                            </div>
+                            <p className="text-gray-500 font-medium">Tidak ada jadwal</p>
+                            <p className="text-gray-400 text-sm">Hari {selectedDay} tidak ada jadwal mengajar</p>
                         </div>
-                        <p className="text-gray-500 font-medium">Tidak ada jadwal</p>
-                        <p className="text-gray-400 text-sm">Hari {selectedDay} tidak ada jadwal mengajar</p>
-                    </div>
-                )}
+                    )}
                 </div>
             </SwipeableContent>
 
@@ -288,7 +291,7 @@ function AbsensiMengajar() {
             {modalType === 'sedang_berlangsung' && selectedJadwal && (
                 <ModalAbsensiSiswa
                     jadwal={selectedJadwal}
-                    tanggal={tanggalHariIni}
+                    tanggal={tanggalRaw}
                     siswaList={siswaList}
                     onClose={handleCloseModal}
                     onSuccess={handleAbsensiSuccess}

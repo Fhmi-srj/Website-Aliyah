@@ -10,6 +10,7 @@ use App\Models\Jadwal;
 use App\Models\Kegiatan;
 use App\Models\Rapat;
 use App\Models\AbsensiSiswa;
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -45,10 +46,14 @@ class GuruRiwayatController extends Controller
             'Minggu' => Carbon::SUNDAY,
         ];
 
-        // Get all jadwal for this guru
+        // Get tahun ajaran filter
+        $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
+
+        // Get all jadwal for this guru filtered by tahun ajaran
         $jadwalQuery = Jadwal::with(['mapel', 'kelas'])
             ->where('guru_id', $guru->id)
-            ->where('status', 'aktif');
+            ->where('status', 'Aktif')
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId));
 
         if ($search) {
             $jadwalQuery->where(function ($q) use ($search) {
@@ -64,7 +69,7 @@ class GuruRiwayatController extends Controller
 
         // Get all existing absensi for this guru (last 30 days)
         $thirtyDaysAgo = Carbon::now()->subDays(30)->startOfDay();
-        $existingAbsensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas', 'absensiSiswa'])
+        $existingAbsensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas'])
             ->where('guru_id', $guru->id)
             ->where('tanggal', '>=', $thirtyDaysAgo)
             ->get()
@@ -77,7 +82,8 @@ class GuruRiwayatController extends Controller
 
         foreach ($jadwalList as $jadwal) {
             $dayNumber = $dayMap[$jadwal->hari] ?? null;
-            if ($dayNumber === null) continue;
+            if ($dayNumber === null)
+                continue;
 
             // Find all occurrences of this day in the last 30 days
             $checkDate = $thirtyDaysAgo->copy();
@@ -97,37 +103,54 @@ class GuruRiwayatController extends Controller
                 $absensi = $existingAbsensi->get($key);
 
                 if ($absensi) {
-                    // Guru has absensi record - check guru_status
-                    $hadir = $absensi->absensiSiswa->where('status', 'H')->count();
-                    $izin = $absensi->absensiSiswa->where('status', 'I')->count();
-                    $sakit = $absensi->absensiSiswa->where('status', 'S')->count();
-                    $alpha = $absensi->absensiSiswa->where('status', 'A')->count();
+                    // Guru has absensi record - use snapshot counts
+                    $totalSiswa = $absensi->siswa_hadir + $absensi->siswa_sakit + $absensi->siswa_izin + $absensi->siswa_alpha;
+                    // Fallback to daily query if snapshot is empty (old data)
+                    if ($totalSiswa === 0) {
+                        $dailyCounts = $this->getDailySiswaCounts($jadwal->kelas_id, $checkDate->format('Y-m-d'));
+                        $totalSiswa = \App\Models\Siswa::where('kelas_id', $jadwal->kelas_id)->where('status', 'Aktif')->count();
+                        $hadir = $totalSiswa - ($dailyCounts['S'] + $dailyCounts['I'] + $dailyCounts['A']);
+                        $izinSakit = $dailyCounts['I'] + $dailyCounts['S'];
+                        $alpha = $dailyCounts['A'];
+                    } else {
+                        $hadir = $absensi->siswa_hadir;
+                        $izinSakit = $absensi->siswa_izin + $absensi->siswa_sakit;
+                        $alpha = $absensi->siswa_alpha;
+                    }
 
                     $result[] = [
                         'id' => $absensi->id,
                         'jadwal_id' => $jadwal->id,
+                        'mapel_id' => $jadwal->mapel_id,
+                        'kelas_id' => $jadwal->kelas_id,
                         'mapel' => $jadwal->mapel->nama_mapel ?? 'Unknown',
                         'kelas' => $jadwal->kelas->nama_kelas ?? 'Unknown',
+                        'jam_ke' => $jadwal->jam_ke,
                         'tanggal' => $checkDate->copy()->translatedFormat('d M Y'),
                         'tanggal_raw' => $checkDate->format('Y-m-d'),
                         'waktu' => substr($jadwal->jam_mulai ?? '00:00', 0, 5) . ' - ' . substr($jadwal->jam_selesai ?? '00:00', 0, 5),
                         'hari' => $jadwal->hari,
                         'guru_status' => $absensi->guru_status ?? 'H',
                         'guru_keterangan' => $absensi->guru_keterangan,
+                        'guru_tugas_id' => $absensi->guru_tugas_id,
+                        'tugas_siswa' => $absensi->tugas_siswa,
                         'ringkasan_materi' => $absensi->ringkasan_materi,
                         'berita_acara' => $absensi->berita_acara,
                         'hadir' => $hadir,
-                        'izin' => $izin + $sakit,
+                        'izin' => $izinSakit,
                         'alpha' => $alpha,
-                        'total_siswa' => $absensi->absensiSiswa->count(),
+                        'total_siswa' => $totalSiswa,
                     ];
                 } else {
                     // Guru missed - no absensi record (Alpha)
                     $result[] = [
                         'id' => null,
                         'jadwal_id' => $jadwal->id,
+                        'mapel_id' => $jadwal->mapel_id,
+                        'kelas_id' => $jadwal->kelas_id,
                         'mapel' => $jadwal->mapel->nama_mapel ?? 'Unknown',
                         'kelas' => $jadwal->kelas->nama_kelas ?? 'Unknown',
+                        'jam_ke' => $jadwal->jam_ke,
                         'tanggal' => $checkDate->copy()->translatedFormat('d M Y'),
                         'tanggal_raw' => $checkDate->format('Y-m-d'),
                         'waktu' => substr($jadwal->jam_mulai ?? '00:00', 0, 5) . ' - ' . substr($jadwal->jam_selesai ?? '00:00', 0, 5),
@@ -145,6 +168,61 @@ class GuruRiwayatController extends Controller
 
                 $checkDate->addWeek();
             }
+        }
+
+        // Also include historical absensi records (imported data with jadwal_id = null)
+        // These use snapshot data instead of jadwal references
+        $historicalAbsensi = AbsensiMengajar::where('guru_id', $guru->id)
+            ->whereNull('jadwal_id')
+            ->where('tanggal', '>=', $thirtyDaysAgo)
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sq) use ($search) {
+                    $sq->where('snapshot_mapel', 'like', "%{$search}%")
+                        ->orWhere('snapshot_kelas', 'like', "%{$search}%");
+                });
+            })
+            ->get();
+
+        // Build kelas name -> id map for historical data
+        $kelasNameMap = \App\Models\Kelas::pluck('id', 'nama_kelas')->toArray();
+
+        foreach ($historicalAbsensi as $absensi) {
+            $totalSiswa = $absensi->siswa_hadir + $absensi->siswa_sakit + $absensi->siswa_izin + $absensi->siswa_alpha;
+            // Fallback to daily query if snapshot is empty (old data)
+            if ($totalSiswa === 0) {
+                $kelasId = $kelasNameMap[$absensi->snapshot_kelas] ?? null;
+                $dailyCounts = $kelasId ? $this->getDailySiswaCounts($kelasId, Carbon::parse($absensi->tanggal)->format('Y-m-d')) : ['S' => 0, 'I' => 0, 'A' => 0];
+                $totalSiswa = $kelasId ? \App\Models\Siswa::where('kelas_id', $kelasId)->where('status', 'Aktif')->count() : 0;
+                $hadir = $totalSiswa - ($dailyCounts['S'] + $dailyCounts['I'] + $dailyCounts['A']);
+                $izinSakit = $dailyCounts['I'] + $dailyCounts['S'];
+                $alpha = $dailyCounts['A'];
+            } else {
+                $hadir = $absensi->siswa_hadir;
+                $izinSakit = $absensi->siswa_izin + $absensi->siswa_sakit;
+                $alpha = $absensi->siswa_alpha;
+            }
+
+            $result[] = [
+                'id' => $absensi->id,
+                'jadwal_id' => null,
+                'mapel' => $absensi->snapshot_mapel ?? 'Unknown',
+                'kelas' => $absensi->snapshot_kelas ?? 'Unknown',
+                'jam_ke' => $absensi->snapshot_jam ?? '-',
+                'tanggal' => Carbon::parse($absensi->tanggal)->translatedFormat('d M Y'),
+                'tanggal_raw' => Carbon::parse($absensi->tanggal)->format('Y-m-d'),
+                'waktu' => $absensi->snapshot_jam ?? '-',
+                'hari' => $absensi->snapshot_hari ?? '-',
+                'guru_status' => $absensi->guru_status ?? 'H',
+                'guru_keterangan' => $absensi->guru_keterangan,
+                'guru_tugas_id' => $absensi->guru_tugas_id,
+                'tugas_siswa' => $absensi->tugas_siswa,
+                'ringkasan_materi' => $absensi->ringkasan_materi,
+                'berita_acara' => $absensi->berita_acara,
+                'hadir' => $hadir,
+                'izin' => $izinSakit,
+                'alpha' => $alpha,
+                'total_siswa' => $totalSiswa,
+            ];
         }
 
         // Sort by date descending
@@ -177,7 +255,7 @@ class GuruRiwayatController extends Controller
             ], 404);
         }
 
-        $absensi = AbsensiMengajar::with(['absensiSiswa.siswa', 'jadwal.mapel', 'jadwal.kelas'])
+        $absensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas.siswa', 'guruTugas'])
             ->where('id', $id)
             ->where('guru_id', $guru->id)
             ->first();
@@ -189,42 +267,83 @@ class GuruRiwayatController extends Controller
             ], 404);
         }
 
-        $siswaList = $absensi->absensiSiswa->map(function ($as) {
-            return [
-                'id' => $as->id,
-                'siswa_id' => $as->siswa_id,
-                'nama' => $as->siswa->nama ?? 'Unknown',
-                'nis' => $as->siswa->nis ?? '-',
-                'status' => $as->status,
-                'keterangan' => $as->keterangan,
-            ];
-        });
+        // Get kelas for fetching all students
+        $kelas = null;
+        $kelasId = null;
+        if ($absensi->jadwal && $absensi->jadwal->kelas) {
+            $kelas = $absensi->jadwal->kelas;
+            $kelasId = $kelas->id;
+        } elseif ($absensi->snapshot_kelas) {
+            $kelas = \App\Models\Kelas::where('nama_kelas', $absensi->snapshot_kelas)->first();
+            $kelasId = $kelas?->id;
+        }
 
-        $hadir = $absensi->absensiSiswa->where('status', 'H')->count();
-        $izin = $absensi->absensiSiswa->where('status', 'I')->count();
-        $sakit = $absensi->absensiSiswa->where('status', 'S')->count();
-        $alpha = $absensi->absensiSiswa->where('status', 'A')->count();
+        // Get daily absensi siswa for this date + kelas (per-day system)
+        $tanggal = Carbon::parse($absensi->tanggal)->format('Y-m-d');
+        $dailyAbsensi = $kelasId
+            ? AbsensiSiswa::where('kelas_id', $kelasId)->where('tanggal', $tanggal)->get()->keyBy('siswa_id')
+            : collect();
+
+        // Build siswa list - merge all active class students with daily absensi
+        $siswaList = collect();
+        if ($kelas) {
+            $allSiswa = $kelas->siswa()->where('status', 'Aktif')->orderBy('nama')->get();
+            foreach ($allSiswa as $siswa) {
+                $absensiRecord = $dailyAbsensi->get($siswa->id);
+                $siswaList->push([
+                    'id' => $absensiRecord?->id,
+                    'siswa_id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'nis' => $siswa->nis ?? '-',
+                    'status' => $absensiRecord?->status ?? 'H',
+                    'keterangan' => $absensiRecord?->keterangan ?? '',
+                ]);
+            }
+        } else {
+            // Fallback: use daily absensi records with siswa info
+            $siswaList = $dailyAbsensi->map(function ($as) {
+                $siswa = \App\Models\Siswa::find($as->siswa_id);
+                return [
+                    'id' => $as->id,
+                    'siswa_id' => $as->siswa_id,
+                    'nama' => $siswa?->nama ?? 'Unknown',
+                    'nis' => $siswa?->nis ?? '-',
+                    'status' => $as->status,
+                    'keterangan' => $as->keterangan,
+                ];
+            })->values();
+        }
+
+        // Count statuses from the merged list
+        $hadir = $siswaList->where('status', 'H')->count();
+        $izin = $siswaList->where('status', 'I')->count();
+        $sakit = $siswaList->where('status', 'S')->count();
+        $alpha = $siswaList->where('status', 'A')->count();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $absensi->id,
+                'jadwal_id' => $absensi->jadwal_id,
                 'tanggal' => Carbon::parse($absensi->tanggal)->translatedFormat('d F Y'),
-                'mapel' => $absensi->jadwal->mapel->nama_mapel ?? 'Unknown',
-                'kelas' => $absensi->jadwal->kelas->nama_kelas ?? 'Unknown',
+                'mapel' => $absensi->jadwal->mapel->nama_mapel ?? $absensi->snapshot_mapel ?? 'Unknown',
+                'kelas' => $absensi->jadwal->kelas->nama_kelas ?? $absensi->snapshot_kelas ?? 'Unknown',
                 'ringkasan_materi' => $absensi->ringkasan_materi,
                 'berita_acara' => $absensi->berita_acara,
                 'guru_name' => $guru->nama ?? 'Guru',
                 'guru_nip' => $guru->nip ?? '',
                 'guru_status' => $absensi->guru_status ?? 'H',
                 'guru_keterangan' => $absensi->guru_keterangan,
+                'guru_tugas_id' => $absensi->guru_tugas_id,
+                'guru_tugas_nama' => $absensi->guruTugas?->nama,
+                'tugas_siswa' => $absensi->tugas_siswa,
                 'stats' => [
                     'hadir' => $hadir,
                     'izin' => $izin + $sakit,
                     'alpha' => $alpha,
-                    'total' => $absensi->absensiSiswa->count(),
+                    'total' => $siswaList->count(),
                 ],
-                'siswa' => $siswaList,
+                'siswa' => $siswaList->values(),
             ]
         ]);
     }
@@ -248,6 +367,9 @@ class GuruRiwayatController extends Controller
         $search = $request->input('search', '');
         $now = Carbon::now();
 
+        // Get tahun ajaran filter
+        $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
+
         // Get kegiatan where guru is PJ or in pendamping array
         $kegiatanQuery = Kegiatan::with('absensiKegiatan')
             ->where(function ($q) use ($guru) {
@@ -255,6 +377,7 @@ class GuruRiwayatController extends Controller
                     ->orWhereJsonContains('guru_pendamping', $guru->id)
                     ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
             })
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereNotNull('waktu_mulai')
             ->orderBy('waktu_mulai', 'desc');
 
@@ -266,7 +389,8 @@ class GuruRiwayatController extends Controller
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id) {
-            if (!is_array($array)) return null;
+            if (!is_array($array))
+                return null;
             foreach ($array as $item) {
                 if (isset($item['guru_id']) && $item['guru_id'] == $id) {
                     return $item;
@@ -325,8 +449,16 @@ class GuruRiwayatController extends Controller
                 }
             }
 
+            // Get absensi_id for print functionality
+            $absensiId = null;
+            $absensiRecord = $kegiatan->absensiKegiatan->first();
+            if ($absensiRecord) {
+                $absensiId = $absensiRecord->id;
+            }
+
             return [
                 'id' => $kegiatan->id,
+                'absensi_id' => $absensiId,
                 'nama' => $kegiatan->nama_kegiatan,
                 'tanggal' => $waktuMulai->translatedFormat('d F Y'),
                 'tanggal_raw' => $waktuMulai->format('Y-m-d'),
@@ -364,6 +496,9 @@ class GuruRiwayatController extends Controller
         $search = $request->input('search', '');
         $now = Carbon::now();
 
+        // Get tahun ajaran filter
+        $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
+
         // Get rapat where guru is pimpinan, sekretaris, or in peserta_rapat array
         $rapatQuery = Rapat::with('absensiRapat')
             ->where(function ($q) use ($guru) {
@@ -372,6 +507,7 @@ class GuruRiwayatController extends Controller
                     ->orWhereJsonContains('peserta_rapat', $guru->id)
                     ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
             })
+            ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->orderBy('tanggal', 'desc');
 
         if ($search) {
@@ -382,7 +518,8 @@ class GuruRiwayatController extends Controller
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id) {
-            if (!is_array($array)) return null;
+            if (!is_array($array))
+                return null;
             foreach ($array as $item) {
                 if (isset($item['guru_id']) && $item['guru_id'] == $id) {
                     return $item;
@@ -409,37 +546,45 @@ class GuruRiwayatController extends Controller
             $endTime = Carbon::parse($endTimeStr);
             $isPast = $endTime->lt($now);
 
-            // Determine attendance status
-            $guruStatus = 'H'; // Default
+            // Determine attendance status - check absensi record regardless of timing
+            $guruStatus = null;
             $guruKeterangan = null;
 
-            if ($isPast) {
-                // Get absensi record for this rapat
-                $absensiRecord = $rapat->absensiRapat->first();
+            // Get absensi record for this rapat
+            $absensiRecord = $rapat->absensiRapat->first();
 
-                if ($absensiRecord) {
-                    if ($isPimpinan) {
-                        $guruStatus = $absensiRecord->pimpinan_status ?? 'A';
+            if ($absensiRecord) {
+                if ($isPimpinan) {
+                    // Check if pimpinan has self-attended or has a status set
+                    if ($absensiRecord->pimpinan_self_attended || $absensiRecord->pimpinan_status) {
+                        $guruStatus = $absensiRecord->pimpinan_status ?? 'H';
                         $guruKeterangan = $absensiRecord->pimpinan_keterangan;
-                    } elseif ($isSekretaris) {
-                        $guruStatus = $absensiRecord->sekretaris_status ?? 'A';
+                    }
+                } elseif ($isSekretaris) {
+                    // Check if sekretaris status is set
+                    if ($absensiRecord->sekretaris_status) {
+                        $guruStatus = $absensiRecord->sekretaris_status;
                         $guruKeterangan = $absensiRecord->sekretaris_keterangan;
-                    } else {
-                        // Peserta status is in absensi_peserta JSON
-                        $absensiPeserta = $absensiRecord->absensi_peserta ?? [];
-                        $attendance = $findAttendance($absensiPeserta, $guru->id);
-                        if ($attendance) {
-                            $guruStatus = $attendance['status'] ?? 'H';
-                            $guruKeterangan = $attendance['keterangan'] ?? null;
-                        } else {
-                            $guruStatus = 'A';
-                            $guruKeterangan = 'Tidak tercatat dalam absensi';
-                        }
                     }
                 } else {
-                    // No absensi record = Alpha
+                    // Peserta status is in absensi_peserta JSON
+                    $absensiPeserta = $absensiRecord->absensi_peserta ?? [];
+                    $attendance = $findAttendance($absensiPeserta, $guru->id);
+                    if ($attendance) {
+                        $guruStatus = $attendance['status'] ?? 'H';
+                        $guruKeterangan = $attendance['keterangan'] ?? null;
+                    }
+                }
+            }
+
+            // If no status found yet and rapat is past, default to Alpha
+            if ($guruStatus === null) {
+                if ($isPast) {
                     $guruStatus = 'A';
-                    $guruKeterangan = 'Tidak ada record absensi';
+                    $guruKeterangan = $absensiRecord ? 'Tidak tercatat dalam absensi' : 'Tidak ada record absensi';
+                } else {
+                    // Rapat not past and no self-attendance yet
+                    $guruStatus = 'H'; // Will show as pending/default
                 }
             }
 
@@ -455,6 +600,7 @@ class GuruRiwayatController extends Controller
                 'guru_status' => $guruStatus,
                 'guru_keterangan' => $guruKeterangan,
                 'notulensi' => $rapat->notulensi,
+                'peserta_eksternal' => $rapat->peserta_eksternal ?? [],
             ];
         });
 
@@ -496,7 +642,8 @@ class GuruRiwayatController extends Controller
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id, $idKey = 'guru_id') {
-            if (!is_array($array)) return null;
+            if (!is_array($array))
+                return null;
             foreach ($array as $item) {
                 if (isset($item[$idKey]) && $item[$idKey] == $id) {
                     return $item;
@@ -601,7 +748,8 @@ class GuruRiwayatController extends Controller
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id) {
-            if (!is_array($array)) return null;
+            if (!is_array($array))
+                return null;
             foreach ($array as $item) {
                 if (isset($item['guru_id']) && $item['guru_id'] == $id) {
                     return $item;
@@ -632,11 +780,13 @@ class GuruRiwayatController extends Controller
             ];
         }
 
-        // Get peserta with attendance from JSON
+        // Get peserta with attendance from JSON (exclude pimpinan/sekretaris)
         $peserta = [];
         $pesertaIds = $rapat->peserta_rapat ?? [];
+        $excludeIds = array_filter([$rapat->pimpinan_id, $rapat->sekretaris_id]);
         if (is_array($pesertaIds) && count($pesertaIds) > 0) {
-            $pesertaGurus = \App\Models\Guru::whereIn('id', $pesertaIds)->get();
+            $filteredIds = array_diff($pesertaIds, $excludeIds);
+            $pesertaGurus = \App\Models\Guru::whereIn('id', $filteredIds)->get();
             foreach ($pesertaGurus as $pg) {
                 $absensi = $findAttendance($absensiPeserta, $pg->id);
                 $peserta[] = [
@@ -678,12 +828,34 @@ class GuruRiwayatController extends Controller
                 'nama' => $rapat->agenda_rapat,
                 'lokasi' => $rapat->tempat,
                 'notulensi' => $absensiRecord->notulensi ?? $rapat->notulensi ?? null,
+                'foto_rapat' => $absensiRecord->foto_rapat ?? [],
                 'guru_status' => $guruStatus,
                 'guru_keterangan' => $guruKeterangan,
                 'pimpinan' => $pimpinan,
                 'sekretaris' => $sekretaris,
                 'peserta' => $peserta,
+                'peserta_eksternal' => $rapat->peserta_eksternal ?? [],
             ]
         ]);
+    }
+
+    /**
+     * Get daily siswa absence counts for a kelas on a given date.
+     * Returns counts of S, I, A (only non-hadir stored in DB).
+     */
+    private function getDailySiswaCounts(int $kelasId, string $tanggal): array
+    {
+        $counts = AbsensiSiswa::where('kelas_id', $kelasId)
+            ->where('tanggal', $tanggal)
+            ->selectRaw("status, count(*) as cnt")
+            ->groupBy('status')
+            ->pluck('cnt', 'status')
+            ->toArray();
+
+        return [
+            'S' => $counts['S'] ?? 0,
+            'I' => $counts['I'] ?? 0,
+            'A' => $counts['A'] ?? 0,
+        ];
     }
 }

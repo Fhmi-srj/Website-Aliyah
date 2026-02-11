@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { TahunAjaranProvider } from './contexts/TahunAjaranContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './pages/Admin/components/AdminLayout';
 import Login from './pages/Auth/Login';
@@ -8,6 +9,7 @@ import Dashboard from './pages/Admin/Dashboard';
 import Profil from './pages/Admin/Profil';
 import Pengaturan from './pages/Admin/Pengaturan';
 import ManajemenSiswa from './pages/Admin/DataInduk/ManajemenSiswa';
+import ManajemenAlumni from './pages/Admin/DataInduk/ManajemenAlumni';
 import ManajemenGuru from './pages/Admin/DataInduk/ManajemenGuru';
 import ManajemenKelas from './pages/Admin/DataInduk/ManajemenKelas';
 import ManajemenMapel from './pages/Admin/DataInduk/ManajemenMapel';
@@ -15,6 +17,12 @@ import ManajemenJadwal from './pages/Admin/DataInduk/ManajemenJadwal';
 import ManajemenKegiatan from './pages/Admin/DataInduk/ManajemenKegiatan';
 import ManajemenEkskul from './pages/Admin/DataInduk/ManajemenEkskul';
 import ManajemenRapat from './pages/Admin/DataInduk/ManajemenRapat';
+import ManajemenJamPelajaran from './pages/Admin/DataInduk/ManajemenJamPelajaran';
+import ManajemenKalender from './pages/Admin/DataInduk/ManajemenKalender';
+import AbsensiSiswa from './pages/Admin/DataInduk/AbsensiSiswa';
+import ManajemenRole from './pages/Admin/ManajemenRole';
+import LogAktivitas from './pages/Admin/LogAktivitas';
+import PergantianTahun from './pages/Admin/Settings/WizardTahunAjaran';
 
 // Guru Pages
 import GuruLayout from './pages/Guru/components/GuruLayout';
@@ -31,6 +39,8 @@ import Sertifikat from './pages/Guru/Sertifikat';
 import SPPD from './pages/Guru/SPPD';
 import Modul from './pages/Guru/Modul';
 import Download from './pages/Guru/Download';
+import JurnalKelas from './pages/Guru/JurnalKelas';
+import AbsenKelas from './pages/Guru/AbsenKelas';
 
 function App() {
     return (
@@ -44,23 +54,27 @@ function App() {
                     path="/guru/*"
                     element={
                         <ProtectedRoute requiredRoles={['guru']}>
-                            <GuruLayout>
-                                <Routes>
-                                    <Route index element={<GuruBeranda />} />
-                                    <Route path="pencarian" element={<GuruPencarian />} />
-                                    <Route path="riwayat" element={<GuruRiwayat />} />
+                            <TahunAjaranProvider>
+                                <GuruLayout>
+                                    <Routes>
+                                        <Route index element={<GuruBeranda />} />
+                                        <Route path="pencarian" element={<GuruPencarian />} />
+                                        <Route path="riwayat" element={<GuruRiwayat />} />
 
-                                    <Route path="profil" element={<GuruProfil />} />
-                                    <Route path="pengaturan" element={<GuruPengaturan />} />
-                                    <Route path="absensi/mengajar" element={<AbsensiMengajar />} />
-                                    <Route path="absensi/kegiatan" element={<AbsensiKegiatan />} />
-                                    <Route path="absensi/rapat" element={<AbsensiRapat />} />
-                                    <Route path="sertifikat" element={<Sertifikat />} />
-                                    <Route path="sppd" element={<SPPD />} />
-                                    <Route path="modul" element={<Modul />} />
-                                    <Route path="download" element={<Download />} />
-                                </Routes>
-                            </GuruLayout>
+                                        <Route path="profil" element={<GuruProfil />} />
+                                        <Route path="pengaturan" element={<GuruPengaturan />} />
+                                        <Route path="absensi/mengajar" element={<AbsensiMengajar />} />
+                                        <Route path="absensi/kegiatan" element={<AbsensiKegiatan />} />
+                                        <Route path="absensi/rapat" element={<AbsensiRapat />} />
+                                        <Route path="sertifikat" element={<Sertifikat />} />
+                                        <Route path="sppd" element={<SPPD />} />
+                                        <Route path="modul" element={<Modul />} />
+                                        <Route path="download" element={<Download />} />
+                                        <Route path="jurnal-kelas" element={<JurnalKelas />} />
+                                        <Route path="absen-kelas" element={<AbsenKelas />} />
+                                    </Routes>
+                                </GuruLayout>
+                            </TahunAjaranProvider>
                         </ProtectedRoute>
                     }
                 />
@@ -70,22 +84,32 @@ function App() {
                     path="/*"
                     element={
                         <ProtectedRoute requiredRoles={['superadmin']}>
-                            <AdminLayout>
-                                <Routes>
-                                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                                    <Route path="/dashboard" element={<Dashboard />} />
-                                    <Route path="/profil" element={<Profil />} />
-                                    <Route path="/pengaturan" element={<Pengaturan />} />
-                                    <Route path="/data-induk/siswa" element={<ManajemenSiswa />} />
-                                    <Route path="/data-induk/guru" element={<ManajemenGuru />} />
-                                    <Route path="/data-induk/kelas" element={<ManajemenKelas />} />
-                                    <Route path="/data-induk/mapel" element={<ManajemenMapel />} />
-                                    <Route path="/data-induk/jadwal" element={<ManajemenJadwal />} />
-                                    <Route path="/data-induk/kegiatan" element={<ManajemenKegiatan />} />
-                                    <Route path="/data-induk/ekskul" element={<ManajemenEkskul />} />
-                                    <Route path="/data-induk/rapat" element={<ManajemenRapat />} />
-                                </Routes>
-                            </AdminLayout>
+                            <TahunAjaranProvider>
+                                <AdminLayout>
+                                    <Routes>
+                                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                        <Route path="/dashboard" element={<Dashboard />} />
+                                        <Route path="/profil" element={<Profil />} />
+                                        <Route path="/pengaturan" element={<Pengaturan />} />
+                                        <Route path="/pergantian-tahun" element={<PergantianTahun />} />
+                                        <Route path="/manajemen-role" element={<ManajemenRole />} />
+                                        <Route path="/log-aktivitas" element={<LogAktivitas />} />
+                                        <Route path="/data-induk" element={<Navigate to="/data-induk/siswa" replace />} />
+                                        <Route path="/data-induk/siswa" element={<ManajemenSiswa />} />
+                                        <Route path="/data-induk/absensi-siswa" element={<AbsensiSiswa />} />
+                                        <Route path="/data-induk/alumni" element={<ManajemenAlumni />} />
+                                        <Route path="/data-induk/guru" element={<ManajemenGuru />} />
+                                        <Route path="/data-induk/kelas" element={<ManajemenKelas />} />
+                                        <Route path="/data-induk/mapel" element={<ManajemenMapel />} />
+                                        <Route path="/data-induk/jadwal" element={<ManajemenJadwal />} />
+                                        <Route path="/data-induk/kegiatan" element={<ManajemenKegiatan />} />
+                                        <Route path="/data-induk/ekskul" element={<ManajemenEkskul />} />
+                                        <Route path="/data-induk/rapat" element={<ManajemenRapat />} />
+                                        <Route path="/data-induk/jam-pelajaran" element={<ManajemenJamPelajaran />} />
+                                        <Route path="/data-induk/kalender" element={<ManajemenKalender />} />
+                                    </Routes>
+                                </AdminLayout>
+                            </TahunAjaranProvider>
                         </ProtectedRoute>
                     }
                 />

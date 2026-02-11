@@ -19,17 +19,20 @@ class Rapat extends Model
         'pimpinan_id',
         'sekretaris_id',
         'peserta_rapat',
+        'peserta_eksternal',
         'notulis_id',
         'tanggal',
         'waktu_mulai',
         'waktu_selesai',
         'tempat',
         'status',
+        'tahun_ajaran_id',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'peserta_rapat' => 'array',
+        'peserta_eksternal' => 'array',
     ];
 
     /**
@@ -79,5 +82,12 @@ class Rapat extends Model
     {
         return $this->hasMany(AbsensiRapat::class, 'rapat_id');
     }
-}
 
+    /**
+     * Get the tahun ajaran for this rapat.
+     */
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+}

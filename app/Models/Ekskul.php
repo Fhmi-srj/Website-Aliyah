@@ -21,7 +21,13 @@ class Ekskul extends Model
         'tempat',
         'deskripsi',
         'status',
+        'tahun_ajaran_id',
     ];
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
 
     /**
      * Get the pembina (guru) for this ekskul.

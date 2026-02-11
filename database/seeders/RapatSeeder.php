@@ -22,14 +22,14 @@ class RapatSeeder extends Seeder
 
         // Get guru IDs
         $guruList = DB::table('guru')->where('status', 'Aktif')->get();
-        
+
         if ($guruList->isEmpty()) {
             $this->command->warn('No active teachers found. Please run GuruSeeder first.');
             return;
         }
 
         // Helper to get guru by name
-        $getGuruByName = function($name) use ($guruList) {
+        $getGuruByName = function ($name) use ($guruList) {
             return $guruList->first(fn($g) => str_contains(strtolower($g->nama), strtolower($name)));
         };
 
@@ -42,7 +42,7 @@ class RapatSeeder extends Seeder
 
         // All guru IDs for peserta
         $allGuruIds = $guruList->pluck('id')->toArray();
-        
+
         // Base dates
         $today = Carbon::now();
 
@@ -169,8 +169,16 @@ class RapatSeeder extends Seeder
             ],
         ];
 
+        // Get active tahun ajaran
+        $activeTahunAjaran = DB::table('tahun_ajaran')
+            ->where('nama', '2025/2026')
+            ->first();
+
+        $tahunAjaranId = $activeTahunAjaran?->id;
+
         foreach ($data as $item) {
             DB::table('rapat')->insert(array_merge($item, [
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

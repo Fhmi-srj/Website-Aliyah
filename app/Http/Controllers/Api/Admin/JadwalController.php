@@ -4,20 +4,46 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Jadwal;
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class JadwalController extends Controller
 {
     /**
+     * Get the active tahun ajaran ID for the current user.
+     */
+    private function getActiveTahunAjaranId(Request $request): ?int
+    {
+        // First check user preference
+        $user = $request->user();
+        if ($user && $user->tahun_ajaran_id) {
+            return $user->tahun_ajaran_id;
+        }
+
+        // Fallback to current period
+        $current = TahunAjaran::getCurrent();
+        return $current ? $current->id : null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $jadwal = Jadwal::with(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas'])
-            ->orderBy('hari')
+        $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $this->getActiveTahunAjaranId($request);
+
+        $query = Jadwal::with(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas', 'tahunAjaran:id,nama', 'jamPelajaran:id,jam_ke,jam_mulai,jam_selesai', 'jamPelajaranSampai:id,jam_ke,jam_mulai,jam_selesai']);
+
+        // Filter by tahun ajaran if provided
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        $jadwal = $query->orderBy('hari')
             ->orderBy('jam_ke')
             ->get();
+
         return response()->json([
             'success' => true,
             'data' => $jadwal
@@ -30,20 +56,41 @@ class JadwalController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'jam_ke' => 'required|string|max:10',
+            'jam_ke' => 'nullable|string|max:10',
             'jam_mulai' => 'nullable|date_format:H:i',
             'jam_selesai' => 'nullable|date_format:H:i',
-            'guru_id' => 'required|exists:guru,id',
+            'jam_pelajaran_id' => 'nullable|exists:jam_pelajaran,id',
+            'jam_pelajaran_sampai_id' => 'nullable|exists:jam_pelajaran,id',
+            'guru_id' => 'nullable|exists:guru,id',
             'mapel_id' => 'required|exists:mapel,id',
             'kelas_id' => 'required|exists:kelas,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
-            'semester' => 'required|in:Ganjil,Genap',
-            'tahun_ajaran' => 'required|string|max:20',
-            'status' => 'required|in:Aktif,Tidak Aktif',
+            'semester' => 'nullable|in:Ganjil,Genap',
+            'tahun_ajaran' => 'nullable|string|max:20', // Keep for backward compatibility
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
+            'status' => 'nullable|in:Aktif,Tidak Aktif',
         ]);
 
+        // Set defaults
+        $validated['jam_ke'] = $validated['jam_ke'] ?? '1';
+        $validated['semester'] = $validated['semester'] ?? 'Ganjil';
+        $validated['status'] = $validated['status'] ?? 'Aktif';
+
+        // If tahun_ajaran_id not provided, use active one
+        if (empty($validated['tahun_ajaran_id'])) {
+            $validated['tahun_ajaran_id'] = $this->getActiveTahunAjaranId($request);
+
+            // Also set tahun_ajaran text for backward compatibility
+            if ($validated['tahun_ajaran_id']) {
+                $ta = TahunAjaran::find($validated['tahun_ajaran_id']);
+                if ($ta) {
+                    $validated['tahun_ajaran'] = $ta->nama;
+                }
+            }
+        }
+
         $jadwal = Jadwal::create($validated);
-        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas']);
+        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas', 'tahunAjaran:id,nama', 'jamPelajaran:id,jam_ke,jam_mulai,jam_selesai', 'jamPelajaranSampai:id,jam_ke,jam_mulai,jam_selesai']);
 
         return response()->json([
             'success' => true,
@@ -57,7 +104,7 @@ class JadwalController extends Controller
      */
     public function show(Jadwal $jadwal): JsonResponse
     {
-        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas']);
+        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas', 'tahunAjaran:id,nama', 'jamPelajaran:id,jam_ke,jam_mulai,jam_selesai', 'jamPelajaranSampai:id,jam_ke,jam_mulai,jam_selesai']);
         return response()->json([
             'success' => true,
             'data' => $jadwal
@@ -70,20 +117,31 @@ class JadwalController extends Controller
     public function update(Request $request, Jadwal $jadwal): JsonResponse
     {
         $validated = $request->validate([
-            'jam_ke' => 'required|string|max:10',
+            'jam_ke' => 'nullable|string|max:10',
             'jam_mulai' => 'nullable|date_format:H:i',
             'jam_selesai' => 'nullable|date_format:H:i',
-            'guru_id' => 'required|exists:guru,id',
+            'jam_pelajaran_id' => 'nullable|exists:jam_pelajaran,id',
+            'jam_pelajaran_sampai_id' => 'nullable|exists:jam_pelajaran,id',
+            'guru_id' => 'nullable|exists:guru,id',
             'mapel_id' => 'required|exists:mapel,id',
             'kelas_id' => 'required|exists:kelas,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
-            'semester' => 'required|in:Ganjil,Genap',
-            'tahun_ajaran' => 'required|string|max:20',
-            'status' => 'required|in:Aktif,Tidak Aktif',
+            'semester' => 'nullable|in:Ganjil,Genap',
+            'tahun_ajaran' => 'nullable|string|max:20',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
+            'status' => 'nullable|in:Aktif,Tidak Aktif',
         ]);
 
+        // Sync tahun_ajaran text if tahun_ajaran_id is provided
+        if (!empty($validated['tahun_ajaran_id'])) {
+            $ta = TahunAjaran::find($validated['tahun_ajaran_id']);
+            if ($ta) {
+                $validated['tahun_ajaran'] = $ta->nama;
+            }
+        }
+
         $jadwal->update($validated);
-        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas']);
+        $jadwal->load(['guru:id,nama', 'mapel:id,nama_mapel', 'kelas:id,nama_kelas', 'tahunAjaran:id,nama', 'jamPelajaran:id,jam_ke,jam_mulai,jam_selesai', 'jamPelajaranSampai:id,jam_ke,jam_mulai,jam_selesai']);
 
         return response()->json([
             'success' => true,

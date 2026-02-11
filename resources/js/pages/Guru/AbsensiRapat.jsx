@@ -54,10 +54,22 @@ function AbsensiRapat() {
     };
 
     // Helper function untuk menentukan status
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'sudah_absen':
-                return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700' };
+    const getStatusColor = (statusAbsensi, guruStatus) => {
+        // If sudah_absen, show based on actual attendance status
+        if (statusAbsensi === 'sudah_absen') {
+            switch (guruStatus) {
+                case 'H':
+                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Hadir', labelBg: 'bg-green-100 text-green-700' };
+                case 'I':
+                    return { border: 'border-l-yellow-500', bg: 'bg-yellow-100', icon: 'text-yellow-500', label: 'Izin', labelBg: 'bg-yellow-100 text-yellow-700' };
+                case 'A':
+                    return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Alpha', labelBg: 'bg-red-100 text-red-700' };
+                default:
+                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700' };
+            }
+        }
+
+        switch (statusAbsensi) {
             case 'sedang_berlangsung':
                 return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Belum Absen', labelBg: 'bg-red-100 text-red-700' };
             case 'terlewat':
@@ -206,7 +218,7 @@ function AbsensiRapat() {
                     </div>
                 ) : (
                     allRapat.map((rapat, index) => {
-                        const colors = getStatusColor(rapat.status_absensi);
+                        const colors = getStatusColor(rapat.status_absensi, rapat.guru_status);
                         const roleBadge = getRoleBadge(rapat.role);
                         const canInteract = rapat.isToday && rapat.status_absensi !== 'sudah_absen';
 
@@ -270,8 +282,10 @@ function AbsensiRapat() {
             )}
 
             {modalType === 'sedang_berlangsung' && selectedRapat && selectedRapat.is_pimpinan && (
-                <ModalAbsensiRapatPimpinan
+                <ModalAbsensiRapatPeserta
                     rapat={selectedRapat}
+                    tanggal={getFormattedDate()}
+                    role="pimpinan"
                     onClose={handleCloseModal}
                     onSuccess={handleAbsensiSuccess}
                 />

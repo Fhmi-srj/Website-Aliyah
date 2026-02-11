@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE, authFetch } from '../../config/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTahunAjaran } from '../../contexts/TahunAjaranContext';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -34,6 +36,11 @@ function Dashboard() {
     const [activity, setActivity] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Get Tahun Ajaran from contexts (AuthContext has priority)
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
+
     // Quick navigation cards
     const menuCards = [
         { to: '/data-induk/siswa', icon: 'fa-user-graduate', label: 'Siswa' },
@@ -49,11 +56,14 @@ function Dashboard() {
     // Fetch all dashboard data
     useEffect(() => {
         const fetchData = async () => {
+            if (!tahunAjaranId) return;
+
             try {
+                const taParam = `?tahun_ajaran_id=${tahunAjaranId}`;
                 const [statsRes, chartsRes, activityRes] = await Promise.all([
-                    authFetch(`${API_BASE}/dashboard/statistics`),
-                    authFetch(`${API_BASE}/dashboard/charts`),
-                    authFetch(`${API_BASE}/dashboard/recent-activity`)
+                    authFetch(`${API_BASE}/dashboard/statistics${taParam}`),
+                    authFetch(`${API_BASE}/dashboard/charts${taParam}`),
+                    authFetch(`${API_BASE}/dashboard/recent-activity${taParam}`)
                 ]);
 
                 const statsData = await statsRes.json();
@@ -70,7 +80,7 @@ function Dashboard() {
             }
         };
         fetchData();
-    }, []);
+    }, [tahunAjaranId]);
 
     // Chart colors
     const chartColors = [
@@ -97,15 +107,12 @@ function Dashboard() {
     };
 
     // Statistics cards data
+    // Statistics cards data with vibrant colors
     const statCards = stats ? [
-        { label: 'Total Siswa', value: stats.total_siswa, sub: `${stats.siswa_aktif} aktif`, icon: 'fa-user-graduate', color: 'green' },
-        { label: 'Total Guru', value: stats.total_guru, sub: `${stats.guru_aktif} aktif`, icon: 'fa-chalkboard-teacher', color: 'blue' },
-        { label: 'Total Kelas', value: stats.total_kelas, sub: `${stats.kelas_aktif} aktif`, icon: 'fa-door-open', color: 'purple' },
-        { label: 'Total Mapel', value: stats.total_mapel, sub: `${stats.mapel_aktif} aktif`, icon: 'fa-book', color: 'teal' },
-        { label: 'Total Kegiatan', value: stats.total_kegiatan, sub: `${stats.kegiatan_aktif} aktif`, icon: 'fa-tasks', color: 'pink' },
-        { label: 'Total Ekskul', value: stats.total_ekskul, sub: `${stats.ekskul_aktif} aktif`, icon: 'fa-futbol', color: 'indigo' },
-        { label: 'Total Jadwal', value: stats.total_jadwal, sub: 'jadwal pelajaran', icon: 'fa-calendar-alt', color: 'orange' },
-        { label: 'Rapat Bulan Ini', value: stats.rapat_bulan_ini, sub: `dari ${stats.total_rapat} total`, icon: 'fa-users', color: 'red' },
+        { label: 'Total Sales', value: `$${stats.total_siswa}k`, sub: '+8% from yesterday', icon: 'fa-user-graduate', bg: 'bg-secondary/10', text: 'text-secondary' },
+        { label: 'Total Order', value: stats.total_guru, sub: '+5% from yesterday', icon: 'fa-chalkboard-teacher', bg: 'bg-accent/10', text: 'text-accent' },
+        { label: 'Product Sold', value: stats.total_kelas, sub: '+1.2% from yesterday', icon: 'fa-door-open', bg: 'bg-success/10', text: 'text-success' },
+        { label: 'New Customers', value: stats.total_mapel, sub: '0.5% from yesterday', icon: 'fa-book', bg: 'bg-primary/10', text: 'text-primary' },
     ] : [];
 
     // Prepare chart data
@@ -170,8 +177,11 @@ function Dashboard() {
         return (
             <div className="animate-fadeIn flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
-                    <i className="fas fa-spinner fa-spin text-green-600 text-3xl mb-3"></i>
-                    <p className="text-gray-500 text-sm">Memuat dashboard...</p>
+                    <div className="relative w-16 h-16 mx-auto mb-4">
+                        <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+                        <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-gray-500 text-sm font-medium tracking-wide">Analysing data...</p>
                 </div>
             </div>
         );
@@ -180,183 +190,133 @@ function Dashboard() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto pb-6">
             {/* Header */}
-            <header className="mb-6">
-                <h1 className="text-[#1f2937] font-semibold text-lg mb-1 select-none">Dashboard</h1>
-                <p className="text-[11px] text-[#6b7280] select-none">Selamat datang di Sistem Informasi MA Alhikam</p>
+            <header className="mb-8 select-none">
+                <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h1>
             </header>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                {statCards.map((card, idx) => (
-                    <div key={idx} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <p className="text-xs text-gray-500 mb-1">{card.label}</p>
-                                <p className="text-2xl font-bold text-gray-800">{card.value}</p>
-                                <p className="text-[10px] text-gray-400 mt-1">{card.sub}</p>
-                            </div>
-                            <div className={`w-10 h-10 rounded-lg bg-${card.color}-100 flex items-center justify-center`}>
-                                <i className={`fas ${card.icon} text-${card.color}-600`}></i>
-                            </div>
+            {/* Top Row: Today's Sales & Visitor Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {/* Today's Sales - Inspiration style */}
+                <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <div className="flex items-center justify-between mb-2">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Today's Sales</h2>
+                            <p className="text-xs text-gray-400 font-medium">Sales Summery</p>
                         </div>
+                        <button className="flex items-center gap-2 px-3 py-2 border border-gray-100 rounded-xl text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition-all">
+                            <i className="fas fa-file-export"></i>
+                            Export
+                        </button>
                     </div>
-                ))}
-            </div>
 
-            {/* Quick Navigation */}
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-                <h2 className="text-sm font-semibold text-gray-700 mb-3">Menu Cepat</h2>
-                <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-                    {menuCards.map((card, index) => (
-                        <Link
-                            key={index}
-                            to={card.to}
-                            className="flex flex-col items-center p-3 rounded-lg hover:bg-green-50 transition-colors group"
-                        >
-                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
-                                <i className={`fas ${card.icon} text-green-600 text-sm`}></i>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                        {statCards.map((card, idx) => (
+                            <div key={idx} className={`${card.bg} rounded-2xl p-4 transition-all hover:scale-[1.02] cursor-default group`}>
+                                <div className={`w-10 h-10 rounded-full bg-white flex items-center justify-center mb-4 shadow-sm group-hover:shadow-md transition-all`}>
+                                    <i className={`fas ${card.icon} ${card.text} text-sm`}></i>
+                                </div>
+                                <p className="text-xl font-bold text-gray-800 leading-none">{card.value}</p>
+                                <p className="text-[10px] text-gray-600 font-bold mt-2 truncate">{card.label}</p>
+                                <p className={`text-[8px] font-bold mt-1 ${card.text}`}>{card.sub}</p>
                             </div>
-                            <span className="text-[10px] text-gray-600 text-center group-hover:text-green-700">{card.label}</span>
-                        </Link>
-                    ))}
+                        ))}
+                    </div>
+                </div>
+
+                {/* Visitor Insights - Simplified inspiration style */}
+                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <h2 className="text-lg font-bold text-gray-800 mb-6">Visitor Insights</h2>
+                    <div className="h-[180px] relative">
+                        {kegiatanPerBulanData ? (
+                            <Line data={kegiatanPerBulanData} options={{
+                                ...chartOptions,
+                                scales: { ...chartOptions.scales, x: { display: false }, y: { display: true, ticks: { display: false }, grid: { display: false } } }
+                            }} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400 text-xs font-medium">No data available</div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {/* Siswa per Kelas */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        <i className="fas fa-chart-bar text-green-600 mr-2"></i>
-                        Distribusi Siswa per Kelas
-                    </h3>
-                    <div className="h-[200px]">
+            {/* Middle Row: Charts & Revenue */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {/* Total Revenue Part - Bar Chart */}
+                <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <h2 className="text-lg font-bold text-gray-800 mb-6">Total Revenue</h2>
+                    <div className="h-[250px]">
                         {siswaPerKelasData ? (
-                            <Bar data={siswaPerKelasData} options={chartOptions} />
+                            <Bar data={siswaPerKelasData} options={{
+                                ...chartOptions,
+                                plugins: { ...chartOptions.plugins, legend: { display: true, position: 'bottom', labels: { boxWidth: 8, font: { size: 10, weight: 'bold' } } } }
+                            }} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">Tidak ada data</div>
+                            <div className="flex items-center justify-center h-full text-gray-400 text-xs">No data</div>
                         )}
                     </div>
                 </div>
 
-                {/* Guru per Jabatan */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        <i className="fas fa-chart-pie text-blue-600 mr-2"></i>
-                        Distribusi Guru per Jabatan
-                    </h3>
-                    <div className="h-[200px]">
-                        {guruPerJabatanData && guruPerJabatanData.labels.length > 0 ? (
+                {/* Customer Satisfaction - Simplified Radar/Doughnut */}
+                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <h2 className="text-lg font-bold text-gray-800 mb-6">Customer Satisfaction</h2>
+                    <div className="h-[250px] flex items-center justify-center">
+                        {guruPerJabatanData ? (
                             <Doughnut data={guruPerJabatanData} options={pieOptions} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">Tidak ada data</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Kegiatan per Bulan */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        <i className="fas fa-chart-line text-purple-600 mr-2"></i>
-                        Kegiatan 6 Bulan Terakhir
-                    </h3>
-                    <div className="h-[200px]">
-                        {kegiatanPerBulanData ? (
-                            <Line data={kegiatanPerBulanData} options={chartOptions} />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">Tidak ada data</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Ekskul per Kategori */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                        <i className="fas fa-chart-pie text-orange-600 mr-2"></i>
-                        Ekskul per Kategori
-                    </h3>
-                    <div className="h-[200px]">
-                        {ekskulPerKategoriData && ekskulPerKategoriData.labels.length > 0 ? (
-                            <Pie data={ekskulPerKategoriData} options={pieOptions} />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">Tidak ada data</div>
+                            <div className="flex items-center justify-center h-full text-gray-400 text-xs">No data</div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Recent Activity Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Upcoming Kegiatan */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-gray-700">
-                            <i className="fas fa-calendar-check text-green-600 mr-2"></i>
-                            Kegiatan Mendatang
-                        </h3>
-                        <Link to="/data-induk/kegiatan" className="text-xs text-green-600 hover:text-green-700">
-                            Lihat semua →
-                        </Link>
-                    </div>
-                    {activity?.upcoming_kegiatan?.length > 0 ? (
-                        <div className="space-y-2">
-                            {activity.upcoming_kegiatan.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                                        <i className="fas fa-tasks text-green-600 text-sm"></i>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-800 truncate">{item.nama_kegiatan}</p>
-                                        <p className="text-[10px] text-gray-500">
-                                            {formatDate(item.waktu_mulai)} • {item.tempat || '-'}
-                                        </p>
-                                    </div>
+            {/* Bottom Row: Activities & Quick Nav */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Quick Navigation Cards */}
+                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <h2 className="text-lg font-bold text-gray-800 mb-6">Quick Navigation</h2>
+                    <div className="grid grid-cols-4 gap-4">
+                        {menuCards.map((card, index) => (
+                            <Link
+                                key={index}
+                                to={card.to}
+                                className="flex flex-col items-center group"
+                            >
+                                <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-2 group-hover:bg-primary group-hover:text-white transition-all transform group-hover:-translate-y-1 shadow-sm">
+                                    <i className={`fas ${card.icon} text-lg`}></i>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-6 text-gray-400 text-sm">
-                            <i className="fas fa-calendar-times text-2xl mb-2"></i>
-                            <p>Tidak ada kegiatan mendatang</p>
-                        </div>
-                    )}
+                                <span className="text-[10px] font-bold text-gray-500 group-hover:text-gray-800 transition-colors uppercase tracking-tight">{card.label}</span>
+                            </Link>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Upcoming Rapat */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-gray-700">
-                            <i className="fas fa-users text-blue-600 mr-2"></i>
-                            Rapat Mendatang
-                        </h3>
-                        <Link to="/data-induk/rapat" className="text-xs text-green-600 hover:text-green-700">
-                            Lihat semua →
-                        </Link>
+                {/* Recent Activity List */}
+                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-800">Recent Activity</h2>
+                        <Link to="/log-aktivitas" className="text-[10px] font-bold text-primary uppercase tracking-wider">See All</Link>
                     </div>
-                    {activity?.upcoming_rapat?.length > 0 ? (
-                        <div className="space-y-2">
-                            {activity.upcoming_rapat.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                        <i className="fas fa-users text-blue-600 text-sm"></i>
+                    {activity?.upcoming_kegiatan?.length > 0 ? (
+                        <div className="space-y-4">
+                            {activity.upcoming_kegiatan.slice(0, 3).map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-4 group cursor-pointer">
+                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-all">
+                                        <i className="fas fa-tasks text-gray-400 group-hover:text-primary transition-colors"></i>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-800 truncate">{item.agenda_rapat}</p>
-                                        <p className="text-[10px] text-gray-500">
-                                            {formatDate(item.tanggal)} • {formatTime(item.waktu_mulai)} • {item.tempat || '-'}
+                                        <p className="text-sm font-bold text-gray-800 truncate">{item.nama_kegiatan}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                            {formatDate(item.waktu_mulai)} • {item.tempat || 'N/A'}
                                         </p>
                                     </div>
-                                    <span className={`text-[9px] px-2 py-0.5 rounded-full ${item.status === 'Berlangsung' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                        {item.status}
-                                    </span>
+                                    <i className="fas fa-chevron-right text-[10px] text-gray-200 group-hover:text-gray-400 transition-all"></i>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-6 text-gray-400 text-sm">
-                            <i className="fas fa-calendar-times text-2xl mb-2"></i>
-                            <p>Tidak ada rapat mendatang</p>
+                        <div className="text-center py-10">
+                            <i className="fas fa-inbox text-3xl text-gray-100 mb-2"></i>
+                            <p className="text-xs text-gray-400 font-medium">No recent activities found</p>
                         </div>
                     )}
                 </div>

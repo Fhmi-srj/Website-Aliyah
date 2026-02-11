@@ -22,7 +22,7 @@ class KegiatanSeeder extends Seeder
 
         // Get guru IDs for PJ and pendamping
         $guruList = DB::table('guru')->where('status', 'Aktif')->get();
-        
+
         if ($guruList->isEmpty()) {
             $this->command->warn('No active teachers found. Please run GuruSeeder first.');
             return;
@@ -34,7 +34,7 @@ class KegiatanSeeder extends Seeder
         $kelasX = DB::table('kelas')->where('tingkat', 'X')->pluck('id')->toArray();
 
         // Get specific guru (or use first available)
-        $getGuruByName = function($name) use ($guruList) {
+        $getGuruByName = function ($name) use ($guruList) {
             return $guruList->first(fn($g) => str_contains(strtolower($g->nama), strtolower($name)));
         };
 
@@ -173,9 +173,17 @@ class KegiatanSeeder extends Seeder
             ],
         ];
 
+        // Get active tahun ajaran
+        $activeTahunAjaran = DB::table('tahun_ajaran')
+            ->where('nama', '2025/2026')
+            ->first();
+
+        $tahunAjaranId = $activeTahunAjaran?->id;
+
         foreach ($data as $item) {
             DB::table('kegiatan')->insert(array_merge($item, [
                 'status_kbm' => 'Aktif',
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

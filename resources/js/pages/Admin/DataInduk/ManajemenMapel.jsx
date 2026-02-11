@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_DEFAULT = 10;
 
 function ManajemenMapel() {
     const [data, setData] = useState([]);
@@ -17,9 +17,7 @@ function ManajemenMapel() {
     const [isModalClosing, setIsModalClosing] = useState(false);
     const [formData, setFormData] = useState({
         nama_mapel: '',
-        inisial: '',
         kode_mapel: '',
-        kkm: 75,
         status: 'Aktif'
     });
 
@@ -37,6 +35,7 @@ function ManajemenMapel() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_DEFAULT);
 
     // File input ref for import
     const fileInputRef = useRef(null);
@@ -107,7 +106,19 @@ function ManajemenMapel() {
         }
     };
 
-    // Filter and sort data
+    const renderStatus = (status) => {
+        const isAktif = status === 'Aktif';
+        return (
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${isAktif
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
+                }`}>
+                {isAktif && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                {status}
+            </span>
+        );
+    };
+
     const filteredData = (() => {
         let result = data.filter(item => {
             if (filterStatus && item.status !== filterStatus) return false;
@@ -115,18 +126,21 @@ function ManajemenMapel() {
             const s = search.toLowerCase();
             return (
                 item.nama_mapel?.toLowerCase().includes(s) ||
-                item.inisial?.toLowerCase().includes(s) ||
                 item.kode_mapel?.toLowerCase().includes(s)
             );
         });
-        return sortData(result, sortColumn, sortDirection);
+
+        if (sortColumn) {
+            result = sortData(result, sortColumn, sortDirection);
+        }
+        return result;
     })();
 
     // Pagination
-    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     );
 
     // Reset page when filters change
@@ -134,71 +148,15 @@ function ManajemenMapel() {
         setCurrentPage(1);
     }, [search, filterStatus]);
 
-    // Render status badge
-    const renderStatus = (status) => {
-        const isAktif = status?.toLowerCase() === 'aktif';
-        return (
-            <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${isAktif ? 'status-aktif' : 'status-tidak-aktif'}`}>
-                <span className="status-bullet"></span>{status}
-            </span>
-        );
-    };
-
-    // SortableHeader component
-    const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th
-            className="select-none py-2 px-3 cursor-pointer whitespace-nowrap"
-            onClick={() => !filterable && handleSort(column)}
-        >
-            <div className="flex items-center gap-1">
-                <span
-                    onClick={(e) => { e.stopPropagation(); handleSort(column); }}
-                    className="cursor-pointer"
-                >
-                    {label}
-                </span>
-                {sortColumn === column ? (
-                    <i className={`fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'} text-green-700`}></i>
-                ) : (
-                    <i className="fas fa-sort text-green-700 opacity-50"></i>
-                )}
-                {filterable && (
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={() => setActiveFilter(activeFilter === column ? null : column)}
-                            className={`ml-1 ${filterValue ? 'text-green-700' : 'text-gray-400'}`}
-                        >
-                            <i className="fas fa-filter text-[10px]"></i>
-                        </button>
-                        {activeFilter === column && (
-                            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-[120px]">
-                                {filterOptions.map(opt => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => { setFilterValue(opt.value); setActiveFilter(null); }}
-                                        className={`block w-full text-left px-3 py-1 text-[11px] hover:bg-green-50 ${filterValue === opt.value ? 'bg-green-100 text-green-700' : ''}`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </th>
-    );
-
     // Modal functions
     const openAddModal = () => {
         setModalMode('add');
         setFormData({
             nama_mapel: '',
-            inisial: '',
             kode_mapel: '',
-            kkm: 75,
             status: 'Aktif'
         });
+        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -207,11 +165,10 @@ function ManajemenMapel() {
         setCurrentItem(item);
         setFormData({
             nama_mapel: item.nama_mapel || '',
-            inisial: item.inisial || '',
             kode_mapel: item.kode_mapel || '',
-            kkm: item.kkm || 75,
             status: item.status || 'Aktif'
         });
+        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -245,25 +202,38 @@ function ManajemenMapel() {
                 });
             } else {
                 const error = await response.json();
-                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message || 'Terjadi kesalahan', timer: 2000, showConfirmButton: false });
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: error.message || 'Terjadi kesalahan',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
             }
         } catch (error) {
             console.error('Error saving:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan data', timer: 2000, showConfirmButton: false });
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Gagal menyimpan data',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
     };
 
     const handleDelete = async (id) => {
         const result = await Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: 'Yakin ingin menghapus data ini?',
+            title: 'Yakin ingin menghapus?',
+            text: 'Data yang dihapus tidak dapat dikembalikan!',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
             confirmButtonText: 'Ya, Hapus!',
             cancelButtonText: 'Batal'
         });
+
         if (!result.isConfirmed) return;
 
         try {
@@ -273,58 +243,69 @@ function ManajemenMapel() {
             });
             if (response.ok) {
                 fetchData();
-                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data berhasil dihapus', timer: 1500, showConfirmButton: false });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Terhapus!',
+                    text: 'Data mapel berhasil dihapus',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             }
         } catch (error) {
             console.error('Error deleting:', error);
-            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data', timer: 2000, showConfirmButton: false });
         }
     };
 
     // Import Excel
-    const handleImportExcel = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const jsonData = XLSX.utils.sheet_to_json(ws);
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-                let successCount = 0;
-                for (const row of jsonData) {
-                    const mapelData = {
-                        nama_mapel: row['Nama Mapel'] || row['nama_mapel'] || '',
-                        inisial: row['Inisial'] || row['inisial'] || '',
-                        kode_mapel: row['Kode Mapel'] || row['kode_mapel'] || '',
-                        kkm: parseInt(row['KKM'] || row['kkm']) || 75,
-                        status: row['Status'] || row['status'] || 'Aktif'
-                    };
-                    if (mapelData.nama_mapel && mapelData.inisial) {
-                        try {
-                            await authFetch(`${API_BASE}/mapel`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                                body: JSON.stringify(mapelData)
-                            });
-                            successCount++;
-                        } catch (err) {
-                            console.error('Error importing row:', err);
-                        }
+            let successCount = 0;
+            for (const row of jsonData) {
+                const mapelData = {
+                    nama_mapel: row['Nama Mapel'] || row['nama_mapel'] || '',
+                    kode_mapel: row['Kode Mapel'] || row['kode_mapel'] || '',
+                    status: row['Status'] || row['status'] || 'Aktif'
+                };
+                if (mapelData.nama_mapel) {
+                    try {
+                        const response = await authFetch(`${API_BASE}/mapel`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify(mapelData)
+                        });
+                        if (response.ok) successCount++;
+                    } catch (err) {
+                        console.error('Error importing row:', err);
                     }
                 }
-                fetchData();
-                Swal.fire({ icon: 'success', title: 'Import Berhasil', text: `${successCount} data berhasil diimport`, timer: 2000, showConfirmButton: false });
-            } catch (error) {
-                console.error('Error reading Excel:', error);
-                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal membaca file Excel', timer: 2000, showConfirmButton: false });
             }
-        };
-        reader.readAsBinaryString(file);
+            fetchData();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: `Berhasil mengimport ${successCount} dari ${jsonData.length} data mapel`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error('Error importing Excel:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Gagal membaca file Excel',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
         e.target.value = '';
     };
 
@@ -333,9 +314,7 @@ function ManajemenMapel() {
         const exportData = filteredData.map((item, idx) => ({
             'No': idx + 1,
             'Nama Mapel': item.nama_mapel,
-            'Inisial': item.inisial,
             'Kode Mapel': item.kode_mapel || '',
-            'KKM': item.kkm,
             'Status': item.status
         }));
         const ws = XLSX.utils.json_to_sheet(exportData);
@@ -344,72 +323,134 @@ function ManajemenMapel() {
         XLSX.writeFile(wb, `Data_Mapel_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
+    // Sortable header component
+    const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
+        <th
+            className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group"
+            onClick={() => !filterable && handleSort(column)}
+        >
+            <div className="flex items-center gap-1.5">
+                <span
+                    onClick={(e) => { e.stopPropagation(); handleSort(column); }}
+                    className="hover:text-primary transition-colors"
+                >
+                    {label}
+                </span>
+                <div className="flex flex-col text-[8px] leading-[4px] text-gray-300 dark:text-gray-600">
+                    <i className={`fas fa-caret-up ${sortColumn === column && sortDirection === 'asc' ? 'text-primary' : ''}`}></i>
+                    <i className={`fas fa-caret-down ${sortColumn === column && sortDirection === 'desc' ? 'text-primary' : ''}`}></i>
+                </div>
+                {filterable && (
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setActiveFilter(activeFilter === column ? null : column)}
+                            className={`ml-1 transition-colors ${filterValue ? 'text-primary' : 'text-gray-400 hover:text-primary dark:hover:text-gray-200'}`}
+                        >
+                            <i className="fas fa-filter text-[10px]"></i>
+                        </button>
+                        {activeFilter === column && (
+                            <div className="absolute top-full left-0 mt-2 bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl z-20 min-w-[150px] overflow-hidden animate-fadeIn">
+                                {filterOptions.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => { setFilterValue(opt.value); setActiveFilter(null); }}
+                                        className={`block w-full text-left px-4 py-2.5 text-[11px] transition-colors hover:bg-primary/5 dark:hover:bg-primary/10 ${filterValue === opt.value ? 'bg-primary/10 text-primary font-bold dark:bg-primary/20' : 'dark:text-dark-text'}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </th>
+    );
+
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
-            <header className="mb-4">
-                <h1 className="text-[#1f2937] font-semibold text-lg mb-1 select-none">Manajemen Mata Pelajaran</h1>
-                <p className="text-[11px] text-[#6b7280] select-none">Kelola data mata pelajaran sekolah</p>
+            {/* Header */}
+            <header className="mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <i className="fas fa-book text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
+                                Mata Pelajaran
+                            </h1>
+                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
+                                Kelola kurikulum dan daftar mata pelajaran
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </header>
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
-                <div className="flex items-center w-full md:w-1/3 border border-[#d1d5db] rounded-md px-3 py-1 text-[12px] focus-within:ring-1 focus-within:ring-green-400">
+            {/* Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
+                <div className="flex items-center w-full md:w-[400px] relative group">
+                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
                     <input
-                        className="w-full border-none focus:ring-0 focus:outline-none bg-transparent"
-                        placeholder="Cari mapel..."
+                        aria-label="Cari mapel"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
+                        placeholder="Cari nama mapel atau kode..."
                         type="search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap w-full md:w-auto justify-between md:justify-start">
+                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
                     <input
                         type="file"
                         ref={fileInputRef}
-                        onChange={handleImportExcel}
+                        onChange={handleFileChange}
                         accept=".xlsx,.xls"
                         className="hidden"
                     />
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-file-import"></i> Import Excel
+                        <i className="fas fa-file-import"></i>
+                        <span>Import</span>
                     </button>
                     <button
                         onClick={handleExportExcel}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-file-export"></i> Export Excel
+                        <i className="fas fa-file-export"></i>
+                        <span>Export</span>
                     </button>
                     <button
                         onClick={openAddModal}
-                        className="bg-green-700 text-white text-[12px] font-semibold px-2 py-1 rounded-md hover:bg-green-800 transition select-none flex items-center gap-2 flex-1 md:flex-none cursor-pointer"
+                        className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest"
                         type="button"
                     >
-                        <i className="fas fa-plus"></i> Tambah Mapel
+                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                        <span>Tambah Mapel</span>
                     </button>
                 </div>
             </div>
 
-            {/* Loading State */}
+            {/* Table Section */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-700"></div>
-                    <span className="ml-3 text-gray-600">Memuat data...</span>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400">Memuat data...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full">
-                    <table className={`w-full text-[12px] text-[#4a4a4a] border-separate border-spacing-y-[2px] ${isMobile ? '' : 'min-w-[700px]'}`}>
+                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
+                    <table className={`admin-table ${isMobile ? '' : 'min-w-[700px]'}`}>
                         <thead>
-                            <tr className="text-left text-[#6b7280] select-none">
-                                <th className="select-none pl-3 py-2 px-3 whitespace-nowrap">No</th>
-                                {isMobile && <th className="select-none py-2 px-2 text-center whitespace-nowrap"></th>}
-                                <SortableHeader label="Nama Mapel" column="nama_mapel" />
-                                <SortableHeader label="Inisial" column="inisial" />
+                            <tr>
+                                <th className="select-none pl-6 py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
+                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                <SortableHeader label="Nama Mata Pelajaran" column="nama_mapel" />
                                 {!isMobile && <SortableHeader label="Kode" column="kode_mapel" />}
-                                {!isMobile && <SortableHeader label="KKM" column="kkm" />}
                                 <SortableHeader
                                     label="Status"
                                     column="status"
@@ -422,42 +463,65 @@ function ManajemenMapel() {
                                     filterValue={filterStatus}
                                     setFilterValue={setFilterStatus}
                                 />
-                                <th className="select-none py-2 px-3 text-center whitespace-nowrap">Aksi</th>
+                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className="hover:bg-green-50 bg-gray-50 align-top">
-                                        <td className="pl-3 py-2 px-3 align-middle select-none whitespace-nowrap">{(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                                    <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
+                                        <td className="pl-6 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
+                                            {(currentPage - 1) * itemsPerPage + idx + 1}
+                                        </td>
                                         {isMobile && (
                                             <td
-                                                className="py-2 px-2 align-middle select-none text-center cursor-pointer"
+                                                className="py-4 align-middle text-center cursor-pointer px-2"
                                                 onClick={() => toggleRowExpand(idx)}
                                             >
-                                                <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-green-700`}></i>
+                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
+                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                                </div>
                                             </td>
                                         )}
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.nama_mapel}</td>
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.inisial}</td>
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.kode_mapel || '-'}</td>}
-                                        {!isMobile && <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{item.kkm}</td>}
-                                        <td className="py-2 px-3 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-2 px-3 align-middle text-center select-none whitespace-nowrap">
-                                            <button onClick={() => openEditModal(item)} className="text-green-700 hover:text-green-900 mr-2 cursor-pointer" title="Ubah">
-                                                <i className="fas fa-edit"></i>
-                                            </button>
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 cursor-pointer" title="Hapus">
-                                                <i className="fas fa-trash"></i>
-                                            </button>
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">
+                                                {item.nama_mapel}
+                                            </span>
+                                        </td>
+                                        {!isMobile && (
+                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                                <span className="px-2 py-1 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                                                    {item.kode_mapel || '-'}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            {renderStatus(item.status)}
+                                        </td>
+                                        <td className="py-4 px-6 align-middle text-center">
+                                            <div className="flex items-center justify-center gap-2 transition-opacity">
+                                                <button
+                                                    onClick={() => openEditModal(item)}
+                                                    className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95"
+                                                    title="Edit Data"
+                                                >
+                                                    <i className="fas fa-edit text-[10px]"></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95"
+                                                    title="Hapus Data"
+                                                >
+                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-green-50">
-                                            <td colSpan="6" className="px-4 py-3">
-                                                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                        <tr className="bg-gray-50/50 dark:bg-dark-bg/30">
+                                            <td colSpan="6" className="px-6 py-4">
+                                                <div className="grid grid-cols-2 gap-4 text-[11px] dark:text-dark-text">
                                                     <div><strong>Kode:</strong> {item.kode_mapel || '-'}</div>
-                                                    <div><strong>KKM:</strong> {item.kkm}</div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -466,103 +530,118 @@ function ManajemenMapel() {
                             ))}
                             {filteredData.length === 0 && (
                                 <tr>
-                                    <td colSpan={isMobile ? 6 : 7} className="text-center py-8 text-gray-500">
-                                        {search || filterStatus ? 'Tidak ada data yang sesuai filter/pencarian' : 'Belum ada data mata pelajaran'}
+                                    <td colSpan={isMobile ? 5 : 6} className="py-20 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="w-16 h-16 bg-gray-50 dark:bg-dark-bg/20 rounded-2xl flex items-center justify-center">
+                                                <i className="fas fa-folder-open text-2xl text-gray-300 dark:text-gray-600"></i>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-400 dark:text-gray-500">Data Mapel Kosong</p>
+                                                <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-medium">
+                                                    {search || filterStatus
+                                                        ? 'Tidak ada data yang sesuai filter/pencarian Anda'
+                                                        : 'Belum ada data mata pelajaran yang tersedia'}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        onPageChange={setCurrentPage}
-                        totalItems={filteredData.length}
-                        itemsPerPage={ITEMS_PER_PAGE}
-                    />
+
+                    {/* Footer / Pagination */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-6 border-t border-gray-100 dark:border-dark-border bg-gray-50/30 dark:bg-dark-bg/10">
+                        <div className="flex items-center gap-3 order-2 md:order-1">
+                            <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                Total {filteredData.length} Mata Pelajaran
+                            </span>
+                        </div>
+
+                        <div className="order-1 md:order-2">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                totalItems={filteredData.length}
+                                itemsPerPage={itemsPerPage}
+                                onLimitChange={(limit) => {
+                                    setItemsPerPage(limit);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Modal with Portal */}
             {showModal && ReactDOM.createPortal(
                 <div
-                    className={`fixed inset-0 flex items-center justify-center p-4 transition-opacity duration-200 ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 9999 }}
+                    className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
                     onClick={closeModal}
                 >
                     <div
-                        className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col transition-all duration-200 ${isModalClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}
-                        style={{ animation: isModalClosing ? 'popup-out 0.2s ease' : 'popup-in 0.3s ease' }}
+                        className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-lg w-full flex flex-col relative overflow-hidden transform transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <h2 className="text-lg font-semibold text-gray-800 select-none">
-                                {modalMode === 'add' ? 'Tambah Data Mapel' : 'Edit Data Mapel'}
-                            </h2>
+                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
                             <button
                                 onClick={closeModal}
-                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                                className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20"
+                                type="button"
+                                aria-label="Tutup Modal"
                             >
-                                <i className="fas fa-times text-xl"></i>
+                                <i className="fas fa-times text-lg"></i>
                             </button>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold">
+                                        {modalMode === 'add' ? 'Tambah Mapel Baru' : 'Perbarui Mata Pelajaran'}
+                                    </h2>
+                                    <p className="text-xs text-white/80 mt-0.5 italic">Lengkapi informasi detail kurikulum</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Modal Body - Scrollable */}
-                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Nama Mapel *</label>
+                        {/* Modal Body */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Informasi Mata Pelajaran</label>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Mata Pelajaran *</label>
                                         <input
                                             type="text"
                                             required
                                             value={formData.nama_mapel}
                                             onChange={(e) => setFormData({ ...formData, nama_mapel: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="Matematika"
+                                            className="input-standard"
+                                            placeholder="Contoh: Matematika"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Inisial *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.inisial}
-                                            onChange={(e) => setFormData({ ...formData, inisial: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="MTK"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Kode Mapel</label>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kode Mapel</label>
                                         <input
                                             type="text"
                                             value={formData.kode_mapel}
                                             onChange={(e) => setFormData({ ...formData, kode_mapel: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                            placeholder="MAT001"
+                                            className="input-standard"
+                                            placeholder="Contoh: MAT001"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">KKM *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            max="100"
-                                            value={formData.kkm}
-                                            onChange={(e) => setFormData({ ...formData, kkm: parseInt(e.target.value) || 0 })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 select-none">Status *</label>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Keaktifan *</label>
                                         <select
-                                            required
                                             value={formData.status}
                                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-green-400 focus:border-green-400"
+                                            className="input-standard outline-none appearance-none"
                                         >
                                             <option value="Aktif">Aktif</option>
                                             <option value="Tidak Aktif">Tidak Aktif</option>
@@ -571,20 +650,19 @@ function ManajemenMapel() {
                                 </div>
                             </div>
 
-                            {/* Modal Footer - Sticky */}
-                            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                            {/* Modal Footer */}
+                            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-dark-border">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-dark-surface transition-all text-xs font-black uppercase tracking-widest"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-md hover:bg-green-800 flex items-center gap-2 cursor-pointer"
+                                    className="btn-primary flex-1 px-4 py-2.5 rounded-xl shadow-lg shadow-primary/20 text-xs font-black uppercase tracking-widest"
                                 >
-                                    <i className="fas fa-save"></i>
                                     {modalMode === 'add' ? 'Simpan' : 'Perbarui'}
                                 </button>
                             </div>

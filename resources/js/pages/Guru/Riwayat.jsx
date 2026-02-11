@@ -1,21 +1,40 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../lib/axios';
 import { RiwayatSkeleton } from './components/Skeleton';
 import { AnimatedTabsSimple } from './components/AnimatedTabs';
 import { ModalRiwayatMengajar, ModalRiwayatKegiatanPJ, ModalRiwayatKegiatanPendamping, ModalRiwayatRapatPimpinan, ModalRiwayatRapatPeserta, ModalRiwayatRapatSekretaris, ModalTerlewat, ModalIzin } from './components/RiwayatModals';
+import AbsensiModals from './components/AbsensiModals';
+import KegiatanModals from './components/KegiatanModals';
+import RapatModals from './components/RapatModals';
 
 function Riwayat() {
-    // UI States
-    const [activeTab, setActiveTab] = useState('mengajar');
+    const [searchParams] = useSearchParams();
+
+    // UI States - read initial tab from query params
+    const initialTab = searchParams.get('tab') || 'mengajar';
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [loading, setLoading] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Unlock status from admin settings
+    const [isUnlocked, setIsUnlocked] = useState(false);
+
     // Filter states
     const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'H', 'I', 'A'
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+
+    // Mengajar-specific filter states
+    const [mengajarMonthFilter, setMengajarMonthFilter] = useState('all'); // 'all' or '01'-'12'
+    const [mengajarMapelFilter, setMengajarMapelFilter] = useState('all');
+    const [mengajarKelasFilter, setMengajarKelasFilter] = useState('all');
+
+    // Pagination states for mengajar
+    const [mengajarPage, setMengajarPage] = useState(1);
+    const [mengajarPerPage, setMengajarPerPage] = useState(10);
 
     // Data states
     const [mengajarData, setMengajarData] = useState([]);
@@ -24,14 +43,43 @@ function Riwayat() {
 
     // Modal states
     const [selectedItem, setSelectedItem] = useState(null);
-    const [modalType, setModalType] = useState(null); // 'hadir', 'terlewat', 'izin'
+    const [modalType, setModalType] = useState(null); // 'hadir', 'terlewat', 'izin', 'unlocked'
     const [itemCategory, setItemCategory] = useState(null); // 'mengajar', 'kegiatan', 'rapat'
+
+    // Kegiatan detail states for modal (guru pendamping and siswa)
+    const [kegiatanGuruPendamping, setKegiatanGuruPendamping] = useState([]);
+    const [kegiatanSiswaList, setKegiatanSiswaList] = useState([]);
+
+    // Rapat detail states for modal (pimpinan and peserta)
+    const [rapatPimpinan, setRapatPimpinan] = useState(null);
+    const [rapatPesertaList, setRapatPesertaList] = useState([]);
+
+    // Print selection states
+    const [selectedRapatIds, setSelectedRapatIds] = useState([]);
+    const [selectedKegiatanIds, setSelectedKegiatanIds] = useState([]);
 
     const tabs = [
         { id: 'mengajar', label: 'Mengajar' },
         { id: 'kegiatan', label: 'Kegiatan' },
         { id: 'rapat', label: 'Rapat' },
     ];
+
+    // Fetch unlock status from admin settings
+    const fetchUnlockStatus = async () => {
+        try {
+            const response = await api.get('/guru-panel/check-attendance-unlock');
+            if (response.data.success) {
+                setIsUnlocked(response.data.unlocked || false);
+            }
+        } catch (error) {
+            console.error('Error checking unlock status:', error);
+        }
+    };
+
+    // Check unlock status on mount
+    useEffect(() => {
+        fetchUnlockStatus();
+    }, []);
 
     // Fetch mengajar data
     const fetchMengajarData = async () => {
@@ -67,6 +115,7 @@ function Riwayat() {
             console.error('Error fetching kegiatan data:', error);
         } finally {
             setLoading(false);
+            setInitialLoad(false);
         }
     };
 
@@ -85,6 +134,7 @@ function Riwayat() {
             console.error('Error fetching rapat data:', error);
         } finally {
             setLoading(false);
+            setInitialLoad(false);
         }
     };
 
@@ -130,9 +180,35 @@ function Riwayat() {
     }, [searchQuery]);
 
     // Handle card click - determine which modal to show
-    const handleCardClick = (item, category) => {
+    const handleCardClick = async (item, category) => {
         setSelectedItem(item);
         setItemCategory(category);
+
+        // Fetch kegiatan detail if it's a kegiatan item
+        if (category === 'kegiatan' && item.id) {
+            try {
+                const response = await api.get(`/guru-panel/kegiatan/${item.id}/detail`);
+                setKegiatanGuruPendamping(response.data.guru_pendamping || []);
+                setKegiatanSiswaList(response.data.siswa || []);
+            } catch (err) {
+                console.error('Error fetching kegiatan detail:', err);
+                setKegiatanGuruPendamping([]);
+                setKegiatanSiswaList([]);
+            }
+        }
+
+        // Fetch rapat detail if it's a rapat item
+        if (category === 'rapat' && item.id) {
+            try {
+                const response = await api.get(`/guru-panel/rapat/${item.id}/detail`);
+                setRapatPimpinan(response.data.pimpinan || null);
+                setRapatPesertaList(response.data.peserta || []);
+            } catch (err) {
+                console.error('Error fetching rapat detail:', err);
+                setRapatPimpinan(null);
+                setRapatPesertaList([]);
+            }
+        }
 
         // Determine modal type based on guru_status
         const status = item.guru_status || 'A'; // Default to alpha if no status
@@ -143,12 +219,33 @@ function Riwayat() {
         const isPJKegiatan = category === 'kegiatan' && (role === 'PJ' || role === 'penanggung_jawab');
         const isSekretarisRapat = category === 'rapat' && role === 'Sekretaris';
 
+        // Check if attendance is still editable (same day)
+        const itemDate = item.tanggal_raw;
+        const today = new Date().toISOString().split('T')[0];
+        const isSameDay = itemDate === today;
+        const itemIsUnlocked = item.is_unlocked === true || isUnlocked;
+
         if (status === 'H' || isPJKegiatan || isSekretarisRapat) {
-            setModalType('hadir');
-        } else if (status === 'I') {
-            setModalType('izin');
+            // If same day or admin unlocked, allow editing
+            if (isSameDay || itemIsUnlocked) {
+                setModalType('unlocked'); // Use editable modal
+            } else {
+                setModalType('hadir'); // Read-only modal
+            }
+        } else if (status === 'I' || status === 'S') {
+            // Izin/Sakit - show izin modal or allow edit if unlocked
+            if (isSameDay || itemIsUnlocked) {
+                setModalType('unlocked');
+            } else {
+                setModalType('izin');
+            }
         } else {
-            setModalType('terlewat');
+            // Alpha - If admin has unlocked attendance, allow editing instead of showing locked modal
+            if (isUnlocked || itemIsUnlocked) {
+                setModalType('unlocked'); // Use editable modal
+            } else {
+                setModalType('terlewat'); // Show locked modal
+            }
         }
     };
 
@@ -157,6 +254,10 @@ function Riwayat() {
         setSelectedItem(null);
         setModalType(null);
         setItemCategory(null);
+        setKegiatanGuruPendamping([]);
+        setKegiatanSiswaList([]);
+        setRapatPimpinan(null);
+        setRapatPesertaList([]);
     };
 
     // Get status config - matches absensi page style
@@ -169,6 +270,14 @@ function Riwayat() {
                     icon: 'text-green-600',
                     label: 'Sudah Absen',
                     labelBg: 'bg-green-100 text-green-700',
+                };
+            case 'S':
+                return {
+                    border: 'border-orange-500',
+                    bg: 'bg-orange-100',
+                    icon: 'text-orange-600',
+                    label: 'Sakit',
+                    labelBg: 'bg-orange-100 text-orange-700',
                 };
             case 'I':
                 return {
@@ -216,13 +325,90 @@ function Riwayat() {
         setStatusFilter('all');
         setDateFrom('');
         setDateTo('');
+        // Also clear mengajar-specific filters
+        setMengajarMonthFilter('all');
+        setMengajarMapelFilter('all');
+        setMengajarKelasFilter('all');
+        setMengajarPage(1);
+    };
+
+    // Clear mengajar-specific filters
+    const clearMengajarFilters = () => {
+        setMengajarMonthFilter('all');
+        setMengajarMapelFilter('all');
+        setMengajarKelasFilter('all');
+        setMengajarPage(1);
+    };
+
+    // Get unique mapel list from mengajar data
+    const uniqueMapelList = [...new Set(mengajarData.map(item => item.mapel))].filter(Boolean).sort();
+
+    // Get unique kelas list from mengajar data
+    const uniqueKelasList = [...new Set(mengajarData.map(item => item.kelas))].filter(Boolean).sort();
+
+    // Month options
+    const monthOptions = [
+        { value: 'all', label: 'Bulan' },
+        { value: '01', label: 'Januari' },
+        { value: '02', label: 'Februari' },
+        { value: '03', label: 'Maret' },
+        { value: '04', label: 'April' },
+        { value: '05', label: 'Mei' },
+        { value: '06', label: 'Juni' },
+        { value: '07', label: 'Juli' },
+        { value: '08', label: 'Agustus' },
+        { value: '09', label: 'September' },
+        { value: '10', label: 'Oktober' },
+        { value: '11', label: 'November' },
+        { value: '12', label: 'Desember' },
+    ];
+
+    // Filter mengajar data with additional filters
+    const filterMengajarData = (data) => {
+        let filtered = data.filter(item => {
+            // Status filter
+            if (statusFilter !== 'all' && item.guru_status !== statusFilter) {
+                return false;
+            }
+
+            // Date range filter
+            const itemDate = item.tanggal_raw;
+            if (dateFrom && itemDate < dateFrom) {
+                return false;
+            }
+            if (dateTo && itemDate > dateTo) {
+                return false;
+            }
+
+            // Month filter
+            if (mengajarMonthFilter !== 'all') {
+                const itemMonth = itemDate?.substring(5, 7); // Extract month from YYYY-MM-DD
+                if (itemMonth !== mengajarMonthFilter) {
+                    return false;
+                }
+            }
+
+            // Mapel filter
+            if (mengajarMapelFilter !== 'all' && item.mapel !== mengajarMapelFilter) {
+                return false;
+            }
+
+            // Kelas filter
+            if (mengajarKelasFilter !== 'all' && item.kelas !== mengajarKelasFilter) {
+                return false;
+            }
+
+            return true;
+        });
+
+        return filtered;
     };
 
     // Get filtered data for current tab
     const getFilteredData = (tab) => {
         switch (tab) {
             case 'mengajar':
-                return filterData(mengajarData);
+                return filterMengajarData(mengajarData);
             case 'kegiatan':
                 return filterData(kegiatanData);
             case 'rapat':
@@ -232,8 +418,93 @@ function Riwayat() {
         }
     };
 
+    // Get paginated mengajar data
+    const getPaginatedMengajarData = () => {
+        const filtered = filterMengajarData(mengajarData);
+        const startIndex = (mengajarPage - 1) * mengajarPerPage;
+        const endIndex = startIndex + mengajarPerPage;
+        return {
+            data: filtered.slice(startIndex, endIndex),
+            totalItems: filtered.length,
+            totalPages: Math.ceil(filtered.length / mengajarPerPage),
+        };
+    };
+
     // Check if any filter is active
-    const hasActiveFilters = statusFilter !== 'all' || dateFrom || dateTo;
+    const hasMengajarFilters = mengajarMonthFilter !== 'all' || mengajarMapelFilter !== 'all' || mengajarKelasFilter !== 'all';
+    const hasActiveFilters = statusFilter !== 'all' || dateFrom || dateTo || hasMengajarFilters;
+
+    // Print handlers
+    const handlePrintJurnalGuru = () => {
+        const token = localStorage.getItem('auth_token');
+        let url = `/print/jurnal-guru?token=${token}`;
+        if (mengajarMonthFilter !== 'all') {
+            const year = new Date().getFullYear();
+            url += `&bulan=${year}-${mengajarMonthFilter}`;
+        }
+        if (mengajarMapelFilter !== 'all') {
+            // Find mapel_id from mengajarData
+            const mapelItem = mengajarData.find(item => item.mapel === mengajarMapelFilter);
+            if (mapelItem?.mapel_id) url += `&mapel_id=${mapelItem.mapel_id}`;
+        }
+        if (mengajarKelasFilter !== 'all') {
+            const kelasItem = mengajarData.find(item => item.kelas === mengajarKelasFilter);
+            if (kelasItem?.kelas_id) url += `&kelas_id=${kelasItem.kelas_id}`;
+        }
+        window.open(url, '_blank');
+    };
+
+    const handlePrintHasilRapat = (absensiId) => {
+        const token = localStorage.getItem('auth_token');
+        window.open(`/print/hasil-rapat/${absensiId}?token=${token}`, '_blank');
+    };
+
+    const handlePrintHasilKegiatan = (absensiId) => {
+        const token = localStorage.getItem('auth_token');
+        window.open(`/print/hasil-kegiatan/${absensiId}?token=${token}`, '_blank');
+    };
+
+    const handleBulkPrintRapat = () => {
+        const token = localStorage.getItem('auth_token');
+        selectedRapatIds.forEach((id, index) => {
+            // Stagger window opens to avoid popup blocking
+            setTimeout(() => {
+                window.open(`/print/hasil-rapat/${id}?token=${token}`, '_blank');
+            }, index * 500);
+        });
+    };
+
+    const handleBulkPrintKegiatan = () => {
+        if (selectedKegiatanIds.length === 0) return;
+
+        const token = localStorage.getItem('auth_token');
+        const idsParam = selectedKegiatanIds.map(id => `ids[]=${id}`).join('&');
+        window.open(`/print/hasil-kegiatan-bulk?${idsParam}&token=${token}`, '_blank');
+    };
+
+    const toggleRapatSelection = (e, id) => {
+        e.stopPropagation();
+        setSelectedRapatIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleKegiatanSelection = (e, id) => {
+        e.stopPropagation();
+        setSelectedKegiatanIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const selectAllKegiatan = (filteredData) => {
+        const allIds = filteredData.filter(item => item.absensi_id).map(item => item.absensi_id);
+        const allSelected = allIds.every(id => selectedKegiatanIds.includes(id));
+        if (allSelected) {
+            setSelectedKegiatanIds([]);
+        } else {
+            setSelectedKegiatanIds(allIds);
+        }
+    };
 
     // Show skeleton on initial load
     if (initialLoad) {
@@ -273,6 +544,49 @@ function Riwayat() {
                 {/* Filter Panel */}
                 {showFilters && (
                     <div className="bg-gray-50 rounded-xl p-3 space-y-3 animate-fadeIn">
+                        {/* Mengajar Filters - Only shown when Mengajar tab is active */}
+                        {activeTab === 'mengajar' && (
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium mb-2 block">Filter Mengajar</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {/* Month Filter */}
+                                    <select
+                                        value={mengajarMonthFilter}
+                                        onChange={(e) => { setMengajarMonthFilter(e.target.value); setMengajarPage(1); }}
+                                        className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                                    >
+                                        {monthOptions.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Mapel Filter */}
+                                    <select
+                                        value={mengajarMapelFilter}
+                                        onChange={(e) => { setMengajarMapelFilter(e.target.value); setMengajarPage(1); }}
+                                        className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                                    >
+                                        <option value="all">Mapel</option>
+                                        {uniqueMapelList.map(mapel => (
+                                            <option key={mapel} value={mapel}>{mapel}</option>
+                                        ))}
+                                    </select>
+
+                                    {/* Kelas Filter */}
+                                    <select
+                                        value={mengajarKelasFilter}
+                                        onChange={(e) => { setMengajarKelasFilter(e.target.value); setMengajarPage(1); }}
+                                        className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                                    >
+                                        <option value="all">Kelas</option>
+                                        {uniqueKelasList.map(kelas => (
+                                            <option key={kelas} value={kelas}>{kelas}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Status Filter */}
                         <div>
                             <label className="text-xs text-gray-500 font-medium mb-2 block">Status Kehadiran</label>
@@ -353,12 +667,28 @@ function Riwayat() {
 
                 {/* Mengajar Tab */}
                 {activeTab === 'mengajar' && !loading && (() => {
-                    const filteredData = getFilteredData('mengajar');
+                    const { data: paginatedData, totalItems, totalPages } = getPaginatedMengajarData();
                     return (
                         <>
-                            {filteredData.length > 0 ? (
+                            {/* Header with count and print button */}
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs text-gray-500">
+                                    Menampilkan {paginatedData.length} dari {totalItems} data
+                                </div>
+                                {totalItems > 0 && (
+                                    <button
+                                        onClick={handlePrintJurnalGuru}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 transition-colors"
+                                    >
+                                        <i className="fas fa-print"></i>
+                                        Cetak Jurnal
+                                    </button>
+                                )}
+                            </div>
+
+                            {paginatedData.length > 0 ? (
                                 <div className="space-y-3">
-                                    {filteredData.map((item) => {
+                                    {paginatedData.map((item) => {
                                         const colors = getStatusConfig(item.guru_status);
                                         return (
                                             <button
@@ -367,9 +697,6 @@ function Riwayat() {
                                                 className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} cursor-pointer hover:shadow-md`}
                                             >
                                                 <div className="flex items-start gap-3">
-                                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                                        <i className={`fas fa-door-open ${colors.icon}`}></i>
-                                                    </div>
                                                     <div className="flex-1 min-w-0 text-left">
                                                         {/* Row 1: Mapel */}
                                                         <p className="font-semibold text-gray-800 truncate">{item.mapel}</p>
@@ -400,6 +727,56 @@ function Riwayat() {
                                     <p className="text-gray-400 text-sm">Belum ada riwayat mengajar</p>
                                 </div>
                             )}
+
+                            {/* Pagination Controls */}
+                            {totalItems > 0 && (
+                                <div className="bg-white rounded-xl shadow-sm p-3 mt-4">
+                                    <div className="flex items-center justify-between">
+                                        {/* Per page selector */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">Tampilkan:</span>
+                                            <select
+                                                value={mengajarPerPage}
+                                                onChange={(e) => { setMengajarPerPage(Number(e.target.value)); setMengajarPage(1); }}
+                                                className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-green-400"
+                                            >
+                                                {[10, 20, 50, 100].map(n => (
+                                                    <option key={n} value={n}>{n}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Page navigation */}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setMengajarPage(p => Math.max(1, p - 1))}
+                                                disabled={mengajarPage === 1}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${mengajarPage === 1
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }`}
+                                            >
+                                                <i className="fas fa-chevron-left mr-1"></i> Prev
+                                            </button>
+
+                                            <span className="text-xs text-gray-600 px-2">
+                                                {mengajarPage} / {totalPages || 1}
+                                            </span>
+
+                                            <button
+                                                onClick={() => setMengajarPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={mengajarPage >= totalPages}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${mengajarPage >= totalPages
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }`}
+                                            >
+                                                Next <i className="fas fa-chevron-right ml-1"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </>
                     );
                 })()}
@@ -409,39 +786,100 @@ function Riwayat() {
                     const filteredData = getFilteredData('kegiatan');
                     return (
                         <>
+                            {/* Bulk action bar - only show when items selected */}
+                            {selectedKegiatanIds.length > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 flex items-center justify-between animate-fadeIn">
+                                    <div className="flex items-center gap-3">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={filteredData.filter(item => item.absensi_id).every(item => selectedKegiatanIds.includes(item.absensi_id)) && filteredData.filter(item => item.absensi_id).length > 0}
+                                                onChange={() => selectAllKegiatan(filteredData)}
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
+                                            />
+                                            <span className="text-sm text-gray-700">Pilih Semua</span>
+                                        </label>
+                                        <span className="text-sm text-blue-700">
+                                            <i className="fas fa-check-circle mr-1"></i>
+                                            {selectedKegiatanIds.length} dipilih
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setSelectedKegiatanIds([])}
+                                            className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            onClick={handleBulkPrintKegiatan}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
+                                        >
+                                            <i className="fas fa-print"></i>
+                                            Cetak Terpilih
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {filteredData.length > 0 ? (
                                 <div className="space-y-3">
                                     {filteredData.map((item) => {
                                         const colors = getStatusConfig(item.guru_status);
+                                        const isSelected = selectedKegiatanIds.includes(item.absensi_id);
                                         return (
-                                            <button
+                                            <div
                                                 key={item.id || `kegiatan-${item.tanggal_raw}-${item.nama}`}
-                                                onClick={() => handleCardClick(item, 'kegiatan')}
-                                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} cursor-pointer hover:shadow-md`}
+                                                className={`relative bg-white rounded-xl shadow-sm transition-all border-l-4 ${colors.border} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
                                             >
-                                                <div className="flex items-start gap-3">
-                                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                                        <i className={`fas fa-calendar-check ${colors.icon}`}></i>
+                                                {/* Checkbox */}
+                                                {item.absensi_id && (
+                                                    <div className="absolute top-3 left-3 z-10">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => toggleKegiatanSelection(e, item.absensi_id)}
+                                                            className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
+                                                        />
                                                     </div>
-                                                    <div className="flex-1 min-w-0 text-left">
-                                                        <p className="font-semibold text-gray-800 truncate">{item.nama}</p>
-                                                        <p className="text-xs text-gray-500 truncate">
-                                                            <i className="fas fa-map-marker-alt mr-1"></i>{item.lokasi || '-'}
-                                                        </p>
-                                                        <div className="flex items-center justify-between mt-1.5">
-                                                            <div className="flex items-center gap-2">
-                                                                {item.role && (
-                                                                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{item.role}</span>
-                                                                )}
-                                                                <span className="text-[10px] text-gray-400">{item.tanggal}</span>
+                                                )}
+
+                                                <button
+                                                    onClick={() => handleCardClick(item, 'kegiatan')}
+                                                    className="w-full p-4 cursor-pointer hover:shadow-md text-left"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`flex-1 min-w-0 ${item.absensi_id ? 'pl-6' : ''}`}>
+                                                            <p className="font-semibold text-gray-800 truncate">{item.nama}</p>
+                                                            <p className="text-xs text-gray-500 truncate">
+                                                                <i className="fas fa-map-marker-alt mr-1"></i>{item.lokasi || '-'}
+                                                            </p>
+                                                            <div className="flex items-center justify-between mt-1.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    {item.role && (
+                                                                        <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{item.role}</span>
+                                                                    )}
+                                                                    <span className="text-[10px] text-gray-400">{item.tanggal}</span>
+                                                                </div>
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
+                                                                    {colors.label}
+                                                                </span>
                                                             </div>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
-                                                                {colors.label}
-                                                            </span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </button>
+                                                </button>
+
+                                                {/* Print button */}
+                                                {item.absensi_id && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handlePrintHasilKegiatan(item.absensi_id); }}
+                                                        className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 text-gray-500 hover:text-green-600 rounded-full transition-colors"
+                                                        title="Cetak Laporan"
+                                                    >
+                                                        <i className="fas fa-print text-sm"></i>
+                                                    </button>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -463,39 +901,89 @@ function Riwayat() {
                     const filteredData = getFilteredData('rapat');
                     return (
                         <>
+                            {/* Bulk action bar */}
+                            {selectedRapatIds.length > 0 && (
+                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-3 flex items-center justify-between animate-fadeIn">
+                                    <span className="text-sm text-purple-700">
+                                        <i className="fas fa-check-circle mr-1"></i>
+                                        {selectedRapatIds.length} rapat dipilih
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setSelectedRapatIds([])}
+                                            className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            onClick={handleBulkPrintRapat}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500 text-white text-xs rounded-lg hover:bg-purple-600 transition-colors"
+                                        >
+                                            <i className="fas fa-print"></i>
+                                            Cetak Terpilih
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {filteredData.length > 0 ? (
                                 <div className="space-y-3">
                                     {filteredData.map((item) => {
                                         const colors = getStatusConfig(item.guru_status);
+                                        const isSelected = selectedRapatIds.includes(item.absensi_id);
                                         return (
-                                            <button
+                                            <div
                                                 key={item.id || `rapat-${item.tanggal_raw}-${item.nama}`}
-                                                onClick={() => handleCardClick(item, 'rapat')}
-                                                className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} cursor-pointer hover:shadow-md`}
+                                                className={`relative bg-white rounded-xl shadow-sm transition-all border-l-4 ${colors.border} ${isSelected ? 'ring-2 ring-purple-400' : ''}`}
                                             >
-                                                <div className="flex items-start gap-3">
-                                                    <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                                        <i className={`fas fa-users ${colors.icon}`}></i>
+                                                {/* Checkbox */}
+                                                {item.absensi_id && (
+                                                    <div className="absolute top-3 left-3 z-10">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => toggleRapatSelection(e, item.absensi_id)}
+                                                            className="w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-400"
+                                                        />
                                                     </div>
-                                                    <div className="flex-1 min-w-0 text-left">
-                                                        <p className="font-semibold text-gray-800 truncate">{item.nama}</p>
-                                                        <p className="text-xs text-gray-500 truncate">
-                                                            <i className="fas fa-map-marker-alt mr-1"></i>{item.lokasi || '-'}
-                                                        </p>
-                                                        <div className="flex items-center justify-between mt-1.5">
-                                                            <div className="flex items-center gap-2">
-                                                                {item.role && (
-                                                                    <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{item.role}</span>
-                                                                )}
-                                                                <span className="text-[10px] text-gray-400">{item.tanggal}</span>
+                                                )}
+
+                                                <button
+                                                    onClick={() => handleCardClick(item, 'rapat')}
+                                                    className="w-full p-4 cursor-pointer hover:shadow-md text-left"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`flex-1 min-w-0 ${item.absensi_id ? 'pl-6' : ''}`}>
+                                                            <p className="font-semibold text-gray-800 truncate">{item.nama}</p>
+                                                            <p className="text-xs text-gray-500 truncate">
+                                                                <i className="fas fa-map-marker-alt mr-1"></i>{item.lokasi || '-'}
+                                                            </p>
+                                                            <div className="flex items-center justify-between mt-1.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    {item.role && (
+                                                                        <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">{item.role}</span>
+                                                                    )}
+                                                                    <span className="text-[10px] text-gray-400">{item.tanggal}</span>
+                                                                </div>
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
+                                                                    {colors.label}
+                                                                </span>
                                                             </div>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
-                                                                {colors.label}
-                                                            </span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </button>
+                                                </button>
+
+                                                {/* Print button */}
+                                                {item.absensi_id && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handlePrintHasilRapat(item.absensi_id); }}
+                                                        className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 text-gray-500 hover:text-green-600 rounded-full transition-colors"
+                                                        title="Cetak Berita Acara"
+                                                    >
+                                                        <i className="fas fa-print text-sm"></i>
+                                                    </button>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -553,6 +1041,93 @@ function Riwayat() {
                     item={selectedItem}
                     type={itemCategory}
                     onClose={handleCloseModal}
+                />
+            )}
+
+            {/* Unlocked Modals - Edit forms when admin has unlocked attendance */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'mengajar' && (
+                <AbsensiModals.ModalAbsensiSiswa
+                    jadwal={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    siswaList={[]} // Will be fetched inside modal
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchMengajarData(); // Refresh data
+                    }}
+                    isUnlocked={true}
+                />
+            )}
+
+            {/* Kegiatan PJ */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'kegiatan' && (selectedItem.role === 'PJ' || selectedItem.role === 'penanggung_jawab') && (
+                <KegiatanModals.ModalAbsensiKegiatanPJ
+                    kegiatan={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    guruPendamping={kegiatanGuruPendamping}
+                    siswaList={kegiatanSiswaList}
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchKegiatanData();
+                    }}
+                    isUnlocked={true}
+                />
+            )}
+            {/* Kegiatan Pendamping */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'kegiatan' && selectedItem.role !== 'PJ' && selectedItem.role !== 'penanggung_jawab' && (
+                <KegiatanModals.ModalAbsensiKegiatanPendamping
+                    kegiatan={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchKegiatanData();
+                    }}
+                    isUnlocked={true}
+                />
+            )}
+
+            {/* Rapat Pimpinan */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'rapat' && selectedItem.role === 'Pimpinan' && (
+                <RapatModals.ModalAbsensiRapatPimpinan
+                    rapat={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchRapatData();
+                    }}
+                    isUnlocked={true}
+                />
+            )}
+            {/* Rapat Sekretaris */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'rapat' && selectedItem.role === 'Sekretaris' && (
+                <RapatModals.ModalAbsensiRapatSekretaris
+                    rapat={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    pimpinan={rapatPimpinan}
+                    pesertaList={rapatPesertaList}
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchRapatData();
+                    }}
+                    isUnlocked={true}
+                />
+            )}
+            {/* Rapat Peserta */}
+            {selectedItem && modalType === 'unlocked' && itemCategory === 'rapat' && selectedItem.role !== 'Pimpinan' && selectedItem.role !== 'Sekretaris' && (
+                <RapatModals.ModalAbsensiRapatPeserta
+                    rapat={selectedItem}
+                    tanggal={selectedItem.tanggal_raw}
+                    role={selectedItem.role}
+                    onClose={handleCloseModal}
+                    onSuccess={() => {
+                        handleCloseModal();
+                        fetchRapatData();
+                    }}
+                    isUnlocked={true}
                 />
             )}
         </div>

@@ -94,25 +94,124 @@ export function ModalBelumMulai({ jadwal, tanggal, onClose }) {
 }
 
 // Modal 2: Form Absensi Siswa (Scrollable)
-export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSuccess, guruName = 'Guru', guruNip = '' }) {
-    const [ringkasanMateri, setRingkasanMateri] = useState('');
-    const [beritaAcara, setBeritaAcara] = useState('');
+export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSuccess, guruName = 'Guru', guruNip = '', isUnlocked = false }) {
+    const [ringkasanMateri, setRingkasanMateri] = useState(jadwal?.ringkasan_materi || '');
+    const [beritaAcara, setBeritaAcara] = useState(jadwal?.berita_acara || '');
     const [absensiSiswa, setAbsensiSiswa] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [guruStatus, setGuruStatus] = useState('H'); // Default Hadir
-    const [guruKeterangan, setGuruKeterangan] = useState(''); // Keterangan for guru Izin
+    const [fetchingSiswa, setFetchingSiswa] = useState(false);
+    const [guruStatus, setGuruStatus] = useState(jadwal?.guru_status || 'H'); // Use jadwal's guru_status if available
+    const [guruKeterangan, setGuruKeterangan] = useState(jadwal?.guru_keterangan || ''); // Use jadwal's keterangan if available
     const [siswaExpanded, setSiswaExpanded] = useState(true); // Collapsible state
 
+    // Guru Tugas fields - for when guru is absent
+    const [guruTugasId, setGuruTugasId] = useState(jadwal?.guru_tugas_id || '');
+    const [guruTugasNama, setGuruTugasNama] = useState(''); // Selected guru name
+    const [guruSearch, setGuruSearch] = useState(''); // Search input
+    const [showGuruDropdown, setShowGuruDropdown] = useState(false);
+    const [tugasSiswa, setTugasSiswa] = useState(jadwal?.tugas_siswa || '');
+    const [guruList, setGuruList] = useState([]);
+    const [loadingGuru, setLoadingGuru] = useState(false);
+
+
     useEffect(() => {
-        // Initialize absensi siswa list
-        setAbsensiSiswa(siswaList.map(s => ({
-            siswa_id: s.id,
-            nama: s.nama,
-            nis: s.nis,
-            status: 'H',
-            keterangan: ''
-        })));
-    }, [siswaList]);
+        // In unlocked mode with existing absensi record, always fetch to get guru_status and existing data
+        if (isUnlocked && jadwal?.id) {
+            fetchExistingAbsensiById(jadwal.id);
+        }
+        // If no existing absensi but has jadwal_id (new record in unlocked mode), fetch fresh siswa list
+        else if (isUnlocked && siswaList.length === 0 && jadwal?.jadwal_id) {
+            fetchExistingAbsensi();
+        }
+        // Normal mode: initialize absensi siswa list
+        else if (siswaList.length > 0) {
+            setAbsensiSiswa(siswaList.map(s => ({
+                siswa_id: s.id,
+                nama: s.nama,
+                nis: s.nis,
+                status: 'H',
+                keterangan: ''
+            })));
+        }
+    }, [siswaList, isUnlocked, jadwal]);
+
+
+    // Fetch siswa list for unlocked mode - fetch from jadwal
+    const fetchExistingAbsensi = async () => {
+        setFetchingSiswa(true);
+        try {
+            const response = await api.get(`/guru-panel/jadwal/${jadwal.jadwal_id}/siswa`);
+            if (response.data.success) {
+                setAbsensiSiswa((response.data.data || []).map(s => ({
+                    siswa_id: s.id,
+                    nama: s.nama,
+                    nis: s.nis,
+                    status: 'H',
+                    keterangan: ''
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching siswa list:', error);
+        } finally {
+            setFetchingSiswa(false);
+        }
+    };
+
+    // Fetch existing absensi by ID (for editing from riwayat)
+    const fetchExistingAbsensiById = async (absensiId) => {
+        setFetchingSiswa(true);
+        try {
+            const response = await api.get(`/guru-panel/riwayat/mengajar/${absensiId}/detail`);
+            if (response.data.success) {
+                const data = response.data.data;
+                // Set ringkasan materi and berita acara
+                setRingkasanMateri(data.ringkasan_materi || '');
+                setBeritaAcara(data.berita_acara || '');
+                setGuruStatus(data.guru_status || 'H');
+                setGuruKeterangan(data.guru_keterangan || '');
+
+                // Set guru tugas (replacement teacher) data
+                if (data.guru_tugas_id) {
+                    setGuruTugasId(data.guru_tugas_id);
+                    setGuruSearch(data.guru_tugas_nama || '');
+                }
+
+                // Set tugas siswa (task for students)
+                setTugasSiswa(data.tugas_siswa || '');
+
+                // If siswa list exists, use it; otherwise fetch from jadwal
+                if (data.siswa && data.siswa.length > 0) {
+                    setAbsensiSiswa(data.siswa.map(s => ({
+                        siswa_id: s.siswa_id,
+                        nama: s.nama,
+                        nis: s.nis,
+                        status: s.status || 'H',
+                        keterangan: s.keterangan || ''
+                    })));
+                } else if (data.jadwal_id) {
+                    // Siswa list is empty (e.g., guru was absent), fetch from jadwal
+                    try {
+                        const siswaResponse = await api.get(`/guru-panel/jadwal/${data.jadwal_id}/siswa`);
+                        if (siswaResponse.data.success) {
+                            setAbsensiSiswa((siswaResponse.data.data || []).map(s => ({
+                                siswa_id: s.id,
+                                nama: s.nama,
+                                nis: s.nis,
+                                status: 'H',
+                                keterangan: ''
+                            })));
+                        }
+                    } catch (err) {
+                        console.error('Error fetching siswa from jadwal:', err);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching existing absensi:', error);
+        } finally {
+            setFetchingSiswa(false);
+        }
+    };
 
     // Auto-hadir when any field changes
     const handleRingkasanChange = (value) => {
@@ -127,6 +226,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
 
     const counts = {
         hadir: absensiSiswa.filter(s => s.status === 'H').length,
+        sakit: absensiSiswa.filter(s => s.status === 'S').length,
         izin: absensiSiswa.filter(s => s.status === 'I').length,
         alpha: absensiSiswa.filter(s => s.status === 'A').length,
     };
@@ -134,7 +234,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
     const updateStatus = (index, status) => {
         const updated = [...absensiSiswa];
         updated[index].status = status;
-        if (status !== 'I') {
+        if (status !== 'I' && status !== 'S') {
             updated[index].keterangan = '';
         }
         setAbsensiSiswa(updated);
@@ -149,30 +249,55 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
     };
 
 
+    // Fetch guru list when guru status changes to I or S
+    useEffect(() => {
+        if ((guruStatus === 'I' || guruStatus === 'S') && guruList.length === 0) {
+            fetchGuruList();
+        }
+    }, [guruStatus]);
+
+    const fetchGuruList = async () => {
+        setLoadingGuru(true);
+        try {
+            const response = await api.get('/guru-panel/guru-list');
+            setGuruList(response.data.data || []);
+        } catch (err) {
+            console.error('Error fetching guru list:', err);
+        } finally {
+            setLoadingGuru(false);
+        }
+    };
+
     const handleSubmit = async () => {
-        // Validation: ringkasan materi and berita acara are required
-        if (!ringkasanMateri.trim()) {
+        // Validation: ringkasan materi required only if guru is present (H)
+        if (guruStatus === 'H' && !ringkasanMateri.trim()) {
             alert('Ringkasan Materi wajib diisi!');
             return;
         }
-        if (!beritaAcara.trim()) {
-            alert('Berita Acara wajib diisi!');
+        // Tugas siswa wajib saat guru izin/sakit
+        if ((guruStatus === 'I' || guruStatus === 'S') && !tugasSiswa.trim()) {
+            alert('Tugas untuk Siswa wajib diisi!');
             return;
         }
+        // Berita acara is optional now
 
         setLoading(true);
         try {
             await api.post('/guru-panel/absensi', {
-                jadwal_id: jadwal.id,
-                ringkasan_materi: ringkasanMateri,
-                berita_acara: beritaAcara,
+                jadwal_id: jadwal.jadwal_id || jadwal.id,
+                tanggal: tanggal, // Include tanggal for unlocked mode
+                ringkasan_materi: guruStatus === 'H' ? ringkasanMateri : null,
+                berita_acara: guruStatus === 'H' ? beritaAcara : null,
                 guru_status: guruStatus,
-                guru_keterangan: guruStatus === 'I' ? guruKeterangan : null,
-                absensi_siswa: absensiSiswa.map(s => ({
+                guru_keterangan: guruStatus !== 'H' ? guruKeterangan : null,
+                guru_tugas_id: (guruStatus === 'I' || guruStatus === 'S') ? (guruTugasId || null) : null,
+                tugas_siswa: (guruStatus === 'I' || guruStatus === 'S') ? (tugasSiswa || null) : null,
+                is_unlocked: isUnlocked, // Flag to indicate this is unlocked submission
+                absensi_siswa: guruStatus === 'H' ? absensiSiswa.map(s => ({
                     siswa_id: s.siswa_id,
                     status: s.status,
                     keterangan: s.keterangan || null
-                }))
+                })) : [] // Empty if guru is absent
             });
             onSuccess();
         } catch (err) {
@@ -195,15 +320,15 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                 onClick={e => e.stopPropagation()}
             >
                 {/* Fixed Header */}
-                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
+                <div className={`${isUnlocked ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-green-600 to-green-700'} text-white p-4 flex-shrink-0`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                <i className="fas fa-clipboard-check"></i>
+                                <i className={`fas ${isUnlocked ? 'fa-unlock' : 'fa-clipboard-check'}`}></i>
                             </div>
                             <div>
-                                <h2 className="font-bold">Input Absensi Siswa</h2>
-                                <p className="text-green-100 text-xs">{jadwal.mapel} • {jadwal.kelas}</p>
+                                <h2 className="font-bold">{isUnlocked ? 'Isi Absensi (Dibuka Kembali)' : 'Input Absensi Siswa'}</h2>
+                                <p className={`${isUnlocked ? 'text-amber-100' : 'text-green-100'} text-xs`}>{jadwal.mapel} • {jadwal.kelas}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
@@ -215,21 +340,46 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                     <div className="flex gap-6 mt-4 text-center">
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{counts.hadir}</p>
-                            <p className="text-xs text-green-100">Hadir</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Hadir</p>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-2xl font-bold">{counts.sakit}</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Sakit</p>
                         </div>
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{counts.izin}</p>
-                            <p className="text-xs text-green-100">Izin</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Izin</p>
                         </div>
                         <div className="flex-1">
                             <p className="text-2xl font-bold">{counts.alpha}</p>
-                            <p className="text-xs text-green-100">Alpha</p>
+                            <p className={`text-xs ${isUnlocked ? 'text-amber-100' : 'text-green-100'}`}>Alpha</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Scrollable Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Unlocked Info Banner */}
+                    {isUnlocked && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <i className="fas fa-info-circle text-amber-500 mt-0.5"></i>
+                                <div>
+                                    <p className="text-sm font-medium text-amber-800">Absensi Dibuka Kembali</p>
+                                    <p className="text-xs text-amber-600 mt-1">Admin telah membuka kunci absensi. Anda dapat mengisi data absensi yang terlewat.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Loading state for fetching siswa */}
+                    {fetchingSiswa && (
+                        <div className="flex items-center justify-center py-4">
+                            <i className="fas fa-spinner fa-spin text-green-500 mr-2"></i>
+                            <span className="text-gray-500 text-sm">Memuat daftar siswa...</span>
+                        </div>
+                    )}
+
                     {/* Guru Self-Attendance Card */}
                     <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                         <div className="flex items-center gap-3">
@@ -244,25 +394,32 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                 <p className="text-xs text-gray-400">{guruNip || 'Guru Pengajar'}</p>
                             </div>
 
-                            {/* Status Buttons */}
-                            <div className="flex gap-1.5">
+                            {/* Status Buttons - HSIA */}
+                            <div className="flex gap-1">
                                 <button
                                     onClick={() => setGuruStatus('H')}
-                                    className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${guruStatus === 'H'
+                                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${guruStatus === 'H'
                                         ? 'bg-green-500 text-white shadow-md'
                                         : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                         }`}
                                 >H</button>
                                 <button
+                                    onClick={() => setGuruStatus('S')}
+                                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${guruStatus === 'S'
+                                        ? 'bg-blue-500 text-white shadow-md'
+                                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                        }`}
+                                >S</button>
+                                <button
                                     onClick={() => setGuruStatus('I')}
-                                    className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${guruStatus === 'I'
+                                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${guruStatus === 'I'
                                         ? 'bg-yellow-500 text-white shadow-md'
                                         : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                         }`}
                                 >I</button>
                                 <button
                                     onClick={() => setGuruStatus('A')}
-                                    className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${guruStatus === 'A'
+                                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${guruStatus === 'A'
                                         ? 'bg-red-500 text-white shadow-md'
                                         : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                         }`}
@@ -270,143 +427,232 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                             </div>
                         </div>
 
-                        {/* Keterangan field for Guru Izin */}
-                        {guruStatus === 'I' && (
-                            <input
-                                type="text"
-                                value={guruKeterangan}
-                                onChange={e => setGuruKeterangan(e.target.value)}
-                                placeholder="Keterangan izin..."
-                                className="w-full mt-3 border border-yellow-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
-                            />
+                        {/* Guru Tugas Section - Only show when guru is Izin or Sakit */}
+                        {(guruStatus === 'I' || guruStatus === 'S') && (
+                            <div className="mt-3 space-y-3">
+                                {/* Keterangan */}
+                                <input
+                                    type="text"
+                                    value={guruKeterangan}
+                                    onChange={e => setGuruKeterangan(e.target.value)}
+                                    placeholder={guruStatus === 'S' ? "Keterangan sakit..." : "Keterangan izin..."}
+                                    className={`w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:border-transparent ${guruStatus === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
+                                />
+
+                                {/* Guru Tugas - Searchable Autocomplete */}
+                                <div className="relative">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Guru Pengganti (opsional)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={guruTugasNama || guruSearch}
+                                            onChange={e => {
+                                                setGuruSearch(e.target.value);
+                                                setGuruTugasNama('');
+                                                setGuruTugasId('');
+                                                setShowGuruDropdown(true);
+                                            }}
+                                            onFocus={() => setShowGuruDropdown(true)}
+                                            placeholder="Ketik nama guru..."
+                                            className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent bg-white pr-8"
+                                            disabled={loadingGuru}
+                                        />
+                                        {guruTugasId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setGuruTugasId('');
+                                                    setGuruTugasNama('');
+                                                    setGuruSearch('');
+                                                }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                            >
+                                                <i className="fas fa-times text-sm"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {/* Dropdown hasil pencarian */}
+                                    {showGuruDropdown && guruSearch && !guruTugasNama && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                            {guruList
+                                                .filter(g => g.nama.toLowerCase().includes(guruSearch.toLowerCase()))
+                                                .slice(0, 5)
+                                                .map(g => (
+                                                    <button
+                                                        key={g.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setGuruTugasId(g.id);
+                                                            setGuruTugasNama(g.nama);
+                                                            setGuruSearch('');
+                                                            setShowGuruDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-green-50 border-b border-gray-100 last:border-b-0"
+                                                    >
+                                                        <p className="font-medium text-gray-800">{g.nama}</p>
+                                                        <p className="text-xs text-gray-400">{g.nip || 'Guru'}</p>
+                                                    </button>
+                                                ))
+                                            }
+                                            {guruList.filter(g => g.nama.toLowerCase().includes(guruSearch.toLowerCase())).length === 0 && (
+                                                <p className="px-3 py-2 text-sm text-gray-400">Tidak ditemukan</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Tugas Siswa - WAJIB */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Tugas untuk Siswa <span className="text-red-500">*</span></label>
+                                    <textarea
+                                        value={tugasSiswa}
+                                        onChange={e => setTugasSiswa(e.target.value)}
+                                        placeholder="Tugas yang diberikan kepada siswa..."
+                                        className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[60px] resize-y"
+                                    />
+                                </div>
+                            </div>
                         )}
                     </div>
 
                     {/* Info Notice */}
                     <div className={`flex items-center gap-2 text-sm p-3 rounded-xl ${guruStatus === 'H'
                         ? 'bg-green-50 text-green-700'
-                        : guruStatus === 'I'
-                            ? 'bg-yellow-50 text-yellow-700'
-                            : 'bg-red-50 text-red-700'
+                        : guruStatus === 'S'
+                            ? 'bg-blue-50 text-blue-700'
+                            : guruStatus === 'I'
+                                ? 'bg-yellow-50 text-yellow-700'
+                                : 'bg-red-50 text-red-700'
                         }`}>
-                        <i className={`fas ${guruStatus === 'H' ? 'fa-check-circle' : guruStatus === 'I' ? 'fa-info-circle' : 'fa-exclamation-circle'}`}></i>
+                        <i className={`fas ${guruStatus === 'H' ? 'fa-check-circle' : guruStatus === 'S' ? 'fa-clinic-medical' : guruStatus === 'I' ? 'fa-info-circle' : 'fa-exclamation-circle'}`}></i>
                         <span>
                             {guruStatus === 'H' && <>Dengan menyimpan absensi, Anda tercatat <strong>HADIR</strong> di kelas ini</>}
+                            {guruStatus === 'S' && <>Anda tercatat <strong>SAKIT</strong> di kelas ini</>}
                             {guruStatus === 'I' && <>Anda tercatat <strong>IZIN</strong> di kelas ini</>}
                             {guruStatus === 'A' && <>Anda tercatat <strong>ALPHA</strong> di kelas ini</>}
                         </span>
                     </div>
 
-                    {/* Ringkasan Materi */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Ringkasan Materi</label>
-                        <textarea
-                            value={ringkasanMateri}
-                            onChange={e => handleRingkasanChange(e.target.value)}
-                            placeholder="Isi ringkasan materi yang diajarkan..."
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y"
-                        />
-                    </div>
+                    {/* Ringkasan Materi - only show when guru is present (H) */}
+                    {guruStatus === 'H' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Ringkasan Materi</label>
+                            <textarea
+                                value={ringkasanMateri}
+                                onChange={e => handleRingkasanChange(e.target.value)}
+                                placeholder="Isi ringkasan materi yang diajarkan..."
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y"
+                            />
+                        </div>
+                    )}
 
-                    {/* Berita Acara */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Berita Acara</label>
-                        <textarea
-                            value={beritaAcara}
-                            onChange={e => handleBeritaAcaraChange(e.target.value)}
-                            placeholder="Isi berita acara pembelajaran..."
-                            className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y"
-                        />
-                    </div>
+                    {/* Berita Acara - only show when guru is present (H) */}
+                    {guruStatus === 'H' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Berita Acara <span className="text-gray-400 text-xs">(opsional)</span></label>
+                            <textarea
+                                value={beritaAcara}
+                                onChange={e => handleBeritaAcaraChange(e.target.value)}
+                                placeholder="Isi berita acara pembelajaran..."
+                                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y"
+                            />
+                        </div>
+                    )}
 
-                    {/* Siswa List - Collapsible */}
-                    <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        {/* Collapsible Header */}
-                        <button
-                            type="button"
-                            onClick={() => setSiswaExpanded(!siswaExpanded)}
-                            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-indigo-50 hover:from-green-100 hover:to-indigo-100 transition-all"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
-                                    <i className="fas fa-users text-white"></i>
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-semibold text-gray-800">Absensi Siswa</p>
-                                    <p className="text-xs text-gray-500">
-                                        <span className="text-green-600">{counts.hadir} hadir</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-yellow-600">{counts.izin} izin</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-red-600">{counts.alpha} alpha</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div className={`w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-transform duration-300 ${siswaExpanded ? 'rotate-180' : ''}`}>
-                                <i className="fas fa-chevron-down text-gray-500 text-sm"></i>
-                            </div>
-                        </button>
-
-                        {/* Collapsible Content */}
-                        <div
-                            className={`transition-all duration-300 ease-in-out overflow-hidden ${siswaExpanded ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}
-                        >
-                            <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
-                                {absensiSiswa.map((siswa, index) => (
-                                    <div key={siswa.siswa_id} className="bg-white border border-gray-100 rounded-xl p-3">
-                                        <div className="flex items-center gap-3">
-                                            {/* Avatar */}
-                                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-semibold flex-shrink-0">
-                                                {siswa.nama?.charAt(0)?.toUpperCase() || 'S'}
-                                            </div>
-
-                                            {/* Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-gray-800 text-sm truncate">{siswa.nama}</p>
-                                                <p className="text-xs text-gray-400">{siswa.nis}</p>
-                                            </div>
-
-                                            {/* Status Buttons */}
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => updateStatus(index, 'H')}
-                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${siswa.status === 'H'
-                                                        ? 'bg-green-500 text-white'
-                                                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                                                        }`}
-                                                >H</button>
-                                                <button
-                                                    onClick={() => updateStatus(index, 'I')}
-                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${siswa.status === 'I'
-                                                        ? 'bg-yellow-500 text-white'
-                                                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                                                        }`}
-                                                >I</button>
-                                                <button
-                                                    onClick={() => updateStatus(index, 'A')}
-                                                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${siswa.status === 'A'
-                                                        ? 'bg-red-500 text-white'
-                                                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                                                        }`}
-                                                >A</button>
-                                            </div>
-                                        </div>
-
-                                        {/* Keterangan field for Izin */}
-                                        {siswa.status === 'I' && (
-                                            <input
-                                                type="text"
-                                                value={siswa.keterangan}
-                                                onChange={e => updateKeterangan(index, e.target.value)}
-                                                placeholder="Keterangan izin..."
-                                                className="w-full mt-2 border border-yellow-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
-                                            />
-                                        )}
+                    {/* Siswa List - Collapsible - only show when guru is present (H) */}
+                    {guruStatus === 'H' && (
+                        <div className="border border-gray-200 rounded-xl overflow-hidden">
+                            {/* Collapsible Header */}
+                            <button
+                                type="button"
+                                onClick={() => setSiswaExpanded(!siswaExpanded)}
+                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-indigo-50 hover:from-green-100 hover:to-indigo-100 transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-users text-white"></i>
                                     </div>
-                                ))}
+                                    <div className="text-left">
+                                        <p className="font-semibold text-gray-800">Absensi Siswa</p>
+                                        <p className="text-xs text-gray-500">
+                                            <span className="text-green-600">{counts.hadir} hadir</span>
+                                            <span className="mx-1">•</span>
+                                            <span className="text-blue-600">{counts.sakit} sakit</span>
+                                            <span className="mx-1">•</span>
+                                            <span className="text-yellow-600">{counts.izin} izin</span>
+                                            <span className="mx-1">•</span>
+                                            <span className="text-red-600">{counts.alpha} alpha</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={`w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-transform duration-300 ${siswaExpanded ? 'rotate-180' : ''}`}>
+                                    <i className="fas fa-chevron-down text-gray-500 text-sm"></i>
+                                </div>
+                            </button>
+
+                            {/* Collapsible Content */}
+                            <div
+                                className={`transition-all duration-300 ease-in-out overflow-hidden ${siswaExpanded ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}
+                            >
+                                <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
+                                    {absensiSiswa.map((siswa, index) => (
+                                        <div key={siswa.siswa_id} className="bg-white border border-gray-100 rounded-xl p-2">
+                                            <div className="flex items-center gap-1.5">
+                                                {/* Info - no avatar */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-gray-800 text-[0.7rem] sm:text-[0.8rem] truncate">{siswa.nama}</p>
+                                                    <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-400">{siswa.nis}</p>
+                                                </div>
+
+                                                {/* Status Buttons - HSIA */}
+                                                <div className="flex gap-0.5">
+                                                    <button
+                                                        onClick={() => updateStatus(index, 'H')}
+                                                        className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === 'H'
+                                                            ? 'bg-green-500 text-white'
+                                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                                            }`}
+                                                    >H</button>
+                                                    <button
+                                                        onClick={() => updateStatus(index, 'S')}
+                                                        className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === 'S'
+                                                            ? 'bg-blue-500 text-white'
+                                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                                            }`}
+                                                    >S</button>
+                                                    <button
+                                                        onClick={() => updateStatus(index, 'I')}
+                                                        className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === 'I'
+                                                            ? 'bg-yellow-500 text-white'
+                                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                                            }`}
+                                                    >I</button>
+                                                    <button
+                                                        onClick={() => updateStatus(index, 'A')}
+                                                        className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === 'A'
+                                                            ? 'bg-red-500 text-white'
+                                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                                            }`}
+                                                    >A</button>
+                                                </div>
+                                            </div>
+
+                                            {/* Keterangan field for Izin or Sakit */}
+                                            {(siswa.status === 'I' || siswa.status === 'S') && (
+                                                <input
+                                                    type="text"
+                                                    value={siswa.keterangan}
+                                                    onChange={e => updateKeterangan(index, e.target.value)}
+                                                    placeholder={siswa.status === 'S' ? "Keterangan sakit..." : "Keterangan izin..."}
+                                                    className={`w-full mt-2 border rounded-lg p-2 text-sm focus:ring-2 focus:border-transparent ${siswa.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Fixed Footer */}
@@ -433,7 +679,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                     </button>
                 </div>
             </div>
-        </div>,
+        </div >,
         document.body
     );
 }

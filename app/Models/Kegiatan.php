@@ -25,6 +25,7 @@ class Kegiatan extends Model
         'deskripsi',
         'status',
         'status_kbm', // Keep for backward compatibility
+        'tahun_ajaran_id',
     ];
 
     protected $casts = [
@@ -70,5 +71,21 @@ class Kegiatan extends Model
             return collect([]);
         }
         return Kelas::whereIn('id', $this->kelas_peserta)->get();
+    }
+
+    /**
+     * Get the tahun ajaran for this kegiatan.
+     */
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+
+    /**
+     * Get the linked kalender entry.
+     */
+    public function kalender()
+    {
+        return $this->hasOne(Kalender::class, 'kegiatan_id');
     }
 }

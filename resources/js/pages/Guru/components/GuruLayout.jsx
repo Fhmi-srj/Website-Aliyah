@@ -1,14 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
+import { getRoleInfo } from '../../../config/roleConfig';
+import RoleSwitcher from '../../../components/RoleSwitcher';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
 
 function GuruLayout({ children }) {
     const [fabOpen, setFabOpen] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [tahunAjaranMenuOpen, setTahunAjaranMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    // Use AuthContext tahunAjaran with fallback to TahunAjaranContext
+    const { logout, tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaran = authTahunAjaran || activeTahunAjaran;
     const profileMenuRef = useRef(null);
 
     const handleAbsensiClick = (type) => {
@@ -18,7 +25,7 @@ function GuruLayout({ children }) {
 
     const handleLogout = async () => {
         setProfileMenuOpen(false);
-        
+
         const result = await Swal.fire({
             title: 'Keluar dari Aplikasi?',
             text: 'Anda akan keluar dari akun ini',
@@ -50,6 +57,7 @@ function GuruLayout({ children }) {
         const handleClickOutside = (event) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
                 setProfileMenuOpen(false);
+                setTahunAjaranMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -95,19 +103,20 @@ function GuruLayout({ children }) {
                         <p className="text-[10px] text-green-600">Sistem Absensi Guru</p>
                     </div>
                 </div>
-                
+
                 {/* Profile Icon with Dropdown */}
                 <div className="relative" ref={profileMenuRef}>
                     <button
-                        onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                        onClick={() => { setProfileMenuOpen(!profileMenuOpen); setTahunAjaranMenuOpen(false); }}
                         className="p-2 hover:bg-green-50 rounded-lg transition-colors"
                     >
                         <i className="fas fa-user-circle text-green-600 text-xl"></i>
                     </button>
-                    
+
                     {/* Dropdown Menu */}
                     {profileMenuOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                            {/* Profil */}
                             <button
                                 onClick={() => {
                                     setProfileMenuOpen(false);
@@ -118,14 +127,41 @@ function GuruLayout({ children }) {
                                 <i className="fas fa-user text-green-600"></i>
                                 <span className="text-sm text-gray-700">Profil</span>
                             </button>
-                            <div className="border-t border-gray-100"></div>
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left"
-                            >
-                                <i className="fas fa-sign-out-alt text-red-500"></i>
-                                <span className="text-sm text-red-600">Keluar</span>
-                            </button>
+
+                            {/* Tahun Ajaran - Text Only Display */}
+                            <div className="border-t border-gray-100 px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                    <i className="fas fa-calendar-alt text-blue-500"></i>
+                                    <div>
+                                        <span className="text-xs text-gray-400">Tahun Ajaran</span>
+                                        <p className="text-sm font-medium text-gray-700">
+                                            {tahunAjaran?.nama || 'Tidak dipilih'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Role Switcher */}
+                            <div className="border-t border-gray-100">
+                                <RoleSwitcher
+                                    compact={true}
+                                    onSwitch={() => {
+                                        setProfileMenuOpen(false);
+                                        window.location.reload();
+                                    }}
+                                />
+                            </div>
+
+                            {/* Logout */}
+                            <div className="border-t border-gray-100">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left"
+                                >
+                                    <i className="fas fa-sign-out-alt text-red-500"></i>
+                                    <span className="text-sm text-red-600">Keluar</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

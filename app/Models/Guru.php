@@ -12,6 +12,7 @@ class Guru extends Model
     protected $table = 'guru';
 
     protected $fillable = [
+        'user_id',
         'username',
         'password',
         'nama',
@@ -27,6 +28,8 @@ class Guru extends Model
         'tmt',
         'jabatan',
         'status',
+        'foto',
+        'ttd',
     ];
 
     protected $hidden = [
@@ -39,6 +42,14 @@ class Guru extends Model
     ];
 
     /**
+     * Get the user account linked to this guru.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
      * Get the jadwal for this guru.
      */
     public function jadwal()
@@ -46,3 +57,4 @@ class Guru extends Model
         return $this->hasMany(Jadwal::class);
     }
 }
+

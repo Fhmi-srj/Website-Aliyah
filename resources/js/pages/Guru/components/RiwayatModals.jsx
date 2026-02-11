@@ -544,6 +544,24 @@ export function ModalRiwayatRapatPeserta({ item, onClose }) {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Tamu Undangan */}
+                                {(data?.peserta_eksternal || []).length > 0 && (
+                                    <div className="border border-blue-200 rounded-xl overflow-hidden">
+                                        <div className="p-3 bg-blue-50">
+                                            <div className="flex items-center gap-2 text-blue-700 text-sm font-medium"><i className="fas fa-user-plus"></i><span>Tamu Undangan ({data.peserta_eksternal.length})</span></div>
+                                        </div>
+                                        <div className="p-3 space-y-2">
+                                            {data.peserta_eksternal.map((pe, i) => (
+                                                <div key={i} className="bg-blue-50 border border-blue-100 rounded-lg p-2 flex items-center gap-2">
+                                                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Tamu</span>
+                                                    <span className="text-sm font-medium text-gray-700">{pe.nama}</span>
+                                                    {pe.jabatan && <span className="text-xs text-blue-400">({pe.jabatan})</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -693,6 +711,24 @@ export function ModalRiwayatRapatSekretaris({ item, onClose }) {
                                     )}
                                 </div>
 
+                                {/* Tamu Undangan */}
+                                {(data?.peserta_eksternal || []).length > 0 && (
+                                    <div className="border border-blue-200 rounded-xl overflow-hidden">
+                                        <div className="p-3 bg-blue-50">
+                                            <div className="flex items-center gap-2 text-blue-700 text-sm font-medium"><i className="fas fa-user-plus"></i><span>Tamu Undangan ({data.peserta_eksternal.length})</span></div>
+                                        </div>
+                                        <div className="p-3 space-y-2">
+                                            {data.peserta_eksternal.map((pe, i) => (
+                                                <div key={i} className="bg-blue-50 border border-blue-100 rounded-lg p-2 flex items-center gap-2">
+                                                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Tamu</span>
+                                                    <span className="text-sm font-medium text-gray-700">{pe.nama}</span>
+                                                    {pe.jabatan && <span className="text-xs text-blue-400">({pe.jabatan})</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Notulensi */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat</label>
@@ -737,6 +773,7 @@ export function ModalTerlewat({ item, type, onClose }) {
                         </div>
                         <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                             <div className="flex justify-between"><span className="text-xs text-gray-400">Jadwal</span><span className="text-sm font-medium text-gray-800">{item.nama || item.mapel || '-'}</span></div>
+                            {item.jam_ke && <div className="flex justify-between"><span className="text-xs text-gray-400">Jam Ke</span><span className="text-sm font-medium text-gray-800">{item.jam_ke}</span></div>}
                             {item.kelas && <div className="flex justify-between"><span className="text-xs text-gray-400">Kelas</span><span className="text-sm font-medium text-gray-800">{item.kelas}</span></div>}
                             <div className="flex justify-between"><span className="text-xs text-gray-400">Tanggal</span><span className="text-sm font-medium text-gray-800">{item.tanggal}</span></div>
                         </div>
@@ -775,6 +812,7 @@ export function ModalIzin({ item, type, onClose }) {
                     <div className="p-5 space-y-4">
                         <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                             <div className="flex justify-between"><span className="text-xs text-gray-400">Jadwal</span><span className="text-sm font-medium text-gray-800">{item.nama || item.mapel || '-'}</span></div>
+                            {item.jam_ke && <div className="flex justify-between"><span className="text-xs text-gray-400">Jam Ke</span><span className="text-sm font-medium text-gray-800">{item.jam_ke}</span></div>}
                             {item.kelas && <div className="flex justify-between"><span className="text-xs text-gray-400">Kelas</span><span className="text-sm font-medium text-gray-800">{item.kelas}</span></div>}
                             <div className="flex justify-between"><span className="text-xs text-gray-400">Tanggal</span><span className="text-sm font-medium text-gray-800">{item.tanggal}</span></div>
                         </div>

@@ -7,14 +7,16 @@ import React from 'react';
  * @param {function} onPageChange - Callback function when page changes
  * @param {number} totalItems - Total number of items
  * @param {number} itemsPerPage - Items shown per page
+ * @param {function} onLimitChange - Callback function when items per page changes
  */
-function Pagination({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }) {
-    if (totalPages <= 1) return null;
+function Pagination({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage, onLimitChange }) {
+    if (totalItems === 0) return null;
 
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-    // Generate page numbers to display
+    const limits = [10, 20, 50, 100];
+
     const getPageNumbers = () => {
         const pages = [];
         const maxVisible = 5;
@@ -42,50 +44,74 @@ function Pagination({ currentPage, totalPages, onPageChange, totalItems, itemsPe
     };
 
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-2">
-            <div className="text-xs text-gray-500">
-                Menampilkan {startItem}-{endItem} dari {totalItems} data
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 px-4 py-4 bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                    Menampilkan <span className="text-gray-700 dark:text-dark-text">{startItem}-{endItem}</span> dari <span className="text-primary">{totalItems}</span> data
+                </div>
+
+                {onLimitChange && (
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Tampilkan:</span>
+                        <div className="relative group">
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => onLimitChange(Number(e.target.value))}
+                                className="appearance-none bg-white dark:bg-dark-surface pl-4 pr-10 py-2 rounded-xl border border-gray-100 dark:border-dark-border text-[11px] font-black text-primary dark:text-primary tracking-tight cursor-pointer focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none shadow-sm hover:shadow-md"
+                            >
+                                {limits.map(limit => (
+                                    <option key={limit} value={limit} className="dark:bg-dark-card py-2">
+                                        {limit} Baris
+                                    </option>
+                                ))}
+                            </select>
+                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 group-hover:text-primary transition-colors pointer-events-none"></i>
+                        </div>
+                    </div>
+                )}
             </div>
-            <div className="flex items-center gap-1">
-                {/* Previous Button */}
+
+            <div className="flex items-center gap-1.5">
                 <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-2 py-1 text-xs rounded border ${currentPage === 1
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-gray-700 hover:bg-green-50 hover:border-green-400 cursor-pointer'
+                    className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-200 ${currentPage === 1
+                        ? 'bg-gray-50 dark:bg-dark-bg text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                        : 'bg-white dark:bg-dark-surface text-gray-600 dark:text-dark-text hover:bg-primary hover:text-white dark:hover:bg-primary border border-gray-100 dark:border-dark-border hover:shadow-lg hover:shadow-primary/20'
                         }`}
+                    title="Halaman Sebelumnya"
                 >
-                    <i className="fas fa-chevron-left"></i>
+                    <i className="fas fa-chevron-left text-[10px]"></i>
                 </button>
 
-                {/* Page Numbers */}
-                {getPageNumbers().map((page, idx) => (
-                    <button
-                        key={idx}
-                        onClick={() => typeof page === 'number' && onPageChange(page)}
-                        disabled={page === '...'}
-                        className={`px-3 py-1 text-xs rounded border ${page === currentPage
-                                ? 'bg-green-600 text-white border-green-600'
+                <div className="flex items-center gap-1">
+                    {getPageNumbers().map((page, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => typeof page === 'number' && onPageChange(page)}
+                            disabled={page === '...'}
+                            className={`min-w-[32px] h-8 px-2 flex items-center justify-center rounded-xl text-[11px] font-black transition-all duration-200 ${page === currentPage
+                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                 : page === '...'
-                                    ? 'bg-white text-gray-400 cursor-default border-transparent'
-                                    : 'bg-white text-gray-700 hover:bg-green-50 hover:border-green-400 cursor-pointer'
-                            }`}
-                    >
-                        {page}
-                    </button>
-                ))}
+                                    ? 'text-gray-300 dark:text-gray-600 cursor-default'
+                                    : 'bg-white dark:bg-dark-surface text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-bg border border-gray-100 dark:border-dark-border'
+                                }`}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                </div>
 
-                {/* Next Button */}
                 <button
                     onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`px-2 py-1 text-xs rounded border ${currentPage === totalPages
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-gray-700 hover:bg-green-50 hover:border-green-400 cursor-pointer'
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-200 ${currentPage === totalPages || totalPages === 0
+                        ? 'bg-gray-50 dark:bg-dark-bg text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                        : 'bg-white dark:bg-dark-surface text-gray-600 dark:text-dark-text hover:bg-primary hover:text-white dark:hover:bg-primary border border-gray-100 dark:border-dark-border hover:shadow-lg hover:shadow-primary/20'
                         }`}
+                    title="Halaman Berikutnya"
                 >
-                    <i className="fas fa-chevron-right"></i>
+                    <i className="fas fa-chevron-right text-[10px]"></i>
                 </button>
             </div>
         </div>
