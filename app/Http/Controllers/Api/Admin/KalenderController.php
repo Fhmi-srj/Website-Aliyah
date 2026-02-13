@@ -36,9 +36,10 @@ class KalenderController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
             'kegiatan' => 'required|string|max:255',
+            'tempat' => 'nullable|string|max:255',
             'status_kbm' => 'required|in:Aktif,Libur',
             'guru_id' => 'nullable|exists:guru,id',
-            'keterangan' => 'required|in:Kegiatan,Libur,Keterangan',
+            'keterangan' => 'required|in:Kegiatan,Keterangan',
             'rab' => 'nullable|numeric|min:0',
         ]);
 
@@ -72,6 +73,7 @@ class KalenderController extends Controller
                     'jenis_kegiatan' => 'Rutin',
                     'waktu_mulai' => $request->tanggal_mulai,
                     'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
+                    'tempat' => $request->tempat,
                     'penanggung_jawab_id' => $request->guru_id,
                     'penanggung_jawab' => $penanggungJawabNama, // Add the required field
                     'status' => 'Aktif',
@@ -123,9 +125,10 @@ class KalenderController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
             'kegiatan' => 'required|string|max:255',
+            'tempat' => 'nullable|string|max:255',
             'status_kbm' => 'required|in:Aktif,Libur',
             'guru_id' => 'nullable|exists:guru,id',
-            'keterangan' => 'required|in:Kegiatan,Libur,Keterangan',
+            'keterangan' => 'required|in:Kegiatan,Keterangan',
             'rab' => 'nullable|numeric|min:0',
         ]);
 
@@ -154,7 +157,9 @@ class KalenderController extends Controller
                             'nama_kegiatan' => $request->kegiatan,
                             'waktu_mulai' => $request->tanggal_mulai,
                             'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
+                            'tempat' => $request->tempat,
                             'penanggung_jawab_id' => $request->guru_id,
+                            'penanggung_jawab' => $request->guru_id ? (\App\Models\Guru::find($request->guru_id)?->nama ?? '-') : '-',
                         ]);
                     }
                 } else {
@@ -164,9 +169,11 @@ class KalenderController extends Controller
                         'jenis_kegiatan' => 'Rutin',
                         'waktu_mulai' => $request->tanggal_mulai,
                         'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
+                        'tempat' => $request->tempat,
                         'penanggung_jawab_id' => $request->guru_id,
+                        'penanggung_jawab' => $request->guru_id ? (\App\Models\Guru::find($request->guru_id)?->nama ?? '-') : '-',
                         'status' => 'Aktif',
-                        'status_kbm' => $request->status_kbm,
+                        'tahun_ajaran_id' => $kalender->tahun_ajaran_id,
                     ]);
                     $kalenderData['kegiatan_id'] = $kegiatan->id;
                 }
@@ -286,7 +293,7 @@ class KalenderController extends Controller
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:kalender,id',
-            'status_kbm' => 'required|in:Aktif,Libur'
+            'status_kbm' => 'required|in:Aktif,Tidak Aktif'
         ]);
 
         if ($validator->fails()) {
@@ -320,7 +327,7 @@ class KalenderController extends Controller
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:kalender,id',
-            'keterangan' => 'required|in:Kegiatan,Libur,Keterangan'
+            'keterangan' => 'required|in:Kegiatan,Keterangan'
         ]);
 
         if ($validator->fails()) {

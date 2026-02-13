@@ -37,7 +37,14 @@ function ManajemenGuru() {
     const [activeFilter, setActiveFilter] = useState(null);
 
     // Mobile expandable rows
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [expandedRows, setExpandedRows] = useState(new Set());
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -544,7 +551,7 @@ function ManajemenGuru() {
     // Sortable header component
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
         <th
-            className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group"
+            className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group"
             onClick={() => !filterable && handleSort(column)}
         >
             <div className="flex items-center gap-1.5">
@@ -585,83 +592,57 @@ function ManajemenGuru() {
         </th>
     );
 
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
 
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-chalkboard-teacher text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
-                                Manajemen Guru
-                            </h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
-                                Kelola data guru dan tenaga pendidik
-                            </p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 uppercase tracking-tight">Manajemen Guru</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Kelola data guru dan tenaga pendidik</p>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                    <input
-                        aria-label="Cari data guru"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
-                        placeholder="Cari data guru (Nama, NIP, Email)..."
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    {selectedItems.size > 0 && (
-                        <button
-                            onClick={handleBulkDelete}
-                            className="btn-danger flex items-center gap-2 group px-5 py-2.5 shadow-lg shadow-rose-200 dark:shadow-none font-black text-[10px] uppercase tracking-widest"
-                            type="button"
-                        >
-                            <i className="fas fa-trash scale-110 group-hover:rotate-12 transition-transform"></i>
-                            <span>Hapus ({selectedItems.size})</span>
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100'}`}>
+                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
+                        <input
+                            aria-label="Cari data guru"
+                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm`}
+                            placeholder={isMobile ? 'Cari...' : 'Cari data guru (Nama, NIP, Email)...'}
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        {selectedItems.size > 0 && (
+                            <button onClick={handleBulkDelete} className={`bg-rose-500 text-white flex items-center gap-1 font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                                <i className="fas fa-trash"></i>
+                                <span>{isMobile ? selectedItems.size : `Hapus (${selectedItems.size})`}</span>
+                            </button>
+                        )}
+                        <button onClick={handleImportClick} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-file-import"></i>
+                            <span>Import</span>
                         </button>
-                    )}
-                    <button
-                        onClick={handleImportClick}
-                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-file-import"></i>
-                        <span>Import</span>
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-file-export"></i>
-                        <span>Export</span>
-                    </button>
-                    <button
-                        onClick={openAddModal}
-                        className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                        <span>Tambah Guru</span>
-                    </button>
+                        <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                        <button onClick={openAddModal} className={`btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest ${isMobile ? '' : 'px-4 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                            <span>{isMobile ? 'Tambah' : 'Tambah Guru'}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -681,22 +662,19 @@ function ManajemenGuru() {
                     <span className="ml-3 text-gray-600">Memuat data...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
-                    <table aria-label="Tabel data guru" className={`admin-table ${isMobile ? '' : 'min-w-[1400px]'}`}>
+                <div className={`bg-white rounded-2xl shadow-soft border border-gray-100 ${isMobile ? 'overflow-hidden' : 'overflow-x-auto scrollbar-hide'}`}>
+                    <table aria-label="Tabel data guru" className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[1400px]'}`}>
                         <thead>
                             <tr>
-                                <th className="select-none pl-6 py-4 w-10">
-                                    <input
-                                        type="checkbox"
-                                        checked={paginatedData.length > 0 && selectedItems.size === paginatedData.length}
-                                        onChange={handleSelectAll}
-                                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                    />
-                                </th>
-                                <th className="select-none py-4 text-center">No</th>
-                                {isMobile && <th className="select-none py-4"></th>}
+                                {!isMobile && (
+                                    <th className="select-none pl-6 py-2.5 w-10 text-center">
+                                        <input type="checkbox" checked={paginatedData.length > 0 && selectedItems.size === paginatedData.length} onChange={handleSelectAll} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
+                                    </th>
+                                )}
+                                {!isMobile && <th className="select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                                {isMobile && <th className="col-expand select-none py-1 text-center"></th>}
                                 <SortableHeader label="Nama" column="nama" />
-                                <SortableHeader label="NIP" column="nip" />
+                                {!isMobile && <SortableHeader label="NIP" column="nip" />}
                                 {!isMobile && <SortableHeader label="Email" column="email" />}
                                 <SortableHeader
                                     label="Jabatan"
@@ -725,93 +703,110 @@ function ManajemenGuru() {
                                 )}
                                 {!isMobile && <SortableHeader label="Pendidikan" column="pendidikan" />}
                                 {!isMobile && <SortableHeader label="TMT" column="tmt" />}
-                                <SortableHeader
-                                    label="Status"
-                                    column="status"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua', value: '' },
-                                        { label: 'Aktif', value: 'Aktif' },
-                                        { label: 'Tidak Aktif', value: 'Tidak Aktif' }
-                                    ]}
-                                    filterValue={filterStatus}
-                                    setFilterValue={setFilterStatus}
-                                />
-                                <th className="select-none py-4 text-center">Aksi</th>
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Status"
+                                        column="status"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua', value: '' },
+                                            { label: 'Aktif', value: 'Aktif' },
+                                            { label: 'Tidak Aktif', value: 'Tidak Aktif' }
+                                        ]}
+                                        filterValue={filterStatus}
+                                        setFilterValue={setFilterStatus}
+                                    />
+                                )}
+                                <th className={`select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest ${isMobile ? 'px-2' : 'px-6'}`}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
                                     <tr className={selectedItems.has(item.id) ? 'bg-primary/5' : ''}>
-                                        <td className="pl-6 py-4 align-middle">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedItems.has(item.id)}
-                                                onChange={() => handleSelectItem(item.id)}
-                                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                            />
-                                        </td>
-                                        <td className="py-4 text-center">{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                                        {isMobile && (
-                                            <td
-                                                className="px-2 py-2 align-middle select-none text-center cursor-pointer"
-                                                onClick={() => toggleRowExpand(idx)}
-                                            >
-                                                <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-green-700`}></i>
+                                        {!isMobile && (
+                                            <td className="pl-6 py-2.5 align-middle text-center">
+                                                <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" />
                                             </td>
                                         )}
-                                        <td className="px-2 py-2 align-middle select-none whitespace-nowrap dark:text-dark-text">{item.nama}</td>
-                                        <td className="px-2 py-2 align-middle select-none whitespace-nowrap dark:text-dark-text">{item.nip || '-'}</td>
-                                        {!isMobile && <td className="px-2 py-2 align-middle select-none whitespace-nowrap dark:text-dark-text">{item.email || '-'}</td>}
-                                        <td className="px-2 py-2 align-middle select-none whitespace-nowrap">
+                                        {!isMobile && <td className="text-center text-xs font-bold text-gray-400">{(currentPage - 1) * itemsPerPage + idx + 1}</td>}
+                                        {isMobile && (
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'px-2 py-2'} align-middle whitespace-nowrap`}>
+                                            <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} font-black text-gray-700 uppercase tracking-tight truncate max-w-[120px] md:max-w-none block`}>{item.nama}</span>
+                                        </td>
+                                        {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{item.nip || '-'}</td>}
+                                        {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{item.email || '-'}</td>}
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'px-2 py-2'} align-middle whitespace-nowrap`}>
                                             {item.roles?.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1">
-                                                    {item.roles.map((role, i) => (
-                                                        <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">
-                                                            {role}
-                                                        </span>
+                                                <div className="flex flex-wrap gap-0.5">
+                                                    {item.roles.slice(0, isMobile ? 1 : item.roles.length).map((role, i) => (
+                                                        <span key={i} className={`px-1 py-0.5 bg-primary/10 text-primary ${isMobile ? 'text-[7px]' : 'text-[10px]'} rounded-full font-bold`}>{role}</span>
                                                     ))}
+                                                    {isMobile && item.roles.length > 1 && <span className="text-[7px] text-gray-400">+{item.roles.length - 1}</span>}
                                                 </div>
                                             ) : '-'}
                                         </td>
-                                        {!isMobile && <td className="px-2 py-2 align-middle select-none whitespace-nowrap text-center dark:text-dark-text">{item.jenis_kelamin === 'L' ? 'L' : 'P'}</td>}
-                                        {!isMobile && <td className="px-2 py-2 align-middle select-none whitespace-nowrap dark:text-dark-text">{item.pendidikan || '-'}</td>}
-                                        {!isMobile && <td className="px-2 py-2 align-middle select-none whitespace-nowrap dark:text-dark-text">{formatDate(item.tmt) || '-'}</td>}
-                                        <td className="px-2 py-2 align-middle select-none whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => openEditModal(item)}
-                                                    className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors flex items-center justify-center dark:bg-blue-900/20 dark:text-blue-400"
-                                                    title="Edit Data"
-                                                >
-                                                    <i className="fas fa-edit text-xs"></i>
+                                        {!isMobile && <td className="px-2 py-2 align-middle text-center">{item.jenis_kelamin === 'L' ? 'L' : 'P'}</td>}
+                                        {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{item.pendidikan || '-'}</td>}
+                                        {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{formatDate(item.tmt) || '-'}</td>}
+                                        {!isMobile && <td className="px-1 py-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>}
+                                        <td className={`text-center ${isMobile ? 'py-1 px-1' : 'px-6'}`}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <button onClick={() => openEditModal(item)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Edit Data">
+                                                    <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center dark:bg-red-900/20 dark:text-red-400"
-                                                    title="Hapus Data"
-                                                >
-                                                    <i className="fas fa-trash text-xs"></i>
+                                                <button onClick={() => handleDelete(item.id)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Hapus Data">
+                                                    <i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-gray-50 dark:bg-dark-bg/50">
-                                            <td colSpan="7" className="px-4 py-3">
-                                                <div className="grid grid-cols-2 gap-2 text-[11px] dark:text-dark-text">
-                                                    <div><strong>Username:</strong> {item.username}</div>
-                                                    <div><strong>Email:</strong> {item.email || '-'}</div>
-                                                    <div><strong>JK:</strong> {item.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</div>
-                                                    <div><strong>Pendidikan:</strong> {item.pendidikan || '-'}</div>
-                                                    <div><strong>Kontak:</strong> {item.kontak || '-'}</div>
-                                                    <div><strong>SK:</strong> {item.sk || '-'}</div>
-                                                    <div><strong>TMT:</strong> {formatDate(item.tmt) || '-'}</div>
-                                                    <div><strong>Tempat Lahir:</strong> {item.tempat_lahir || '-'}</div>
-                                                    <div><strong>Tanggal Lahir:</strong> {formatDate(item.tanggal_lahir) || '-'}</div>
-                                                    <div className="col-span-2"><strong>Alamat:</strong> {item.alamat || '-'}</div>
+                                        <tr>
+                                            <td colSpan="4" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">NIP</span>
+                                                        <span className="expand-value">{item.nip || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Status</span>
+                                                        <span className="expand-value">{renderStatus(item.status)}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Email</span>
+                                                        <span className="expand-value">{item.email || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">JK</span>
+                                                        <span className="expand-value">{item.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Pendidikan</span>
+                                                        <span className="expand-value">{item.pendidikan || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Kontak</span>
+                                                        <span className="expand-value">{item.kontak || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">TMT</span>
+                                                        <span className="expand-value">{formatDate(item.tmt) || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">SK</span>
+                                                        <span className="expand-value">{item.sk || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item full-width">
+                                                        <span className="expand-label">Alamat</span>
+                                                        <span className="expand-value">{item.alamat || '-'}</span>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -909,24 +904,24 @@ function ManajemenGuru() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
+                        <div className={`bg-gradient-to-r from-primary to-green-600 ${isMobile ? 'px-3 py-2' : 'px-4 py-2.5'} text-white relative`}>
                             <button
                                 onClick={closeModal}
-                                className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20"
+                                className={`absolute ${isMobile ? 'top-2 right-2 w-6 h-6' : 'top-4 right-4 w-8 h-8'} text-white/80 hover:text-white cursor-pointer transition flex items-center justify-center rounded-full hover:bg-white/20`}
                                 type="button"
                                 aria-label="Tutup Modal"
                             >
-                                <i className="fas fa-times text-lg"></i>
+                                <i className={`fas fa-times ${isMobile ? 'text-sm' : 'text-lg'}`}></i>
                             </button>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'user-edit'} text-lg`}></i>
+                                <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md`}>
+                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'user-edit'} ${isMobile ? 'text-sm' : 'text-lg'}`}></i>
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold">
+                                    <h2 className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold`}>
                                         {modalMode === 'add' ? 'Tambah Guru Baru' : 'Perbarui Data Guru'}
                                     </h2>
-                                    <p className="text-xs text-white/80 mt-0.5">Lengkapi informasi detail tenaga pendidik</p>
+                                    <p className={`${isMobile ? 'text-[9px]' : 'text-xs'} text-white/80 mt-0.5 italic`}>Lengkapi informasi detail tenaga pendidik</p>
                                 </div>
                             </div>
                         </div>
@@ -936,32 +931,32 @@ function ManajemenGuru() {
                             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide max-h-[70vh]">
                                 {/* Section: Akun */}
                                 <div>
-                                    <div className="flex items-center gap-2 mb-4">
+                                    <div className={`flex items-center gap-2 ${isMobile ? 'mb-2' : 'mb-4'}`}>
                                         <div className="w-1.5 h-4 bg-primary rounded-full"></div>
-                                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Informasi Akun</h3>
+                                        <h3 className={`block ${isMobile ? 'text-[10px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Informasi Akun</h3>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Username *</label>
+                                    <div className={`grid grid-cols-1 md:grid-cols-2 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Username *</label>
                                             <input
                                                 type="text"
                                                 required
                                                 value={formData.username}
                                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                                className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400"
-                                                placeholder="Username untuk login"
+                                                className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
+                                                placeholder="Username Login"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                                                Password {modalMode === 'add' ? '*' : '(Kosongkan jika tetap)'}
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Password {modalMode === 'add' ? '*' : '(Ops)'}
                                             </label>
                                             <input
                                                 type="password"
                                                 required={modalMode === 'add'}
                                                 value={formData.password}
                                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400"
+                                                className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
                                                 placeholder="••••••••"
                                             />
                                         </div>
@@ -970,42 +965,42 @@ function ManajemenGuru() {
 
                                 {/* Section: Data Diri */}
                                 <div>
-                                    <div className="flex items-center gap-2 mb-4">
+                                    <div className={`flex items-center gap-2 ${isMobile ? 'mb-2' : 'mb-4'}`}>
                                         <div className="w-1.5 h-4 bg-primary rounded-full"></div>
-                                        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Data Pribadi</h3>
+                                        <h3 className={`block ${isMobile ? 'text-[10px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Data Pribadi</h3>
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Nama Lengkap *</label>
+                                    <div className={`${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+                                        <div className={`grid grid-cols-1 md:grid-cols-2 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
+                                            <div className="space-y-1">
+                                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lengkap *</label>
                                                 <input
                                                     type="text"
                                                     required
                                                     value={formData.nama}
                                                     onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                                                    className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400"
-                                                    placeholder="Nama lengkap beserta gelar"
+                                                    className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
+                                                    placeholder="Nama Lengkap"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">NIP</label>
+                                            <div className="space-y-1">
+                                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NIP</label>
                                                 <input
                                                     type="text"
                                                     value={formData.nip}
                                                     onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
-                                                    className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400"
+                                                    className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
                                                     placeholder="Nomor Induk Pegawai"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Email</label>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</label>
                                             <input
                                                 type="email"
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                className="w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400"
+                                                className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
                                                 placeholder="contoh@aliyah.sch.id"
                                             />
                                         </div>
@@ -1193,19 +1188,19 @@ function ManajemenGuru() {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-6 border-t border-gray-100 dark:border-dark-border flex justify-end gap-3 bg-gray-50/50 dark:bg-dark-bg/20">
+                            <div className={`${isMobile ? 'p-3' : 'p-6'} border-t border-gray-100 dark:border-dark-border flex justify-end gap-3 bg-gray-50/50 dark:bg-dark-bg/20`}>
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="px-6 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-dark-surface transition-all text-[11px] font-black uppercase tracking-widest"
+                                    className={`flex-1 ${isMobile ? 'py-2 text-[10px]' : 'py-3 text-xs'} rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-dark-surface transition-all font-black uppercase tracking-widest`}
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="btn-primary px-8 py-2.5 rounded-xl shadow-lg shadow-primary/20 text-[11px] font-black uppercase tracking-widest"
+                                    className={`btn-primary flex-1 ${isMobile ? 'py-2 text-[10px]' : 'py-3 text-xs'} rounded-xl shadow-lg shadow-primary/20 font-black uppercase tracking-widest`}
                                 >
-                                    {modalMode === 'add' ? 'Simpan Data' : 'Perbarui Data'}
+                                    {modalMode === 'add' ? 'Simpan' : 'Perbarui'}
                                 </button>
                             </div>
                         </form>

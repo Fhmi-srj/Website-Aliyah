@@ -26,10 +26,10 @@ export const roleIcons = {
 // Role colors for UI
 export const roleColors = {
     guru: 'green',
-    waka_kurikulum: 'blue',
-    waka_kesiswaan: 'purple',
-    wali_kelas: 'orange',
-    kepala_madrasah: 'red',
+    waka_kurikulum: 'emerald',
+    waka_kesiswaan: 'teal',
+    wali_kelas: 'lime',
+    kepala_madrasah: 'green',
     superadmin: 'gray',
 };
 

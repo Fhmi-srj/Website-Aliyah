@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import CrudModal, { ModalSection } from '../../../components/CrudModal';
 import { API_BASE, authFetch } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
@@ -17,7 +17,7 @@ function ManajemenSiswa() {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
-    const [isModalClosing, setIsModalClosing] = useState(false);
+
     const [formData, setFormData] = useState({
         nama: '', status: 'Aktif', nis: '', nisn: '', kelas_id: '',
         jenis_kelamin: 'L', alamat: '', tanggal_lahir: '', tempat_lahir: '',
@@ -351,7 +351,7 @@ function ManajemenSiswa() {
             jenis_kelamin: 'L', alamat: '', tanggal_lahir: '', tempat_lahir: '',
             asal_sekolah: '', nama_ayah: '', nama_ibu: '', kontak_ortu: ''
         });
-        setIsModalClosing(false);
+
         setShowModal(true);
     };
 
@@ -373,17 +373,11 @@ function ManajemenSiswa() {
             nama_ibu: item.nama_ibu || '',
             kontak_ortu: item.kontak_ortu || ''
         });
-        setIsModalClosing(false);
+
         setShowModal(true);
     };
 
-    const closeModal = () => {
-        setIsModalClosing(true);
-        setTimeout(() => {
-            setShowModal(false);
-            setIsModalClosing(false);
-        }, 200);
-    };
+    const closeModal = () => setShowModal(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -447,7 +441,7 @@ function ManajemenSiswa() {
 
     // Sortable header component
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
+        <th className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
             <div className="flex items-center gap-1.5">
                 <span onClick={(e) => { e.stopPropagation(); handleSort(column); }} className="hover:text-primary transition-colors">
                     {label}
@@ -483,53 +477,55 @@ function ManajemenSiswa() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-user-graduate text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Manajemen Siswa</h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Database siswa terpadu Aliyah</p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 uppercase tracking-tight">Manajemen Siswa</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Database siswa terpadu Aliyah</p>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                    <input
-                        aria-label="Cari siswa"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
-                        placeholder="Cari nama, NIS, atau kelas..."
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls" className="hidden" />
-                    {selectedItems.size > 0 && (
-                        <button onClick={handleBulkDelete} className="btn-danger-standard px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                            <i className="fas fa-trash"></i>
-                            <span>Hapus ({selectedItems.size})</span>
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100'}`}>
+                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
+                        <input
+                            aria-label="Cari siswa"
+                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm`}
+                            placeholder={isMobile ? 'Cari...' : 'Cari nama, NIS, atau kelas...'}
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls" className="hidden" />
+                        {selectedItems.size > 0 && (
+                            <button onClick={handleBulkDelete} className={`bg-rose-500 text-white flex items-center gap-1 font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
+                                <i className="fas fa-trash"></i>
+                                <span>{isMobile ? selectedItems.size : `Hapus (${selectedItems.size})`}</span>
+                            </button>
+                        )}
+                        <button onClick={() => fileInputRef.current?.click()} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-file-import"></i>
+                            <span>{isMobile ? 'Import' : 'Import'}</span>
                         </button>
-                    )}
-                    <button onClick={() => fileInputRef.current?.click()} className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-file-import"></i>
-                        <span>Import</span>
-                    </button>
-                    <button onClick={handleExport} className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-file-export"></i>
-                        <span>Export</span>
-                    </button>
-                    <button onClick={openAddModal} className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                        <span>Tambah Siswa</span>
-                    </button>
+                        <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                        <button onClick={openAddModal} className={`btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest ${isMobile ? '' : 'px-4 py-2.5 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                            <span>{isMobile ? 'Tambah' : 'Tambah Siswa'}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -540,22 +536,23 @@ function ManajemenSiswa() {
                     <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400">Memuat data...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
-                    <table className={`admin-table ${isMobile ? '' : 'min-w-[1000px]'}`}>
+                <div className={`bg-white rounded-2xl shadow-soft border border-gray-100 ${isMobile ? 'overflow-hidden' : 'overflow-x-auto scrollbar-hide'}`}>
+                    <table className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[1000px]'}`}>
                         <thead>
                             <tr>
-                                <th className="select-none pl-6 py-4 w-10">
-                                    <input
-                                        type="checkbox"
-                                        checked={paginatedData.length > 0 && selectedItems.size === paginatedData.length}
-                                        onChange={handleSelectAll}
-                                        className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer"
-                                    />
-                                </th>
-                                <th className="select-none py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
-                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                {!isMobile && (
+                                    <th className="select-none pl-6 py-2.5 w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={paginatedData.length > 0 && selectedItems.size === paginatedData.length}
+                                            onChange={handleSelectAll}
+                                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                        />
+                                    </th>
+                                )}
+                                {!isMobile && <th className="select-none pl-6 py-2.5 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                                {isMobile && <th className="col-expand select-none py-1 text-center"></th>}
                                 <SortableHeader label="Nama Lengkap" column="nama" />
-                                <SortableHeader label="NIS" column="nis" />
                                 <SortableHeader
                                     label="Kelas"
                                     column="kelas"
@@ -567,6 +564,7 @@ function ManajemenSiswa() {
                                     filterValue={filterKelas}
                                     setFilterValue={setFilterKelas}
                                 />
+                                {!isMobile && <SortableHeader label="NIS" column="nis" />}
                                 {!isMobile && (
                                     <SortableHeader
                                         label="Gender"
@@ -581,89 +579,113 @@ function ManajemenSiswa() {
                                         setFilterValue={setFilterJk}
                                     />
                                 )}
-                                <SortableHeader
-                                    label="Status"
-                                    column="status"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua', value: '' },
-                                        { label: 'Aktif', value: 'Aktif' },
-                                        { label: 'Tidak Aktif', value: 'Tidak Aktif' }
-                                    ]}
-                                    filterValue={filterStatus}
-                                    setFilterValue={setFilterStatus}
-                                />
-                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest">Aksi</th>
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Status"
+                                        column="status"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua', value: '' },
+                                            { label: 'Aktif', value: 'Aktif' },
+                                            { label: 'Tidak Aktif', value: 'Tidak Aktif' }
+                                        ]}
+                                        filterValue={filterStatus}
+                                        setFilterValue={setFilterStatus}
+                                    />
+                                )}
+                                <th className={`select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest ${isMobile ? 'px-2' : 'px-6'}`}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className={`hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group ${selectedItems.has(item.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
-                                        <td className="pl-6 py-4 align-middle">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedItems.has(item.id)}
-                                                onChange={() => handleSelectItem(item.id)}
-                                                className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer"
-                                            />
-                                        </td>
-                                        <td className="py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
-                                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                                        </td>
+                                    <tr key={item.id} className={`hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0 group ${selectedItems.has(item.id) ? 'bg-primary/5' : ''}`}>
+                                        {!isMobile && (
+                                            <td className="pl-6 py-2.5 align-middle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedItems.has(item.id)}
+                                                    onChange={() => handleSelectItem(item.id)}
+                                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                />
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-2.5 align-middle text-center text-xs font-bold text-gray-400">
+                                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                                            </td>
+                                        )}
                                         {isMobile && (
-                                            <td className="py-4 align-middle text-center cursor-pointer px-2" onClick={() => toggleRowExpand(idx)}>
-                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
-                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                        <td className={`${isMobile ? 'py-1.5 pl-1 pr-1' : 'py-2.5 px-2'} align-middle`}>
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.nama}</span>
-                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">NISN: {item.nisn || '-'}</span>
+                                                <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} font-black text-gray-700 group-hover:text-primary transition-colors uppercase tracking-tight truncate max-w-[140px] md:max-w-none`}>{item.nama}</span>
+                                                <span className={`${isMobile ? 'text-[7px]' : 'text-[8px]'} text-gray-400 font-medium leading-none`}>NISN: {item.nisn || '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            <span className="px-2 py-1 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[10px] font-bold text-gray-500 dark:text-gray-400">{item.nis}</span>
-                                        </td>
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.kelas?.nama_kelas || '-'}</span>
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'py-2.5 px-2'} align-middle whitespace-nowrap`}>
+                                            <span className={`${isMobile ? 'text-[9px]' : 'text-[11px]'} font-bold text-gray-600 uppercase`}>{item.kelas?.nama_kelas || '-'}</span>
                                         </td>
                                         {!isMobile && (
-                                            <td className="py-4 px-2 align-middle text-center">
-                                                <span className={`w-8 h-8 inline-flex items-center justify-center rounded-xl text-[10px] font-black ${item.jenis_kelamin === 'L' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
+                                                <span className="px-1.5 py-0.5 bg-gray-100 rounded-lg text-[10px] text-gray-500">{item.nis}</span>
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle text-center">
+                                                <span className={`w-8 h-8 inline-flex items-center justify-center rounded-xl text-[10px] font-black ${item.jenis_kelamin === 'L' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}`}>
                                                     {item.jenis_kelamin}
                                                 </span>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-4 px-6 align-middle text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => openEditModal(item)} className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95" title="Edit Data">
-                                                    <i className="fas fa-edit text-[10px]"></i>
+                                        {!isMobile && <td className="py-2.5 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>}
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'py-2.5 px-6'} align-middle text-center`}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <button onClick={() => openEditModal(item)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Edit Data">
+                                                    <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95" title="Hapus Data">
-                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                <button onClick={() => handleDelete(item.id)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Hapus Data">
+                                                    <i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-gray-50/50 dark:bg-dark-bg/30 border-b border-gray-100 dark:border-dark-border">
-                                            <td colSpan="8" className="px-6 py-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.alamat || '-'}</span>
+                                        <tr>
+                                            <td colSpan="4" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">NIS</span>
+                                                        <span className="expand-value">{item.nis || '-'}</span>
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Tgl Lahir</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{formatDate(item.tanggal_lahir)}</span>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Status</span>
+                                                        <span className="expand-value">{renderStatus(item.status)}</span>
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Ortu / Kontak</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.nama_ayah || item.nama_ibu || '-'} ({item.kontak_ortu || '-'})</span>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">L/P</span>
+                                                        <span className="expand-value">{item.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Tgl Lahir</span>
+                                                        <span className="expand-value">{formatDate(item.tanggal_lahir)}</span>
+                                                    </div>
+                                                    <div className="expand-item full-width">
+                                                        <span className="expand-label">Alamat</span>
+                                                        <span className="expand-value">{item.alamat || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Ortu / Wali</span>
+                                                        <span className="expand-value">{item.nama_ayah || item.nama_ibu || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Kontak</span>
+                                                        <span className="expand-value">{item.kontak_ortu || '-'}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -714,133 +736,102 @@ function ManajemenSiswa() {
                 </div>
             )}
 
-            {/* Modal with Portal */}
-            {showModal && ReactDOM.createPortal(
-                <div
-                    className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
-                    onClick={closeModal}
-                >
-                    <div
-                        className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transform transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
-                            <button onClick={closeModal} className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20" type="button">
-                                <i className="fas fa-times text-lg"></i>
-                            </button>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">{modalMode === 'add' ? 'Registrasi Siswa Baru' : 'Perbarui Profil Siswa'}</h2>
-                                    <p className="text-xs text-white/80 mt-0.5 italic">Lengkapi data pribadi dan akademik siswa</p>
-                                </div>
+            {/* Modal */}
+            <CrudModal
+                show={showModal}
+                onClose={closeModal}
+                title={modalMode === 'add' ? 'Registrasi Siswa Baru' : 'Perbarui Profil Siswa'}
+                subtitle="Lengkapi data pribadi dan akademik siswa"
+                icon={modalMode === 'add' ? 'plus' : 'edit'}
+                onSubmit={handleSubmit}
+                submitLabel={modalMode === 'add' ? 'Simpan' : 'Perbarui'}
+                maxWidth="max-w-2xl"
+                isMobile={isMobile}
+            >
+                {/* Academic Info */}
+                <div className={`${isMobile ? 'space-y-3' : ''}`}>
+                    <ModalSection label="Informasi Akademik" isMobile={isMobile} />
+                    <div className={`grid grid-cols-1 md:grid-cols-2 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lengkap *</label>
+                            <input type="text" required value={formData.nama} onChange={(e) => setFormData({ ...formData, nama: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Sesuai Akta Kelahiran/IJAZAH" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NIS *</label>
+                            <input type="text" required value={formData.nis} onChange={(e) => setFormData({ ...formData, nis: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Nomor Induk Siswa" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NISN</label>
+                            <input type="text" value={formData.nisn} onChange={(e) => setFormData({ ...formData, nisn: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Nomor Induk Siswa Nasional" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kelas *</label>
+                            <select required value={formData.kelas_id} onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })} className={`input-standard appearance-none outline-none ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`}>
+                                {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status *</label>
+                            <select required value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={`input-standard appearance-none outline-none ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`}>
+                                <option value="Aktif">Aktif</option>
+                                <option value="Tidak Aktif">Tidak Aktif</option>
+                                <option value="Lulus">Lulus</option>
+                                <option value="Pindah">Pindah</option>
+                                <option value="Dikeluarkan">Dikeluarkan</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Personal Info */}
+                <div>
+                    <ModalSection label="Biodata Pribadi" isMobile={isMobile} />
+                    <div className={`grid grid-cols-1 md:grid-cols-2 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jenis Kelamin *</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button type="button" onClick={() => setFormData({ ...formData, jenis_kelamin: 'L' })} className={`py-1.5 text-[10px] font-black rounded-xl border transition-all ${formData.jenis_kelamin === 'L' ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>Laki-laki</button>
+                                <button type="button" onClick={() => setFormData({ ...formData, jenis_kelamin: 'P' })} className={`py-1.5 text-[10px] font-black rounded-xl border transition-all ${formData.jenis_kelamin === 'P' ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>Perempuan</button>
                             </div>
                         </div>
-
-                        {/* Modal Body */}
-                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] scrollbar-hide">
-                                {/* Academic Info */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Informasi Akademik</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Lengkap *</label>
-                                            <input type="text" required value={formData.nama} onChange={(e) => setFormData({ ...formData, nama: e.target.value })} className="input-standard" placeholder="Sesuai Akta Kelahiran/IJAZAH" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NIS *</label>
-                                            <input type="text" required value={formData.nis} onChange={(e) => setFormData({ ...formData, nis: e.target.value })} className="input-standard" placeholder="Nomor Induk Siswa" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NISN</label>
-                                            <input type="text" value={formData.nisn} onChange={(e) => setFormData({ ...formData, nisn: e.target.value })} className="input-standard" placeholder="Nomor Induk Siswa Nasional" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kelas *</label>
-                                            <select required value={formData.kelas_id} onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })} className="input-standard appearance-none outline-none">
-                                                {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status *</label>
-                                            <select required value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-standard appearance-none outline-none">
-                                                <option value="Aktif">Aktif</option>
-                                                <option value="Tidak Aktif">Tidak Aktif</option>
-                                                <option value="Lulus">Lulus</option>
-                                                <option value="Pindah">Pindah</option>
-                                                <option value="Dikeluarkan">Dikeluarkan</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Personal Info */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Biodata Pribadi</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jenis Kelamin *</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button type="button" onClick={() => setFormData({ ...formData, jenis_kelamin: 'L' })} className={`py-2 text-xs font-black rounded-xl border transition-all ${formData.jenis_kelamin === 'L' ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>Laki-laki</button>
-                                                <button type="button" onClick={() => setFormData({ ...formData, jenis_kelamin: 'P' })} className={`py-2 text-xs font-black rounded-xl border transition-all ${formData.jenis_kelamin === 'P' ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>Perempuan</button>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tgl Lahir</label>
-                                            <input type="date" value={formData.tanggal_lahir} onChange={(e) => setFormData({ ...formData, tanggal_lahir: e.target.value })} className="input-standard" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tempat Lahir</label>
-                                            <input type="text" value={formData.tempat_lahir} onChange={(e) => setFormData({ ...formData, tempat_lahir: e.target.value })} className="input-standard" placeholder="Kota Kelahiran" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asal Sekolah</label>
-                                            <input type="text" value={formData.asal_sekolah} onChange={(e) => setFormData({ ...formData, asal_sekolah: e.target.value })} className="input-standard" placeholder="SMP/MTs Asal" />
-                                        </div>
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alamat Lengkap</label>
-                                            <textarea value={formData.alamat} onChange={(e) => setFormData({ ...formData, alamat: e.target.value })} className="input-standard min-h-[80px] py-3" placeholder="Jalan, No Rumah, RT/RW, Desa, Kec, Kab"></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Parent Info */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Kontak Orang Tua / Wali</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ayah</label>
-                                            <input type="text" value={formData.nama_ayah} onChange={(e) => setFormData({ ...formData, nama_ayah: e.target.value })} className="input-standard" placeholder="Nama Lengkap Ayah" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ibu</label>
-                                            <input type="text" value={formData.nama_ibu} onChange={(e) => setFormData({ ...formData, nama_ibu: e.target.value })} className="input-standard" placeholder="Nama Lengkap Ibu" />
-                                        </div>
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nomor HP / WhatsApp *</label>
-                                            <input type="text" value={formData.kontak_ortu} onChange={(e) => setFormData({ ...formData, kontak_ortu: e.target.value })} className="input-standard" placeholder="08XXXXXXXXXX" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Modal Footer */}
-                            <div className="p-6 border-t border-gray-100 dark:border-dark-border flex gap-3">
-                                <button type="button" onClick={closeModal} className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-bg/50 transition-all text-xs font-black uppercase tracking-widest">Batal</button>
-                                <button type="submit" className="btn-primary flex-1 px-4 py-3 rounded-2xl shadow-lg shadow-primary/20 text-xs font-black uppercase tracking-widest">
-                                    {modalMode === 'add' ? 'Simpan Data' : 'Perbarui Profil'}
-                                </button>
-                            </div>
-                        </form>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tgl Lahir</label>
+                            <input type="date" value={formData.tanggal_lahir} onChange={(e) => setFormData({ ...formData, tanggal_lahir: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tempat Lahir</label>
+                            <input type="text" value={formData.tempat_lahir} onChange={(e) => setFormData({ ...formData, tempat_lahir: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Kota Kelahiran" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asal Sekolah</label>
+                            <input type="text" value={formData.asal_sekolah} onChange={(e) => setFormData({ ...formData, asal_sekolah: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="SMP/MTs Asal" />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alamat Lengkap</label>
+                            <textarea value={formData.alamat} onChange={(e) => setFormData({ ...formData, alamat: e.target.value })} className={`input-standard min-h-[60px] ${isMobile ? 'py-1.5 px-3 text-[11px]' : 'py-3'}`} placeholder="Jalan, No Rumah, Desa, Kec, Kab"></textarea>
+                        </div>
                     </div>
-                </div>,
-                document.body
-            )}
+                </div>
+
+                {/* Parent Info */}
+                <div>
+                    <ModalSection label="Kontak Orang Tua / Wali" isMobile={isMobile} />
+                    <div className={`grid grid-cols-1 md:grid-cols-2 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ayah</label>
+                            <input type="text" value={formData.nama_ayah} onChange={(e) => setFormData({ ...formData, nama_ayah: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Nama Lengkap Ayah" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ibu</label>
+                            <input type="text" value={formData.nama_ibu} onChange={(e) => setFormData({ ...formData, nama_ibu: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Nama Lengkap Ibu" />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nomor HP / WhatsApp *</label>
+                            <input type="text" value={formData.kontak_ortu} onChange={(e) => setFormData({ ...formData, kontak_ortu: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="08XXXXXXXXXX" />
+                        </div>
+                    </div>
+                </div>
+            </CrudModal>
 
         </div>
     );

@@ -98,6 +98,7 @@ class KegiatanController extends Controller
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Selesai,Dibatalkan',
                 'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
+                'kalender_id' => 'nullable|exists:kalender,id',
             ]);
 
             DB::beginTransaction();
@@ -123,16 +124,32 @@ class KegiatanController extends Controller
 
             $kegiatan = Kegiatan::create($validated);
 
-            // Create linked kalender entry
-            Kalender::create([
-                'tanggal_mulai' => date('Y-m-d', strtotime($validated['waktu_mulai'])),
-                'tanggal_berakhir' => date('Y-m-d', strtotime($validated['waktu_berakhir'])),
-                'kegiatan' => $validated['nama_kegiatan'],
-                'status_kbm' => 'Aktif',
-                'guru_id' => $validated['penanggung_jawab_id'] ?? null,
-                'kegiatan_id' => $kegiatan->id,
-                'keterangan' => 'Kegiatan',
-            ]);
+            // Link to existing or create new calendar entry
+            if (!empty($validated['kalender_id'])) {
+                $kalender = Kalender::find($validated['kalender_id']);
+                if ($kalender) {
+                    $kalender->update([
+                        'kegiatan_id' => $kegiatan->id,
+                        'kegiatan' => $validated['nama_kegiatan'],
+                        'tanggal_mulai' => date('Y-m-d H:i:s', strtotime($validated['waktu_mulai'])),
+                        'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
+                        'tempat' => $validated['tempat'] ?? null,
+                        'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                    ]);
+                }
+            } else {
+                Kalender::create([
+                    'tanggal_mulai' => date('Y-m-d H:i:s', strtotime($validated['waktu_mulai'])),
+                    'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
+                    'kegiatan' => $validated['nama_kegiatan'],
+                    'status_kbm' => 'Aktif',
+                    'tempat' => $validated['tempat'] ?? null,
+                    'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                    'kegiatan_id' => $kegiatan->id,
+                    'keterangan' => 'Kegiatan',
+                    'tahun_ajaran_id' => $validated['tahun_ajaran_id'],
+                ]);
+            }
 
             DB::commit();
 
@@ -208,14 +225,21 @@ class KegiatanController extends Controller
             $kegiatan->update($validated);
 
             // Update linked kalender entry if exists
-            $linkedKalender = Kalender::where('kegiatan_id', $kegiatan->id)->first();
+            $linkedKalender = Kalender::where('kegiatan_id', $kegiatan->id)->first() ?? ($kegiatan->kalender_id ? Kalender::find($kegiatan->kalender_id) : null);
             if ($linkedKalender) {
+                // Sync essential fields (Name, Dates, PJ)
                 $linkedKalender->update([
-                    'tanggal_mulai' => date('Y-m-d', strtotime($validated['waktu_mulai'])),
-                    'tanggal_berakhir' => date('Y-m-d', strtotime($validated['waktu_berakhir'])),
+                    'tanggal_mulai' => date('Y-m-d H:i:s', strtotime($validated['waktu_mulai'])),
+                    'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
                     'kegiatan' => $validated['nama_kegiatan'],
+                    'tempat' => $validated['tempat'] ?? null,
                     'guru_id' => $validated['penanggung_jawab_id'] ?? null,
                 ]);
+
+                // If we found it via kalender_id but it wasn't linked via kegiatan_id, link it now
+                if (!$linkedKalender->kegiatan_id) {
+                    $linkedKalender->update(['kegiatan_id' => $kegiatan->id]);
+                }
             }
 
             DB::commit();

@@ -213,12 +213,14 @@ export default function SignatureCanvas({ isOpen, onClose, onSave, title = 'Tand
                 {/* Actions */}
                 <div className="flex gap-2 px-4 pb-4">
                     <button
+                        type="button"
                         onClick={clearCanvas}
                         className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
                     >
                         <i className="fas fa-eraser text-xs"></i> Hapus
                     </button>
                     <button
+                        type="button"
                         onClick={handleSave}
                         disabled={!hasDrawn}
                         className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-purple-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"

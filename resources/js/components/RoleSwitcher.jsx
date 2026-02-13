@@ -47,13 +47,12 @@ function RoleSwitcher({ onSwitch, compact = false }) {
     const getColorClasses = (color, isActive = false) => {
         const colors = {
             green: isActive ? 'bg-green-100 text-green-700 border-green-300' : 'hover:bg-green-50',
-            blue: isActive ? 'bg-blue-100 text-blue-700 border-blue-300' : 'hover:bg-blue-50',
-            purple: isActive ? 'bg-purple-100 text-purple-700 border-purple-300' : 'hover:bg-purple-50',
-            orange: isActive ? 'bg-orange-100 text-orange-700 border-orange-300' : 'hover:bg-orange-50',
-            red: isActive ? 'bg-red-100 text-red-700 border-red-300' : 'hover:bg-red-50',
+            emerald: isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'hover:bg-emerald-50',
+            teal: isActive ? 'bg-teal-100 text-teal-700 border-teal-300' : 'hover:bg-teal-50',
+            lime: isActive ? 'bg-lime-100 text-lime-700 border-lime-300' : 'hover:bg-lime-50',
             gray: isActive ? 'bg-gray-100 text-gray-700 border-gray-300' : 'hover:bg-gray-50',
         };
-        return colors[color] || colors.gray;
+        return colors[color] || colors.green;
     };
 
     if (compact) {
@@ -127,8 +126,8 @@ function RoleSwitcher({ onSwitch, compact = false }) {
                                     key={role.id}
                                     onClick={() => handleRoleSwitch(role.name)}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${isActive
-                                            ? `bg-${roleInfo.color}-50 border-l-2 border-${roleInfo.color}-500`
-                                            : 'hover:bg-gray-50'
+                                        ? `bg-${roleInfo.color}-50 border-l-2 border-${roleInfo.color}-500`
+                                        : 'hover:bg-gray-50'
                                         }`}
                                 >
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? `bg-${roleInfo.color}-500` : 'bg-gray-200'

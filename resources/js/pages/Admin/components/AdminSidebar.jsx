@@ -29,6 +29,7 @@ const menuItems = [
             { id: 'ekskul', label: 'Manajemen Ekstrakurikuler', path: '/data-induk/ekskul', icon: 'fa-futbol' },
             { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
             { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
+            { id: 'surat', label: 'Surat Menyurat', path: '/data-induk/surat', icon: 'fa-envelope' },
         ],
     },
     {
@@ -130,7 +131,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                 }}
             >
                 {/* Header - different layout based on collapsed state */}
-                <div className={`flex items-center mb-8 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+                <div className={`flex items-center mb-8 flex-shrink-0 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                     {isCollapsed ? (
                         /* Collapsed mode: Toggle button replaces logo */
                         <button
@@ -144,16 +145,13 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                         /* Expanded mode: Logo + Text + Toggle button */
                         <>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                                    {institutionLogo ? (
-                                        <img src={institutionLogo} alt="Logo" className="w-6 h-6 object-contain" />
-                                    ) : (
-                                        <i className="fas fa-university text-white text-lg"></i>
-                                    )}
+                                <img src={institutionLogo || logoImage} alt="Logo" className="w-10 h-10 object-contain" />
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-gray-800 dark:text-dark-text text-sm tracking-tight whitespace-nowrap">
+                                        {institutionName || 'MAHAKAM APP'}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Manajemen Al Hikam</span>
                                 </div>
-                                <span className="font-bold text-gray-800 dark:text-dark-text text-xl tracking-tight whitespace-nowrap">
-                                    {institutionName || 'Aliyah'}
-                                </span>
                             </div>
 
                             <button
@@ -168,7 +166,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex flex-col space-y-1 text-gray-500 flex-1">
+                <nav className="flex flex-col space-y-1 text-gray-500 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     {menuItems.map(item => (
                         <div key={item.id} className="relative">
                             {item.children ? (
@@ -273,7 +271,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                 </nav>
 
                 {/* Bottom Section */}
-                <div className="mt-auto pt-6 border-t border-gray-100 dark:border-dark-border">
+                <div className="flex-shrink-0 pt-6 border-t border-gray-100 dark:border-dark-border">
                     {/* User Profile Info - Expanded version */}
                     {!isCollapsed && (
                         <div className="mb-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl relative overflow-hidden group">

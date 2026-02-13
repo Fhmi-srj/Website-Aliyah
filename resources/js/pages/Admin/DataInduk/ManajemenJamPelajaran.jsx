@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import CrudModal, { ModalSection } from '../../../components/CrudModal';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
@@ -15,7 +15,7 @@ function ManajemenJamPelajaran() {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
-    const [isModalClosing, setIsModalClosing] = useState(false);
+
     const [formData, setFormData] = useState({
         jam_ke: '',
         jam_mulai: '07:00',
@@ -186,13 +186,7 @@ function ManajemenJamPelajaran() {
         setShowModal(true);
     };
 
-    const closeModal = () => {
-        setIsModalClosing(true);
-        setTimeout(() => {
-            setShowModal(false);
-            setIsModalClosing(false);
-        }, 200);
-    };
+    const closeModal = () => setShowModal(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -347,7 +341,7 @@ function ManajemenJamPelajaran() {
     // Sortable header component
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
         <th
-            className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group"
+            className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group"
             onClick={() => !filterable && handleSort(column)}
         >
             <div className="flex items-center gap-1.5">
@@ -391,69 +385,48 @@ function ManajemenJamPelajaran() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-clock text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
-                                Jam Pelajaran
-                            </h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
-                                Atur jadwal dan durasi jam belajar
-                            </p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 uppercase tracking-tight">Jam Pelajaran</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Atur jadwal dan durasi jam belajar</p>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                    <input
-                        aria-label="Cari jam pelajaran"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
-                        placeholder="Cari jam ke atau keterangan..."
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImport}
-                        accept=".xlsx,.xls"
-                        className="hidden"
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-file-import"></i>
-                        <span>Import</span>
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-file-export"></i>
-                        <span>Export</span>
-                    </button>
-                    <button
-                        onClick={openAddModal}
-                        className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest"
-                        type="button"
-                    >
-                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                        <span>Tambah Jam</span>
-                    </button>
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100'}`}>
+                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
+                        <input
+                            aria-label="Cari jam pelajaran"
+                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm`}
+                            placeholder={isMobile ? 'Cari...' : 'Cari jam ke atau keterangan...'}
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
+                        <button onClick={() => fileInputRef.current?.click()} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-file-import"></i>
+                            <span>Import</span>
+                        </button>
+                        <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                        <button onClick={openAddModal} className={`btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest ${isMobile ? '' : 'px-4 py-2.5 text-[10px] rounded-xl'}`} type="button">
+                            <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+                            <span>{isMobile ? 'Tambah' : 'Tambah Jam'}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -463,98 +436,95 @@ function ManajemenJamPelajaran() {
                     <i className="fas fa-spinner fa-spin text-green-600 text-2xl"></i>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
-                    <table className={`admin-table ${isMobile ? '' : 'min-w-[600px]'}`}>
+                <div className={`bg-white rounded-2xl shadow-soft border border-gray-100 ${isMobile ? 'overflow-hidden' : 'overflow-x-auto scrollbar-hide'}`}>
+                    <table className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[600px]'}`}>
                         <thead>
                             <tr>
-                                <th className="select-none pl-6 py-4 w-10 text-center">No</th>
-                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                {!isMobile && <th className="select-none pl-6 py-2.5 w-10 text-center">No</th>}
+                                {isMobile && <th className="col-expand select-none py-1 text-center"></th>}
                                 <SortableHeader label="Jam Ke" column="jam_ke" />
                                 <SortableHeader label="Waktu" column="jam_mulai" />
                                 {!isMobile && <SortableHeader label="Keterangan" column="keterangan" />}
-                                <SortableHeader
-                                    label="Status"
-                                    column="status"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua', value: '' },
-                                        { label: 'Aktif', value: 'Aktif' },
-                                        { label: 'Tidak Aktif', value: 'Tidak Aktif' }
-                                    ]}
-                                    filterValue={filterStatus}
-                                    setFilterValue={setFilterStatus}
-                                />
-                                <th className="select-none py-4 text-center whitespace-nowrap">Aksi</th>
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Status"
+                                        column="status"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua', value: '' },
+                                            { label: 'Aktif', value: 'Aktif' },
+                                            { label: 'Tidak Aktif', value: 'Tidak Aktif' }
+                                        ]}
+                                        filterValue={filterStatus}
+                                        setFilterValue={setFilterStatus}
+                                    />
+                                )}
+                                <th className={`select-none py-2.5 text-center whitespace-nowrap ${isMobile ? 'px-2' : 'px-6'}`}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
-                                        <td className="pl-6 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
-                                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                                        </td>
+                                    <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0 group">
+                                        {!isMobile && (
+                                            <td className="pl-6 py-2.5 align-middle text-center text-xs font-bold text-gray-400">
+                                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                                            </td>
+                                        )}
                                         {isMobile && (
-                                            <td
-                                                className="py-4 align-middle text-center cursor-pointer px-2"
-                                                onClick={() => toggleRowExpand(idx)}
-                                            >
-                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
-                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'py-2.5 px-2'} align-middle whitespace-nowrap`}>
+                                            <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} font-black text-gray-700 group-hover:text-primary transition-colors uppercase tracking-tight`}>
                                                 Jam Ke-{item.jam_ke}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                                    <i className="fas fa-clock text-xs"></i>
-                                                </div>
-                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text tracking-tight uppercase">
+                                        <td className={`${isMobile ? 'py-1.5 px-1' : 'py-2.5 px-2'} align-middle whitespace-nowrap`}>
+                                            <div className="flex items-center gap-1.5">
+                                                {!isMobile && (
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                                        <i className="fas fa-clock text-xs"></i>
+                                                    </div>
+                                                )}
+                                                <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600 tracking-tight uppercase`}>
                                                     {formatTime(item.jam_mulai)} — {formatTime(item.jam_selesai)}
                                                 </span>
                                             </div>
                                         </td>
                                         {!isMobile && (
-                                            <td className="py-4 px-2 align-middle max-w-[200px]">
-                                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 line-clamp-1 italic">
-                                                    {item.keterangan || '-'}
-                                                </p>
+                                            <td className="py-2.5 px-2 align-middle max-w-[200px]">
+                                                <p className="text-xs font-medium text-gray-500 line-clamp-1 italic">{item.keterangan || '-'}</p>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            {renderStatus(item.status)}
-                                        </td>
-                                        <td className="py-4 px-6 align-middle text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => openEditModal(item)}
-                                                    className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95"
-                                                    title="Edit Data"
-                                                >
-                                                    <i className="fas fa-edit text-[10px]"></i>
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>
+                                        )}
+                                        <td className={`text-center ${isMobile ? 'py-1 px-1' : 'py-2.5 px-6'}`}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <button onClick={() => openEditModal(item)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Edit Data">
+                                                    <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95"
-                                                    title="Hapus Data"
-                                                >
-                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                <button onClick={() => handleDelete(item.id)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Hapus Data">
+                                                    <i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
-                                        <tr className="bg-gray-50/50 dark:bg-dark-bg/30">
-                                            <td colSpan="6" className="px-6 py-4">
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between text-[11px]">
-                                                        <span className="font-black text-gray-400 uppercase tracking-widest">Keterangan:</span>
-                                                        <span className="font-bold text-gray-600 dark:text-dark-text italic">{item.keterangan || '-'}</span>
+                                        <tr>
+                                            <td colSpan="4" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Keterangan</span>
+                                                        <span className="expand-value">{item.keterangan || '-'}</span>
+                                                    </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Status</span>
+                                                        <span className="expand-value">{renderStatus(item.status)}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -609,137 +579,85 @@ function ManajemenJamPelajaran() {
                 </div>
             )}
 
-            {/* Modal with Portal */}
-            {showModal && ReactDOM.createPortal(
-                <div
-                    className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`}
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
-                    onClick={closeModal}
-                >
-                    <div
-                        className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-md w-full flex flex-col relative overflow-hidden transform transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
-                            <button
-                                onClick={closeModal}
-                                className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20"
-                                type="button"
-                                aria-label="Tutup Modal"
-                            >
-                                <i className="fas fa-times text-lg"></i>
-                            </button>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">
-                                        {modalMode === 'add' ? 'Tambah Jam Baru' : 'Perbarui Jam'}
-                                    </h2>
-                                    <p className="text-xs text-white/80 mt-0.5 italic">Detail waktu pelaksanaan kegiatan belajar</p>
-                                </div>
-                            </div>
+            {/* Modal */}
+            <CrudModal
+                show={showModal}
+                onClose={closeModal}
+                title={modalMode === 'add' ? 'Tambah Jam Baru' : 'Perbarui Jam'}
+                subtitle="Detail waktu pelaksanaan kegiatan belajar"
+                icon={modalMode === 'add' ? 'plus' : 'edit'}
+                onSubmit={handleSubmit}
+                submitLabel={modalMode === 'add' ? 'Simpan' : 'Perbarui'}
+                maxWidth="max-w-md"
+            >
+                <div>
+                    <ModalSection label="Informasi Waktu" />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Ke *</label>
+                            <input
+                                type="text"
+                                value={formData.jam_ke}
+                                onChange={(e) => setFormData({ ...formData, jam_ke: e.target.value })}
+                                className="input-standard"
+                                placeholder="Contoh: 1, 2, atau Istirahat"
+                                required
+                            />
                         </div>
 
-                        {/* Modal Body */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Informasi Waktu</label>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Ke *</label>
-                                        <input
-                                            type="text"
-                                            value={formData.jam_ke}
-                                            onChange={(e) => setFormData({ ...formData, jam_ke: e.target.value })}
-                                            className="input-standard"
-                                            placeholder="Contoh: 1, 2, atau Istirahat"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Mulai *</label>
-                                            <div className="relative">
-                                                <i className="fas fa-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                                                <input
-                                                    type="time"
-                                                    value={formData.jam_mulai}
-                                                    onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
-                                                    className="input-standard pl-10"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Selesai *</label>
-                                            <div className="relative">
-                                                <i className="fas fa-clock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                                                <input
-                                                    type="time"
-                                                    value={formData.jam_selesai}
-                                                    onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
-                                                    className="input-standard pl-10"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Mulai *</label>
+                                <input
+                                    type="time"
+                                    value={formData.jam_mulai}
+                                    onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                                    className="input-standard"
+                                    required
+                                />
                             </div>
-
                             <div>
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Tambahan</label>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Keterangan</label>
-                                        <input
-                                            type="text"
-                                            value={formData.keterangan}
-                                            onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                                            className="input-standard"
-                                            placeholder="Opsional (Contoh: Jam Istirahat)"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Status Keaktifan *</label>
-                                        <select
-                                            value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="input-standard outline-none cursor-pointer"
-                                        >
-                                            <option value="Aktif">Aktif</option>
-                                            <option value="Tidak Aktif">Tidak Aktif</option>
-                                        </select>
-                                    </div>
-                                </div>
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Jam Selesai *</label>
+                                <input
+                                    type="time"
+                                    value={formData.jam_selesai}
+                                    onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
+                                    className="input-standard"
+                                    required
+                                />
                             </div>
-
-                            {/* Modal Footer */}
-                            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-dark-border">
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-dark-surface transition-all text-xs font-black uppercase tracking-widest"
-                                >
-                                    Batal
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="btn-primary flex-1 px-4 py-2.5 rounded-xl shadow-lg shadow-primary/20 text-xs font-black uppercase tracking-widest"
-                                >
-                                    {modalMode === 'add' ? 'Simpan' : 'Perbarui'}
-                                </button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
-                </div>,
-                document.body
-            )}
+                </div>
+
+                <div>
+                    <ModalSection label="Tambahan" />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Keterangan</label>
+                            <input
+                                type="text"
+                                value={formData.keterangan}
+                                onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                                className="input-standard"
+                                placeholder="Opsional (Contoh: Jam Istirahat)"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Status Keaktifan *</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="input-standard outline-none cursor-pointer"
+                            >
+                                <option value="Aktif">Aktif</option>
+                                <option value="Tidak Aktif">Tidak Aktif</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </CrudModal>
         </div>
     );
 }

@@ -167,4 +167,28 @@ class RapatController extends Controller
             'message' => 'Rapat berhasil dihapus'
         ]);
     }
+
+    /**
+     * Bulk delete rapat entries.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:rapat,id'
+        ]);
+
+        $rapats = Rapat::whereIn('id', $request->ids)->get();
+
+        foreach ($rapats as $rapat) {
+            ActivityLog::logDelete($rapat, "Menghapus rapat (bulk): {$rapat->agenda_rapat}");
+        }
+
+        Rapat::whereIn('id', $request->ids)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => count($request->ids) . ' agenda rapat berhasil dihapus'
+        ]);
+    }
 }

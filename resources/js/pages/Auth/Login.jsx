@@ -222,7 +222,7 @@ function Login() {
                                     setUsername('admin');
                                     setPassword('password');
                                 }}
-                                className="py-2 px-3 bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                className="py-2 px-3 bg-green-700 hover:bg-green-800 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
                                 <i className="fas fa-user-shield"></i>
                                 <span>Admin</span>
@@ -244,7 +244,7 @@ function Login() {
                                     setUsername('adibkaromi');
                                     setPassword('password');
                                 }}
-                                className="py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
                                 <i className="fas fa-user-tie"></i>
                                 <span>Guru (Adib)</span>
@@ -255,7 +255,7 @@ function Login() {
                                     setUsername('fathina');
                                     setPassword('password');
                                 }}
-                                className="py-2 px-3 bg-pink-500 hover:bg-pink-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                className="py-2 px-3 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
                                 <i className="fas fa-female"></i>
                                 <span>Guru (Dewi)</span>

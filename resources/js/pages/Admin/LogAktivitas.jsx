@@ -5,6 +5,9 @@ import Swal from 'sweetalert2';
 const API_BASE = '/api';
 
 function LogAktivitas() {
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 360);
+    const [expandedRows, setExpandedRows] = useState(new Set());
+    const toggleRowExpand = (idx) => { setExpandedRows(prev => { const next = new Set(prev); next.has(idx) ? next.delete(idx) : next.add(idx); return next; }); };
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({});
@@ -176,23 +179,27 @@ function LogAktivitas() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'bg-white rounded-xl p-6 shadow-sm'}`}>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">
-                            <i className="fas fa-history text-green-600 mr-3"></i>
-                            Log Aktivitas
-                        </h1>
-                        <p className="text-gray-500 text-sm mt-1">
-                            Riwayat seluruh aktivitas di sistem
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <i className="fas fa-history text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
+                                Log Aktivitas
+                            </h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
+                                Riwayat seluruh aktivitas di sistem
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </header>
 
             {/* Stats Cards */}
             {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-4'}`}>
                     <div className="bg-white rounded-xl p-4 shadow-sm">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -240,54 +247,58 @@ function LogAktivitas() {
                 </div>
             )}
 
-            {/* Filters */}
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    {/* Search */}
-                    <div className="md:col-span-2 relative">
-                        <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                        <input
-                            type="text"
-                            placeholder="Cari aktivitas..."
-                            value={filters.search}
-                            onChange={(e) => handleFilterChange('search', e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        />
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`bg-white rounded-xl shadow-sm ${isMobile ? '' : 'p-4'}`}>
+                    <div className={`${isMobile ? 'mobile-controls-row' : 'grid grid-cols-1 md:grid-cols-5 gap-4'}`}>
+                        <div className={`${isMobile ? 'mobile-search-wrap' : 'md:col-span-2'} relative`}>
+                            <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 ${isMobile ? 'text-[10px]' : ''}`}></i>
+                            <input
+                                type="text"
+                                placeholder={isMobile ? 'Cari...' : 'Cari aktivitas...'}
+                                value={filters.search}
+                                onChange={(e) => handleFilterChange('search', e.target.value)}
+                                className={`w-full pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-2'} border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                            />
+                        </div>
+
+                        {!isMobile && (
+                            <>
+                                {/* Action Filter */}
+                                <select
+                                    value={filters.action}
+                                    onChange={(e) => handleFilterChange('action', e.target.value)}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Semua Aksi</option>
+                                    <option value="create">Tambah</option>
+                                    <option value="update">Edit</option>
+                                    <option value="delete">Hapus</option>
+                                    <option value="restore">Restore</option>
+                                    <option value="attendance">Absensi</option>
+                                </select>
+
+                                {/* Model Type Filter */}
+                                <select
+                                    value={filters.model_type}
+                                    onChange={(e) => handleFilterChange('model_type', e.target.value)}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Semua Tabel</option>
+                                    {modelTypes.map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+
+                                {/* Date Filter */}
+                                <input
+                                    type="date"
+                                    value={filters.date_from}
+                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                />
+                            </>
+                        )}
                     </div>
-
-                    {/* Action Filter */}
-                    <select
-                        value={filters.action}
-                        onChange={(e) => handleFilterChange('action', e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                        <option value="">Semua Aksi</option>
-                        <option value="create">Tambah</option>
-                        <option value="update">Edit</option>
-                        <option value="delete">Hapus</option>
-                        <option value="restore">Restore</option>
-                        <option value="attendance">Absensi</option>
-                    </select>
-
-                    {/* Model Type Filter */}
-                    <select
-                        value={filters.model_type}
-                        onChange={(e) => handleFilterChange('model_type', e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                        <option value="">Semua Tabel</option>
-                        {modelTypes.map(type => (
-                            <option key={type} value={type}>{type}</option>
-                        ))}
-                    </select>
-
-                    {/* Date Filter */}
-                    <input
-                        type="date"
-                        value={filters.date_from}
-                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
                 </div>
             </div>
 
@@ -299,89 +310,124 @@ function LogAktivitas() {
                     </div>
                 ) : logs.length > 0 ? (
                     <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
+                        <div className={`${isMobile ? '' : 'overflow-x-auto'}`}>
+                            <table className={`w-full ${isMobile ? 'mobile-table-fixed' : ''}`}>
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        {isMobile && (
+                                            <th className="col-expand py-2 text-center"></th>
+                                        )}
+                                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                             Tanggal
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            User
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Objek
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        {!isMobile && (
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                User
+                                            </th>
+                                        )}
+                                        {!isMobile && (
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                Objek
+                                            </th>
+                                        )}
+                                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                             Aktivitas
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Detail
-                                        </th>
-                                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        {!isMobile && (
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                Detail
+                                            </th>
+                                        )}
+                                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                             Aksi
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {logs.map(log => {
+                                    {logs.map((log, idx) => {
                                         const badge = getActionBadge(log.action);
                                         return (
-                                            <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">{log.created_at_formatted}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                                            <i className="fas fa-user text-green-600 text-sm"></i>
-                                                        </div>
-                                                        <span className="text-sm font-medium text-gray-900">{log.user_name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {(() => {
-                                                        const modelInfo = getModelLabel(log.model_type);
-                                                        return (
-                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${modelInfo.bg} ${modelInfo.text}`}>
-                                                                <i className={`fas ${modelInfo.icon}`}></i>
-                                                                {modelInfo.label}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
-                                                        <i className={`fas ${badge.icon}`}></i>
-                                                        {log.action_label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <p className="text-sm text-gray-700 max-w-xs truncate" title={log.description}>
-                                                        {log.description}
-                                                    </p>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        <button
-                                                            onClick={() => handleViewDetail(log)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                            title="Lihat Detail"
-                                                        >
-                                                            <i className="fas fa-eye"></i>
-                                                        </button>
-                                                        {log.can_restore && (
+                                            <React.Fragment key={log.id}>
+                                                <tr className="hover:bg-gray-50 transition-colors">
+                                                    {isMobile && (
+                                                        <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                                <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-2.5 whitespace-nowrap">
+                                                        <div className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-gray-900`}>{log.created_at_formatted}</div>
+                                                    </td>
+                                                    {!isMobile && (
+                                                        <td className="px-4 py-2.5 whitespace-nowrap">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                                    <i className="fas fa-user text-green-600 text-sm"></i>
+                                                                </div>
+                                                                <span className="text-sm font-medium text-gray-900">{log.user_name}</span>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                    {!isMobile && (
+                                                        <td className="px-4 py-2.5 whitespace-nowrap">
+                                                            {(() => {
+                                                                const modelInfo = getModelLabel(log.model_type);
+                                                                return (
+                                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${modelInfo.bg} ${modelInfo.text}`}>
+                                                                        <i className={`fas ${modelInfo.icon}`}></i>
+                                                                        {modelInfo.label}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-2.5 whitespace-nowrap">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isMobile ? 'text-[9px]' : 'text-xs'} font-medium ${badge.bg} ${badge.text}`}>
+                                                            <i className={`fas ${badge.icon}`}></i>
+                                                            {log.action_label}
+                                                        </span>
+                                                    </td>
+                                                    {!isMobile && (
+                                                        <td className="px-4 py-2.5">
+                                                            <p className="text-sm text-gray-700 max-w-xs truncate" title={log.description}>
+                                                                {log.description}
+                                                            </p>
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-2.5 text-center">
+                                                        <div className="flex justify-center gap-2">
                                                             <button
-                                                                onClick={() => handleRestore(log)}
-                                                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                                                                title="Restore"
+                                                                onClick={() => handleViewDetail(log)}
+                                                                className={`${isMobile ? 'p-1' : 'p-2'} text-blue-600 hover:bg-blue-50 rounded-lg transition-colors`}
+                                                                title="Lihat Detail"
                                                             >
-                                                                <i className="fas fa-undo"></i>
+                                                                <i className={`fas fa-eye ${isMobile ? 'text-[10px]' : ''}`}></i>
                                                             </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                            {log.can_restore && (
+                                                                <button
+                                                                    onClick={() => handleRestore(log)}
+                                                                    className={`${isMobile ? 'p-1' : 'p-2'} text-purple-600 hover:bg-purple-50 rounded-lg transition-colors`}
+                                                                    title="Restore"
+                                                                >
+                                                                    <i className={`fas fa-undo ${isMobile ? 'text-[10px]' : ''}`}></i>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {isMobile && expandedRows.has(idx) && (
+                                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                        <td colSpan="4" className="p-0">
+                                                            <div className="mobile-expand-grid">
+                                                                <div className="expand-item"><span className="expand-label">User</span><span className="expand-value">{log.user_name}</span></div>
+                                                                <div className="expand-item"><span className="expand-label">Objek</span><span className="expand-value">{(() => { const m = getModelLabel(log.model_type); return m.label; })()}</span></div>
+                                                                <div className="expand-item"><span className="expand-label">Detail</span><span className="expand-value text-[10px]">{log.description || '-'}</span></div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>
@@ -390,7 +436,7 @@ function LogAktivitas() {
 
                         {/* Pagination */}
                         {pagination.last_page > 1 && (
-                            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                            <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
                                 <p className="text-sm text-gray-500">
                                     Menampilkan {logs.length} dari {pagination.total} aktivitas
                                 </p>

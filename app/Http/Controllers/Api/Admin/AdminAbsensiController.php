@@ -85,6 +85,7 @@ class AdminAbsensiController extends Controller
                     'absensi_peserta' => $allPeserta,
                     'notulensi' => '',
                     'foto_rapat' => [],
+                    'peserta_eksternal' => $rapat->peserta_eksternal ?? [],
                     'status' => 'draft',
                 ]
             ]);
@@ -127,6 +128,7 @@ class AdminAbsensiController extends Controller
                 'absensi_peserta' => $allPeserta,
                 'notulensi' => $absensi->notulensi,
                 'foto_rapat' => $absensi->foto_rapat ?? [],
+                'peserta_eksternal' => $rapat->peserta_eksternal ?? [],
                 'status' => $absensi->status,
             ]
         ]);
@@ -153,13 +155,27 @@ class AdminAbsensiController extends Controller
             'peserta_eksternal' => 'nullable|array',
             'peserta_eksternal.*.nama' => 'required|string|max:100',
             'peserta_eksternal.*.jabatan' => 'nullable|string|max:100',
-            'peserta_eksternal.*.tanda_tangan' => 'nullable|string',
+            'peserta_eksternal.*.ttd' => 'nullable|string', // Base64 canvas TTD
             'peserta_eksternal.*.status' => 'nullable|string|max:50',
         ]);
 
-        // Update peserta_eksternal on rapat record if provided
+        // Save tamu TTDs as files and update peserta_eksternal with file paths
         if (array_key_exists('peserta_eksternal', $validated)) {
-            $rapat->update(['peserta_eksternal' => $validated['peserta_eksternal']]);
+            $pesertaEksternal = $validated['peserta_eksternal'];
+            foreach ($pesertaEksternal as $idx => &$pe) {
+                if (!empty($pe['ttd']) && preg_match('/^data:image/', $pe['ttd'])) {
+                    $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $pe['ttd']);
+                    $imageData = base64_decode($base64);
+                    if ($imageData) {
+                        $filename = 'ttd_tamu_' . $rapatId . '_' . $idx . '_' . time() . '.png';
+                        $path = 'ttd/tamu/' . $filename;
+                        \Storage::disk('public')->put($path, $imageData);
+                        $pe['ttd'] = asset('storage/' . $path);
+                    }
+                }
+            }
+            unset($pe);
+            $rapat->update(['peserta_eksternal' => $pesertaEksternal]);
         }
 
         // Separate pimpinan/sekretaris from regular peserta

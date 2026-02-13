@@ -788,14 +788,14 @@ function Riwayat() {
                         <>
                             {/* Bulk action bar - only show when items selected */}
                             {selectedKegiatanIds.length > 0 && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 flex items-center justify-between animate-fadeIn">
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3 flex items-center justify-between animate-fadeIn">
                                     <div className="flex items-center gap-3">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={filteredData.filter(item => item.absensi_id).every(item => selectedKegiatanIds.includes(item.absensi_id)) && filteredData.filter(item => item.absensi_id).length > 0}
                                                 onChange={() => selectAllKegiatan(filteredData)}
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
+                                                className="w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-400"
                                             />
                                             <span className="text-sm text-gray-700">Pilih Semua</span>
                                         </label>

@@ -12,6 +12,7 @@ use App\Models\Jadwal;
 use App\Models\Kegiatan;
 use App\Models\Ekskul;
 use App\Models\Rapat;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -174,12 +175,19 @@ class DashboardController extends Controller
                 ->limit(3)
                 ->get(['id', 'nama_kegiatan', 'waktu_berakhir', 'status']);
 
+            // Recent system logs
+            $recentLogs = ActivityLog::with('user:id,nama')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+
             return response()->json([
                 'success' => true,
                 'data' => [
                     'upcoming_kegiatan' => $upcomingKegiatan,
                     'upcoming_rapat' => $upcomingRapat,
                     'recent_kegiatan' => $recentKegiatan,
+                    'recent_logs' => $recentLogs,
                 ]
             ]);
         } catch (\Exception $e) {

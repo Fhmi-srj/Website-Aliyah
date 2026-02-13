@@ -16,34 +16,28 @@ function AdminLayout({ children }) {
     const [moreMenuOpen, setMoreMenuOpen] = useState(false);
     const profileMenuRef = useRef(null);
     const moreMenuRef = useRef(null);
+    const moreMenuBtnRef = useRef(null);
 
-    // State for dark mode
-    const [darkMode, setDarkMode] = useState(localStorage.getItem('dark_mode') === 'true');
+
     const [settings, setSettings] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const { user, logout, tahunAjaran } = useAuth();
 
     const toggleCollapse = () => {
         setIsCollapsed(!isCollapsed);
     };
 
-    // Toggle dark mode
-    const toggleDarkMode = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-        localStorage.setItem('dark_mode', newMode);
-        if (newMode) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    };
 
-    // Initialize dark mode on mount
+
+    // Initialize dark mode and mobile detection on mount
     useEffect(() => {
-        if (darkMode) {
-            document.documentElement.classList.add('dark');
-        }
+        // Ensure dark mode is off
+        document.documentElement.classList.remove('dark');
         fetchSettings();
+
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const fetchSettings = async () => {
@@ -90,18 +84,23 @@ function AdminLayout({ children }) {
         }
     };
 
-    // Close menus on outside click
+    // Close menus on outside click/touch
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
                 setProfileMenuOpen(false);
             }
-            if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+            if (moreMenuRef.current && !moreMenuRef.current.contains(event.target) &&
+                moreMenuBtnRef.current && !moreMenuBtnRef.current.contains(event.target)) {
                 setMoreMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, []);
 
     // Check if current path starts with given path
@@ -127,6 +126,7 @@ function AdminLayout({ children }) {
         { id: 'ekskul', label: 'Manajemen Ekskul', path: '/data-induk/ekskul', icon: 'fa-futbol' },
         { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
         { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
+        { id: 'absensi-siswa', label: 'Absensi Siswa', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
         { id: 'role', label: 'Manajemen Role', path: '/manajemen-role', icon: 'fa-user-shield' },
         { id: 'profil', label: 'Profil Saya', path: '/profil', icon: 'fa-user' },
     ];
@@ -140,7 +140,7 @@ function AdminLayout({ children }) {
                         onClose={() => { }}
                         isCollapsed={isCollapsed}
                         onToggleCollapse={toggleCollapse}
-                        institutionName={settings?.nama_lembaga || 'Aliyah'}
+                        institutionName={'MAHAKAM APP'}
                         institutionLogo={settings?.logo_url || null}
                     />
                 </aside>
@@ -148,39 +148,20 @@ function AdminLayout({ children }) {
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col min-w-0">
                     {/* Modern Top Header - Desktop & Mobile */}
-                    <header className="sticky top-0 z-30 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md border-b border-gray-100 dark:border-dark-border h-20 flex items-center px-4 md:px-8">
+                    <header className="sticky top-0 z-30 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md border-b border-gray-100 dark:border-dark-border h-14 md:h-20 flex items-center px-4 md:px-8">
                         <div className="flex-1 flex items-center justify-between">
-                            {/* Company Branding */}
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                                    {settings?.logo_url ? (
-                                        <img src={settings.logo_url} alt="Logo" className="w-6 h-6 object-contain" />
-                                    ) : (
-                                        <i className="fas fa-university text-primary text-lg"></i>
-                                    )}
-                                </div>
+                            {/* Company Branding - Mobile only */}
+                            <div className="flex items-center gap-3 md:hidden">
+                                <img src={settings?.logo_url || logoImage} alt="Logo" className="w-10 h-10 object-contain" />
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-gray-800 dark:text-dark-text leading-tight">{settings?.nama_lembaga || 'MA Aliyah'}</span>
-                                    <span className="text-[10px] text-gray-500 dark:text-dark-muted font-bold uppercase tracking-wider">Administrator</span>
+                                    <span className="font-bold text-gray-800 dark:text-dark-text text-sm tracking-tight whitespace-nowrap">MAHAKAM APP</span>
+                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Manajemen Al Hikam</span>
                                 </div>
                             </div>
 
                             {/* Right Side: Tools & Profile */}
-                            <div className="flex items-center gap-3 md:gap-6">
-                                {/* Dark Mode Toggle */}
-                                <button
-                                    onClick={toggleDarkMode}
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-dark-bg text-gray-600 dark:text-yellow-400 hover:bg-gray-100 dark:hover:bg-dark-surface transition-all"
-                                    title={darkMode ? "Switch to Light Mode" : "Dark Mode"}
-                                >
-                                    <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-                                </button>
+                            <div className="flex items-center gap-3 md:gap-6 ml-auto">
 
-                                {/* Notifications */}
-                                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-accent/10 text-accent hover:bg-accent/20 transition-all relative">
-                                    <i className="fas fa-bell"></i>
-                                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-dark-surface"></span>
-                                </button>
 
                                 {/* User Profile */}
                                 <div className="relative group cursor-pointer" ref={profileMenuRef}>
@@ -188,9 +169,14 @@ function AdminLayout({ children }) {
                                         className="flex items-center gap-3 p-1 rounded-2xl hover:bg-gray-50 dark:hover:bg-dark-bg transition-all"
                                         onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                                     >
-                                        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md">
+                                        {/* Mobile: simple icon */}
+                                        <div className="md:hidden w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <i className="fas fa-user-circle text-primary text-lg"></i>
+                                        </div>
+                                        {/* Desktop: avatar + name */}
+                                        <div className="hidden md:block w-10 h-10 rounded-xl overflow-hidden shadow-md">
                                             <img
-                                                src={user?.foto ? `/storage/${user.foto}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nama || 'Admin')}&background=5c67f2&color=fff`}
+                                                src={user?.foto ? `/storage/${user.foto}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nama || 'Admin')}&background=16a34a&color=fff`}
                                                 alt="User"
                                                 className="w-full h-full object-cover"
                                             />
@@ -199,7 +185,6 @@ function AdminLayout({ children }) {
                                             <p className="text-xs font-bold text-gray-800 dark:text-dark-text leading-tight">{user?.nama?.split(' ')[0] || 'Admin'}</p>
                                             <p className="text-[10px] text-gray-500 dark:text-dark-muted font-medium tracking-wide">Admin</p>
                                         </div>
-                                        <i className="fas fa-chevron-down text-[10px] text-gray-400 hidden lg:block"></i>
                                     </div>
 
                                     {/* Dropdown Menu */}
@@ -216,10 +201,10 @@ function AdminLayout({ children }) {
                                                 <i className="fas fa-user text-primary text-xs"></i>
                                                 <span className="text-xs font-medium text-gray-700 dark:text-dark-text">Profil Saya</span>
                                             </button>
-                                            <div className="px-4 py-2 bg-blue-50/50 dark:bg-blue-900/10 flex items-center justify-between">
+                                            <div className="px-4 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                    <i className="fas fa-calendar-alt text-blue-500 text-xs"></i>
-                                                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400">{tahunAjaran?.nama || 'N/A'}</span>
+                                                    <i className="fas fa-calendar-alt text-emerald-500 text-xs"></i>
+                                                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">{tahunAjaran?.nama || 'N/A'}</span>
                                                 </div>
                                             </div>
                                             <div className="p-1 border-t border-gray-50 dark:border-dark-border">
@@ -239,7 +224,7 @@ function AdminLayout({ children }) {
                     </header>
 
                     {/* Main Content Area */}
-                    <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 bg-transparent pb-24 md:pb-8">
+                    <main className={`flex-1 overflow-y-auto ${isMobile ? 'px-2 py-2' : 'px-4 py-4 md:py-6 md:px-8'} bg-transparent pb-24 md:pb-8`}>
                         {children}
                     </main>
                 </div>
@@ -258,10 +243,10 @@ function AdminLayout({ children }) {
                 <div
                     className="max-w-full mx-auto rounded-t-3xl overflow-hidden"
                     style={{
-                        background: darkMode ? 'rgba(30, 41, 59, 0.98)' : 'rgba(248, 250, 252, 0.98)',
+                        background: 'rgba(248, 250, 252, 0.98)',
                         backdropFilter: 'blur(16px)',
                         WebkitBackdropFilter: 'blur(16px)',
-                        boxShadow: darkMode ? '0 -4px 20px rgba(0,0,0,0.4), 0 -1px 3px rgba(0,0,0,0.2)' : '0 -4px 20px rgba(0,0,0,0.15), 0 -1px 3px rgba(0,0,0,0.08)'
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.15), 0 -1px 3px rgba(0,0,0,0.08)'
                     }}
                     ref={moreMenuRef}
                 >
@@ -300,6 +285,7 @@ function AdminLayout({ children }) {
                                 return (
                                     <div key="more" className="flex items-center justify-center">
                                         <button
+                                            ref={moreMenuBtnRef}
                                             onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                                             className={`-mt-6 w-14 h-14 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-300 cursor-pointer border-4 border-white ${moreMenuOpen ? 'bg-red-500' : isMenuItemActive ? 'bg-green-700' : 'bg-green-600'}`}
                                         >

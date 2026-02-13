@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             SiswaSeeder::class,
             JadwalSeeder::class,
             KegiatanSeeder::class,
-            EkstrakurikulerSeeder::class,
+
             RapatSeeder::class,
             UserSeeder::class, // Must be after GuruSeeder
             HistoricalDataSeeder::class, // Generate historical data for 2024/2025

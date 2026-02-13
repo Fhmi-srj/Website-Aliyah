@@ -24,9 +24,9 @@ function Pencarian() {
     const categories = [
         { value: 'all', icon: 'fas fa-search', label: 'Semua', color: 'bg-gray-500' },
         { value: 'jadwal', icon: 'fas fa-chalkboard-teacher', label: 'Jadwal', color: 'bg-green-500' },
-        { value: 'kegiatan', icon: 'fas fa-calendar-check', label: 'Kegiatan', color: 'bg-blue-500' },
-        { value: 'rapat', icon: 'fas fa-users', label: 'Rapat', color: 'bg-purple-500' },
-        { value: 'absensi', icon: 'fas fa-clipboard-check', label: 'Absensi', color: 'bg-orange-500' },
+        { value: 'kegiatan', icon: 'fas fa-calendar-check', label: 'Kegiatan', color: 'bg-emerald-500' },
+        { value: 'rapat', icon: 'fas fa-users', label: 'Rapat', color: 'bg-teal-500' },
+        { value: 'absensi', icon: 'fas fa-clipboard-check', label: 'Absensi', color: 'bg-lime-500' },
     ];
 
     const days = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
@@ -81,9 +81,9 @@ function Pencarian() {
     const getColorClasses = (color) => {
         const colors = {
             green: { bg: 'bg-green-100', text: 'text-green-600', icon: 'text-green-500' },
-            blue: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'text-blue-500' },
-            purple: { bg: 'bg-purple-100', text: 'text-purple-600', icon: 'text-purple-500' },
-            orange: { bg: 'bg-orange-100', text: 'text-orange-600', icon: 'text-orange-500' },
+            emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: 'text-emerald-500' },
+            teal: { bg: 'bg-teal-100', text: 'text-teal-600', icon: 'text-teal-500' },
+            lime: { bg: 'bg-lime-100', text: 'text-lime-600', icon: 'text-lime-500' },
         };
         return colors[color] || colors.green;
     };

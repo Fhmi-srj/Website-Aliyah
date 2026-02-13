@@ -340,7 +340,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/jurnal-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-book-open text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -349,7 +349,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/absen-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-clipboard-list text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -387,13 +387,13 @@ function Beranda() {
                                 >
                                     <div
                                         className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${event.type === 'mengajar' ? 'bg-green-100' :
-                                            event.type === 'kegiatan' ? 'bg-blue-100' : 'bg-purple-100'
+                                            event.type === 'kegiatan' ? 'bg-emerald-100' : 'bg-teal-100'
                                             }`}
                                     >
                                         <i
                                             className={`fas ${event.type === 'mengajar' ? 'fa-chalkboard-teacher text-green-600' :
-                                                event.type === 'kegiatan' ? 'fa-calendar-check text-blue-600' :
-                                                    'fa-users text-purple-600'
+                                                event.type === 'kegiatan' ? 'fa-calendar-check text-emerald-600' :
+                                                    'fa-users text-teal-600'
                                                 }`}
                                         ></i>
                                     </div>
@@ -405,8 +405,8 @@ function Beranda() {
                                                 <span className="text-[10px] text-gray-400">{event.time}</span>
                                             )}
                                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${event.type === 'mengajar' ? 'bg-green-100 text-green-700' :
-                                                event.type === 'kegiatan' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-purple-100 text-purple-700'
+                                                event.type === 'kegiatan' ? 'bg-emerald-100 text-emerald-700' :
+                                                    'bg-teal-100 text-teal-700'
                                                 }`}>
                                                 {event.type === 'mengajar' ? 'Mengajar' :
                                                     event.type === 'kegiatan' ? 'Kegiatan' : 'Rapat'}

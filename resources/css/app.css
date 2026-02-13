@@ -9,9 +9,9 @@
 
 @theme {
     --font-sans: 'Plus Jakarta Sans', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
-    --color-primary: #5c67f2;
-    --color-secondary: #ff708b;
-    --color-accent: #feb052;
+    --color-primary: #16a34a;
+    --color-secondary: #059669;
+    --color-accent: #10b981;
     --color-success: #22c55e;
     --color-info: #0ea5e9;
 
@@ -32,11 +32,11 @@
     @apply w-full border-separate border-spacing-0;
 
     thead th {
-        @apply px-6 py-4 bg-gray-50 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 first:rounded-tl-2xl last:rounded-tr-2xl dark:bg-dark-surface dark:text-dark-muted dark:border-dark-border;
+        @apply px-4 py-2.5 bg-gray-50 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 first:rounded-tl-2xl last:rounded-tr-2xl dark:bg-dark-surface dark:text-dark-muted dark:border-dark-border;
     }
 
     tbody td {
-        @apply px-6 py-4 text-sm text-gray-600 border-b border-gray-50 transition-colors dark:text-dark-text dark:border-dark-border;
+        @apply px-4 py-2.5 text-sm text-gray-600 border-b border-gray-50 transition-colors dark:text-dark-text dark:border-dark-border;
     }
 
     tbody tr:last-child td:first-child {
@@ -422,49 +422,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
 }
 
-/* Dark Mode Base Styles */
-.dark body {
-    background-color: var(--color-dark-bg) !important;
-    color: var(--color-dark-text);
-}
 
-.dark .bg-white {
-    background-color: var(--color-dark-surface) !important;
-}
-
-.dark .border-gray-50,
-.dark .border-gray-100 {
-    border-color: var(--color-dark-border) !important;
-}
-
-.dark .text-gray-800,
-.dark .text-gray-700 {
-    color: var(--color-dark-text) !important;
-}
-
-.dark .text-gray-600,
-.dark .text-gray-500,
-.dark .text-gray-400 {
-    color: var(--color-dark-muted) !important;
-}
-
-.dark .bg-gray-50,
-.dark .bg-gray-100/50 {
-    background-color: var(--color-dark-bg) !important;
-}
-
-.dark .shadow-soft,
-.dark .shadow-sm {
-    box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3) !important;
-}
-
-.dark .shadow-deep {
-    box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.5) !important;
-}
 
 /* Standard Input with Icon */
 .input-standard {
-    @apply w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm outline-none;
+    @apply w-full px-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm outline-none;
 }
 
 .input-container {
@@ -481,11 +443,177 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 /* Global table action icons visibility */
 .action-icons {
-    @apply opacity-100 !important;
+    opacity: 1 !important;
 }
 
 /* Force show icons in tables that use group-hover */
 .group:hover .opacity-0,
 .group .opacity-0 {
     opacity: 1 !important;
+}
+
+/* ========================= */
+/* Mobile Responsive Utilities */
+/* ========================= */
+
+/* Mobile page header — compact icon + title */
+@media (max-width: 767px) {
+    .page-header-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+    }
+
+    .page-header-icon i {
+        font-size: 14px;
+    }
+
+    .page-header-title {
+        font-size: 14px;
+    }
+
+    .page-header-subtitle {
+        font-size: 9px;
+    }
+}
+
+/* Mobile expand row — clean layout */
+.mobile-expand-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mobile-expand-grid .expand-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.mobile-expand-grid .expand-label {
+    font-size: 8px;
+    font-weight: 800;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.mobile-expand-grid .expand-value {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4b5563;
+    word-break: break-word;
+}
+
+.mobile-expand-grid .expand-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Mobile table — compact cells, smaller fonts */
+@media (max-width: 767px) {
+    .admin-table th {
+        font-size: 9px !important;
+        padding: 6px 8px !important;
+        letter-spacing: 0.05em;
+    }
+
+    .admin-table td {
+        font-size: 10px !important;
+        padding: 6px 8px !important;
+    }
+
+    .admin-table .action-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+    }
+
+    .admin-table .action-btn i {
+        font-size: 8px;
+    }
+}
+
+/* Sticky page layout for mobile: header+controls stick, table scrolls */
+@media (max-width: 767px) {
+
+    /* Page root must NOT have overflow — it breaks position:sticky inside <main> */
+    main>div {
+        overflow: visible !important;
+    }
+
+    .mobile-sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #f8f9fe;
+        padding-bottom: 4px;
+    }
+
+    /* Mobile controls — search on top, buttons row below */
+    .mobile-controls-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 6px 4px;
+    }
+
+    .mobile-controls-row .mobile-search-wrap {
+        width: 100%;
+    }
+
+    .mobile-controls-row .mobile-btn-group {
+        display: flex;
+        gap: 4px;
+        width: 100%;
+    }
+
+    .mobile-controls-row .mobile-btn-group button {
+        flex: 1;
+        padding: 7px 4px;
+        font-size: 9px;
+        border-radius: 10px;
+        white-space: nowrap;
+        justify-content: center;
+    }
+
+    /* Mobile table — fixed layout, no horizontal scroll */
+    .admin-table.mobile-table-fixed {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .admin-table.mobile-table-fixed td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .admin-table.mobile-table-fixed th {
+        overflow: visible;
+        white-space: nowrap;
+    }
+
+    /* Table wrapper must allow filter dropdown overflow */
+    .overflow-hidden:has(> .admin-table) {
+        overflow: visible !important;
+    }
+
+    .admin-table.mobile-table-fixed .col-expand {
+        width: 28px;
+    }
+
+    .admin-table.mobile-table-fixed .col-name {
+        width: auto;
+    }
+
+    .admin-table.mobile-table-fixed .col-secondary {
+        width: 28%;
+    }
+
+    .admin-table.mobile-table-fixed .col-action {
+        width: 54px;
+    }
 }

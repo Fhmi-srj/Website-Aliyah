@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import CrudModal from '../../../components/CrudModal';
 import { API_BASE, APP_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
@@ -9,6 +10,7 @@ import SignatureCanvas from '../../../components/SignatureCanvas';
 
 function ManajemenRapat() {
     const [data, setData] = useState([]);
+    const [selectedItems, setSelectedItems] = useState(new Set());
     const [guruList, setGuruList] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
@@ -17,7 +19,7 @@ function ManajemenRapat() {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
-    const [isModalClosing, setIsModalClosing] = useState(false);
+
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [formData, setFormData] = useState({
         agenda_rapat: '',
@@ -60,6 +62,40 @@ function ManajemenRapat() {
     const [absensiData, setAbsensiData] = useState(null);
     const [loadingAbsensi, setLoadingAbsensi] = useState(false);
 
+    const toggleRowExpand = (idx) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(idx)) next.delete(idx);
+            else next.add(idx);
+            return next;
+        });
+    };
+
+    const addGuest = () => {
+        setFormData(prev => ({
+            ...prev,
+            peserta_eksternal: [
+                ...prev.peserta_eksternal,
+                { nama: '', jabatan: '', ttd: null }
+            ]
+        }));
+    };
+
+    const removeGuest = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            peserta_eksternal: prev.peserta_eksternal.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateGuest = (index, field, value) => {
+        setFormData(prev => {
+            const updated = [...prev.peserta_eksternal];
+            updated[index] = { ...updated[index], [field]: value };
+            return { ...prev, peserta_eksternal: updated };
+        });
+    };
+
     const jenisRapatList = ['Rutin', 'Koordinasi', 'Darurat', 'Evaluasi'];
     const statusList = ['Dijadwalkan', 'Berlangsung', 'Selesai', 'Dibatalkan'];
 
@@ -98,6 +134,23 @@ function ManajemenRapat() {
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
     }, []);
+
+    const formatDateTime = (dateStr) => {
+        if (!dateStr) return '-';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const seconds = String(d.getSeconds()).padStart(2, '0');
+            return `${day}-${month}-${year} | ${hours}:${minutes}:${seconds}`;
+        } catch (e) {
+            return dateStr;
+        }
+    };
 
     const sortData = (dataToSort, column, direction) => {
         if (!column) return dataToSort;
@@ -141,7 +194,67 @@ function ManajemenRapat() {
     const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
-    useEffect(() => { setCurrentPage(1); }, [search, filterJenis, filterStatus]);
+    useEffect(() => {
+        setCurrentPage(1);
+        setSelectedItems(new Set());
+    }, [search, filterJenis, filterStatus]);
+
+    const handleSelectItem = (id) => {
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedItems(newSelected);
+    };
+
+    const handleSelectAll = () => {
+        if (selectedItems.size === paginatedData.length && paginatedData.length > 0) {
+            setSelectedItems(new Set());
+        } else {
+            setSelectedItems(new Set(paginatedData.map(item => item.id)));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedItems.size === 0) return;
+
+        const result = await Swal.fire({
+            title: `Hapus ${selectedItems.size} agenda rapat?`,
+            text: 'Data yang dihapus tidak dapat dikembalikan!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus Semua!',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const response = await authFetch(`${API_BASE}/rapat/bulk-delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(selectedItems) })
+            });
+
+            if (response.ok) {
+                setSelectedItems(new Set());
+                fetchData();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Terhapus!',
+                    text: `${selectedItems.size} agenda rapat telah dibersihkan`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        } catch (error) {
+            console.error('Error bulk delete:', error);
+        }
+    };
 
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => ({
@@ -180,7 +293,6 @@ function ManajemenRapat() {
         setPimpinanSearch('');
         setSekretarisSearch('');
         setPesertaSearch('');
-        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -194,28 +306,21 @@ function ManajemenRapat() {
             sekretaris: item.sekretaris || '',
             pimpinan_id: item.pimpinan_id || null,
             sekretaris_id: item.sekretaris_id || null,
-            peserta_rapat: (item.peserta_rapat || []).map(p => p.id),
-            peserta_eksternal: item.peserta_eksternal || [],
-            tanggal: item.tanggal || '',
-            waktu_mulai: item.waktu_mulai || '09:00',
-            waktu_selesai: item.waktu_selesai || '11:00',
+            peserta_rapat: (item.peserta_rapat || []).map(p => typeof p === 'object' ? p.id : p).filter(Boolean),
+            peserta_eksternal: Array.isArray(item.peserta_eksternal) ? item.peserta_eksternal : [],
+            tanggal: item.tanggal ? item.tanggal.substring(0, 10) : '',
+            waktu_mulai: (item.waktu_mulai || '09:00').substring(0, 5),
+            waktu_selesai: (item.waktu_selesai || '11:00').substring(0, 5),
             tempat: item.tempat || '',
             status: item.status || 'Dijadwalkan'
         });
         setPimpinanSearch(item.pimpinan || '');
         setSekretarisSearch(item.sekretaris || '');
         setPesertaSearch('');
-        setIsModalClosing(false);
         setShowModal(true);
     };
 
-    const closeModal = () => {
-        setIsModalClosing(true);
-        setTimeout(() => {
-            setShowModal(false);
-            setIsModalClosing(false);
-        }, 200);
-    };
+    const closeModal = () => setShowModal(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -232,8 +337,15 @@ function ManajemenRapat() {
                 closeModal();
                 fetchData();
                 Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Agenda rapat tersimpan', timer: 1500, showConfirmButton: false });
+            } else {
+                const errorData = await res.json().catch(() => null);
+                const errorMsg = errorData?.message || errorData?.error || `Gagal menyimpan data (${res.status})`;
+                Swal.fire({ icon: 'error', title: 'Gagal', text: errorMsg });
             }
-        } catch (error) { console.error('Error saving:', error); }
+        } catch (error) {
+            console.error('Error saving:', error);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
+        }
     };
 
     const handleDelete = async (id) => {
@@ -302,7 +414,7 @@ function ManajemenRapat() {
     };
 
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
+        <th className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
             <div className="flex items-center gap-1.5">
                 <span onClick={(e) => { e.stopPropagation(); handleSort(column); }} className="hover:text-primary transition-colors">
                     {label}
@@ -340,42 +452,50 @@ function ManajemenRapat() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-handshake text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Manajemen Rapat</h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Atur jadwal koordinasi & forum diskusi</p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Manajemen Rapat</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Atur jadwal koordinasi & forum diskusi</p>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                    <input
-                        aria-label="Cari rapat"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
-                        placeholder="Cari agenda, pimpinan, atau lokasi..."
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    <button onClick={handleExport} className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-file-export"></i>
-                        <span>Export</span>
-                    </button>
-                    <button onClick={openAddModal} className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                        <span>Buat Agenda</span>
-                    </button>
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 dark:bg-dark-bg/20 rounded-2xl border border-gray-100 dark:border-dark-border'}`}>
+                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
+                        <input
+                            aria-label="Cari rapat"
+                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm`}
+                            placeholder={isMobile ? 'Cari...' : 'Cari agenda, pimpinan, atau lokasi...'}
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        {selectedItems.size > 0 && (
+                            <button onClick={handleBulkDelete} className={`bg-rose-500 text-white rounded-xl flex items-center gap-1 font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-200 ${isMobile ? '' : 'px-5 py-2.5 text-[10px]'}`}>
+                                <i className="fas fa-trash"></i>
+                                <span>({selectedItems.size})</span>
+                            </button>
+                        )}
+                        <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                        <button onClick={openAddModal} className={`btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest ${isMobile ? '' : 'px-4 py-2.5 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-calendar-plus group-hover:rotate-12 transition-transform"></i>
+                            <span>{isMobile ? 'Tambah' : 'Buat Agenda'}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -386,124 +506,158 @@ function ManajemenRapat() {
                     <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">Menyinkronkan Forum...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
-                    <table className={`admin-table ${isMobile ? '' : 'min-w-[1200px]'}`}>
+                <div className={`bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border ${isMobile ? '' : 'overflow-x-auto scrollbar-hide max-w-full'}`}>
+                    <table className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[1200px]'}`}>
                         <thead>
                             <tr>
-                                <th className="select-none pl-8 py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
-                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                {!isMobile && (
+                                    <th className="select-none pl-6 py-2.5 w-10 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={paginatedData.length > 0 && selectedItems.size === paginatedData.length}
+                                            onChange={handleSelectAll}
+                                            className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer"
+                                        />
+                                    </th>
+                                )}
+                                {!isMobile && <th className="select-none py-2.5 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                                {isMobile && <th className="col-expand select-none py-1.5 text-center"></th>}
                                 <SortableHeader label="Agenda Rapat" column="agenda_rapat" />
-                                <SortableHeader
-                                    label="Jenis"
-                                    column="jenis_rapat"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua Jenis', value: '' },
-                                        ...jenisRapatList.map(j => ({ label: j, value: j }))
-                                    ]}
-                                    filterValue={filterJenis}
-                                    setFilterValue={setFilterJenis}
-                                />
-                                <SortableHeader label="Jadwal & Lokasi" column="tanggal" />
-                                <SortableHeader label="Pimpinan" column="pimpinan" />
-                                <SortableHeader
-                                    label="Status"
-                                    column="status"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua Status', value: '' },
-                                        ...statusList.map(s => ({ label: s, value: s }))
-                                    ]}
-                                    filterValue={filterStatus}
-                                    setFilterValue={setFilterStatus}
-                                />
-                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest px-6">Aksi</th>
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Jenis"
+                                        column="jenis_rapat"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua Jenis', value: '' },
+                                            ...jenisRapatList.map(j => ({ label: j, value: j }))
+                                        ]}
+                                        filterValue={filterJenis}
+                                        setFilterValue={setFilterJenis}
+                                    />
+                                )}
+                                <SortableHeader label={isMobile ? 'Jadwal' : 'Jadwal & Lokasi'} column="tanggal" />
+                                {!isMobile && <SortableHeader label="Pimpinan" column="pimpinan" />}
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Status"
+                                        column="status"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua Status', value: '' },
+                                            ...statusList.map(s => ({ label: s, value: s }))
+                                        ]}
+                                        filterValue={filterStatus}
+                                        setFilterValue={setFilterStatus}
+                                    />
+                                )}
+                                <th className={`select-none ${isMobile ? 'py-1.5 px-0 text-left' : 'py-2.5 px-6 text-center'} text-xs font-black text-gray-400 uppercase tracking-widest`} style={isMobile ? { width: '100px', overflow: 'visible' } : {}}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
-                                        <td className="pl-8 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
-                                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                                        </td>
+                                    <tr className={`hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group ${selectedItems.has(item.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                                        {!isMobile && (
+                                            <td className={`pl-6 ${isMobile ? 'py-1.5' : 'py-2.5'} align-middle text-center`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedItems.has(item.id)}
+                                                    onChange={() => handleSelectItem(item.id)}
+                                                    className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer"
+                                                />
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className={`${isMobile ? 'py-1.5' : 'py-2.5'} align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500`}>
+                                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                                            </td>
+                                        )}
                                         {isMobile && (
-                                            <td className="py-4 align-middle text-center cursor-pointer px-2" onClick={() => toggleRowExpand(idx)}>
-                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
-                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle">
+                                        <td className={`${isMobile ? 'py-1 px-1' : 'py-2.5 px-2'} align-middle`}>
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.agenda_rapat}</span>
-                                                <span className="text-[9px] text-gray-400 font-medium italic">Sekretaris: {item.sekretaris || '-'}</span>
+                                                <span className={`${isMobile ? 'text-[8px] leading-tight' : 'text-xs'} font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight ${isMobile ? 'whitespace-normal break-words' : ''}`}>{item.agenda_rapat}</span>
+                                                <span className={`${isMobile ? 'text-[7px]' : 'text-[8px]'} text-gray-400 font-medium italic`}>Sekr: {item.sekretaris || '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-2 align-middle">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.jenis_rapat === 'Darurat' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
-                                                item.jenis_rapat === 'Evaluasi' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
-                                                    'bg-primary/5 text-primary dark:bg-primary/20'
-                                                }`}>
-                                                {item.jenis_rapat}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-2 align-middle">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-400">
-                                                    <i className="far fa-calendar-alt text-[10px] text-primary"></i>
-                                                    {item.tanggal}
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
-                                                    <i className="far fa-clock text-[10px] text-emerald-500"></i>
-                                                    {item.waktu_mulai} - {item.waktu_selesai}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-2 align-middle">
-                                            <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.pimpinan}</span>
-                                        </td>
-                                        <td className="py-4 px-2 align-middle">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'Berlangsung' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
-                                                item.status === 'Selesai' ? 'bg-gray-50 text-gray-500 dark:bg-dark-bg/50 dark:text-gray-400' :
-                                                    item.status === 'Dibatalkan' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle">
+                                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.jenis_rapat === 'Darurat' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
+                                                    item.jenis_rapat === 'Evaluasi' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
                                                         'bg-primary/5 text-primary dark:bg-primary/20'
-                                                }`}>
-                                                {item.status === 'Berlangsung' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-                                                {item.status}
-                                            </span>
+                                                    }`}>
+                                                    {item.jenis_rapat}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className={`${isMobile ? 'py-1 px-1' : 'py-2.5 px-2'} align-middle`}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className={`flex items-center gap-1 ${isMobile ? 'text-[8px]' : 'text-[11px]'} font-bold text-gray-600 dark:text-gray-400`}>
+                                                    <i className={`far fa-calendar-alt ${isMobile ? 'text-[7px]' : 'text-[9px]'} text-primary flex-shrink-0`}></i>
+                                                    {item.tanggal ? item.tanggal.substring(0, 10) : '-'}
+                                                </div>
+                                                <div className={`flex items-center gap-1 ${isMobile ? 'text-[7px]' : 'text-[11px]'} text-gray-400`}>
+                                                    <i className={`far fa-clock ${isMobile ? 'text-[6px]' : 'text-[9px]'} text-gray-300 flex-shrink-0`}></i>
+                                                    {item.waktu_mulai || '00:00'} - {item.waktu_selesai || '00:00'}
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td className="py-4 px-6 align-middle text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => openAbsensiModal(item)} className="w-8 h-8 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center justify-center dark:bg-primary/20 hover:scale-110 active:scale-95" title="Absensi">
-                                                    <i className="fas fa-clipboard-check text-[10px]"></i>
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle">
+                                                <span className="text-[11px] font-bold text-gray-600 dark:text-dark-text uppercase">{item.pimpinan}</span>
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${item.status === 'Berlangsung' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                                                    item.status === 'Selesai' ? 'bg-gray-50 text-gray-500 dark:bg-dark-bg/50 dark:text-gray-400' :
+                                                        item.status === 'Dibatalkan' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
+                                                            'bg-primary/5 text-primary dark:bg-primary/20'
+                                                    }`}>
+                                                    {item.status === 'Berlangsung' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                                                    {item.status}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className={`${isMobile ? 'py-1 px-0' : 'py-2.5 px-6'} align-middle text-center`} style={isMobile ? { overflow: 'visible' } : {}}>
+                                            <div className={`flex items-center ${isMobile ? 'justify-start flex-nowrap gap-px' : 'justify-center gap-1'}`}>
+                                                <button onClick={() => openAbsensiModal(item)} className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center justify-center`} title="Absensi">
+                                                    <i className={`fas fa-clipboard-check ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                                 {item.has_absensi && (
-                                                    <button onClick={() => handlePrint(item)} className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-all flex items-center justify-center dark:bg-purple-900/20 dark:text-purple-400 hover:scale-110 active:scale-95" title="Print Hasil Rapat">
-                                                        <i className="fas fa-print text-[10px]"></i>
+                                                    <button onClick={() => handlePrint(item)} className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all flex items-center justify-center`} title="Print">
+                                                        <i className={`fas fa-print ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                     </button>
                                                 )}
-                                                <button onClick={() => openEditModal(item)} className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95" title="Edit">
-                                                    <i className="fas fa-edit text-[10px]"></i>
+                                                <button onClick={() => openEditModal(item)} className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center`} title="Edit">
+                                                    <i className={`fas fa-edit ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95" title="Hapus">
-                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                <button onClick={() => handleDelete(item.id)} className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center`} title="Hapus">
+                                                    <i className={`fas fa-trash ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
                                         <tr className="bg-gray-50/50 dark:bg-dark-bg/30 border-b border-gray-100 dark:border-dark-border animate-slideDown">
-                                            <td colSpan="8" className="px-8 py-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Tempat</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{item.tempat || 'Internal School'}</span>
+                                            <td colSpan="3" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item"><span className="expand-label">Jenis</span><span className={`expand-value px-1.5 py-0.5 rounded-lg text-[8px] font-black uppercase ${item.jenis_rapat === 'Darurat' ? 'bg-rose-50 text-rose-600' : item.jenis_rapat === 'Evaluasi' ? 'bg-amber-50 text-amber-600' : 'bg-primary/5 text-primary'}`}>{item.jenis_rapat}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Pimpinan</span><span className="expand-value">{item.pimpinan || '-'}</span></div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Status</span>
+                                                        <span className={`expand-value px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase ${item.status === 'Berlangsung' ? 'bg-emerald-50 text-emerald-600' : item.status === 'Selesai' ? 'bg-gray-50 text-gray-500' : item.status === 'Dibatalkan' ? 'bg-rose-50 text-rose-600' : 'bg-primary/5 text-primary'}`}>{item.status}</span>
                                                     </div>
-                                                    <div className="space-y-1 text-right">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Partisipan</span>
-                                                        <span className="text-xs font-bold text-primary">{(item.peserta_rapat || []).length} Internal / {(item.peserta_eksternal || []).length} Eksternal</span>
-                                                    </div>
+                                                    <div className="expand-item"><span className="expand-label">Tempat</span><span className="expand-value">{item.tempat || 'Internal School'}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Partisipan</span><span className="expand-value">{(item.peserta_rapat || []).length} Internal / {(item.peserta_eksternal || []).length} Eksternal</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Sekretaris</span><span className="expand-value">{item.sekretaris || '-'}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Notulen</span><span className="expand-value">{item.notulen || '-'}</span></div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -512,7 +666,7 @@ function ManajemenRapat() {
                             ))}
                             {filteredData.length === 0 && (
                                 <tr>
-                                    <td colSpan={isMobile ? 8 : 8} className="py-24 text-center">
+                                    <td colSpan={isMobile ? 3 : 8} className="py-24 text-center">
                                         <div className="flex flex-col items-center justify-center gap-4 opacity-40">
                                             <i className="fas fa-handshake text-5xl"></i>
                                             <p className="text-xs font-black uppercase tracking-widest">Belum ada agenda rapat yang dijadwalkan</p>
@@ -546,199 +700,261 @@ function ManajemenRapat() {
                 </div>
             )}
 
-            {/* Modal Manajemen Rapat */}
-            {showModal && ReactDOM.createPortal(
-                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeModal}>
-                    <div className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col relative overflow-hidden transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`} onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
-                            <button onClick={closeModal} className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20" type="button"><i className="fas fa-times text-lg"></i></button>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                    <i className={`fas fa-${modalMode === 'add' ? 'plus-circle' : 'edit'} text-lg`}></i>
+            <CrudModal
+                show={showModal}
+                onClose={closeModal}
+                title={modalMode === 'add' ? 'Jadwalkan Rapat' : 'Perbarui Rapat'}
+                subtitle="Atur pimpinan, notulis, dan absensi"
+                icon={modalMode === 'add' ? 'plus-circle' : 'edit'}
+                onSubmit={handleSubmit}
+                submitLabel={modalMode === 'add' ? 'Jadwalkan Sekarang' : 'Simpan Perubahan'}
+                maxWidth="max-w-5xl"
+            >
+                {/* Section 1: Agenda Data */}
+                <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Topik & Klasifikasi</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agenda Utama Rapat *</label>
+                            <input required type="text" value={formData.agenda_rapat} onChange={(e) => setFormData({ ...formData, agenda_rapat: e.target.value })} className="input-standard" placeholder="Contoh: Rapat Koordinasi Kesiswaan, Evaluasi Kurikulum..." />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tipe Rapat</label>
+                            <select value={formData.jenis_rapat} onChange={(e) => setFormData({ ...formData, jenis_rapat: e.target.value })} className="input-standard outline-none">
+                                {jenisRapatList.map(j => <option key={j} value={j}>{j}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status Agenda</label>
+                            <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-standard outline-none">
+                                {statusList.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 2: Logistics */}
+                <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Logistik Pertemuan</label>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div className="space-y-1.5 md:col-span-1">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tanggal *</label>
+                            <input required type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} className="input-standard" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Mulai *</label>
+                            <input required type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({ ...formData, waktu_mulai: e.target.value })} className="input-standard" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Selesai *</label>
+                            <input required type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({ ...formData, waktu_selesai: e.target.value })} className="input-standard" />
+                        </div>
+                        <div className="space-y-1.5 relative md:col-span-1">
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lokasi Rapat *</label>
+                            <input required type="text" value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Ruang Rapat, Aula..." />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 3: Personnel */}
+                <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Kepemimpinan & Kesekretariatan</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5 relative" ref={pimpinanDropdownRef}>
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pimpinan Sidang *</label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    placeholder="Cari atau Ketik Nama Pimpinan..."
+                                    value={pimpinanSearch}
+                                    onChange={(e) => { setPimpinanSearch(e.target.value); setFormData({ ...formData, pimpinan: e.target.value }); setShowPimpinanDropdown(true); }}
+                                    onFocus={() => setShowPimpinanDropdown(true)}
+                                    className="input-standard font-bold"
+                                    required
+                                />
+                            </div>
+                            {showPimpinanDropdown && pimpinanSearch && (
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
+                                    {guruList.filter(g => g.nama?.toLowerCase().includes(pimpinanSearch.toLowerCase())).map(g => (
+                                        <div key={g.id} onClick={() => { setFormData({ ...formData, pimpinan: g.nama, pimpinan_id: g.id }); setPimpinanSearch(g.nama); setShowPimpinanDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0">
+                                            <span className="text-xs font-bold text-gray-700 dark:text-dark-text">{g.nama}</span>
+                                            <span className="text-[10px] text-gray-400">{g.jabatan || 'Tenaga Pendidik'}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">{modalMode === 'add' ? 'Jadwalkan Pertemuan' : 'Perbarui Konfigurasi Rapat'}</h2>
-                                    <p className="text-xs text-white/80 mt-0.5 font-medium italic">Atur pimpinan, notulis, dan daftar kehadiran</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5 relative" ref={sekretarisDropdownRef}>
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Notulis / Sekretaris *</label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    placeholder="Cari atau Ketik Nama Notulis..."
+                                    value={sekretarisSearch}
+                                    onChange={(e) => { setSekretarisSearch(e.target.value); setFormData({ ...formData, sekretaris: e.target.value }); setShowSekretarisDropdown(true); }}
+                                    onFocus={() => setShowSekretarisDropdown(true)}
+                                    className="input-standard font-bold"
+                                    required
+                                />
+                            </div>
+                            {showSekretarisDropdown && sekretarisSearch && (
+                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
+                                    {guruList.filter(g => g.nama?.toLowerCase().includes(sekretarisSearch.toLowerCase())).map(g => (
+                                        <div key={g.id} onClick={() => { setFormData({ ...formData, sekretaris: g.nama, sekretaris_id: g.id }); setSekretarisSearch(g.nama); setShowSekretarisDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col border-b border-gray-50 dark:border-dark-border last:border-0">
+                                            <span className="text-xs font-bold text-gray-700 dark:text-dark-text">{g.nama}</span>
+                                            <span className="text-[10px] text-gray-400">{g.jabatan || 'Tenaga Pendidik'}</span>
+                                        </div>
+                                    ))}
                                 </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 4: Participants */}
+                <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Daftar Kehadiran Peserta</label>
+                    <div className="space-y-5">
+                        <div>
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Peserta Internal (Guru/Staff)</label>
+                            <div className="relative" ref={pesertaDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPesertaDropdown(!showPesertaDropdown)}
+                                    className="w-full bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl px-4 py-2.5 text-sm text-left focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all flex items-center justify-between shadow-sm hover:border-gray-300 dark:hover:border-gray-600"
+                                >
+                                    <span className={`truncate mr-2 font-semibold ${formData.peserta_rapat.length === 0 ? 'text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-dark-text'}`}>
+                                        {formData.peserta_rapat.length === 0 ? 'Pilih peserta guru/staff...' : formData.peserta_rapat.length === guruList.length ? `Semua (${guruList.length})` : `${formData.peserta_rapat.length} dipilih`}
+                                    </span>
+                                    <i className={`fas fa-chevron-down text-gray-300 transition-transform duration-300 ${showPesertaDropdown ? 'rotate-180 text-primary' : ''}`}></i>
+                                </button>
+
+                                {showPesertaDropdown && (
+                                    <div className="absolute z-50 mt-2 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-2xl shadow-2xl max-h-64 overflow-y-auto scrollbar-hide animate-fadeIn ring-1 ring-black/5">
+                                        {/* Search */}
+                                        <div className="sticky top-0 bg-white dark:bg-dark-surface z-20 p-2 border-b border-gray-50 dark:border-dark-border">
+                                            <input
+                                                type="text"
+                                                placeholder="Cari nama guru..."
+                                                value={pesertaSearch}
+                                                onChange={(e) => setPesertaSearch(e.target.value)}
+                                                className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-gray-50/50 dark:bg-dark-bg/20"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        {/* Select All */}
+                                        <label className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-primary/5 border-b border-gray-50 dark:border-dark-border sticky top-[52px] bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md z-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={filteredGuru.length > 0 && filteredGuru.every(g => formData.peserta_rapat.includes(g.id))}
+                                                onChange={() => {
+                                                    const allIds = filteredGuru.map(g => g.id);
+                                                    const allSelected = allIds.every(id => formData.peserta_rapat.includes(id));
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        peserta_rapat: allSelected
+                                                            ? prev.peserta_rapat.filter(id => !allIds.includes(id))
+                                                            : [...new Set([...prev.peserta_rapat, ...allIds])]
+                                                    }));
+                                                }}
+                                                className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer"
+                                            />
+                                            <span className="text-[11px] font-black text-primary uppercase tracking-wider">
+                                                {filteredGuru.length > 0 && filteredGuru.every(g => formData.peserta_rapat.includes(g.id)) ? 'Batal Semua' : 'Pilih Semua'}
+                                            </span>
+                                            <span className="ml-auto text-[10px] text-gray-400 font-bold">{formData.peserta_rapat.length}/{guruList.length}</span>
+                                        </label>
+                                        {/* Items */}
+                                        <div className="py-1">
+                                            {filteredGuru.map(g => (
+                                                <label
+                                                    key={g.id}
+                                                    className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-bg/50 transition-colors ${formData.peserta_rapat.includes(g.id) ? 'bg-primary/5' : ''}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.peserta_rapat.includes(g.id)}
+                                                        onChange={() => togglePeserta(g.id)}
+                                                        className="w-4 h-4 rounded border-gray-300 dark:border-dark-border text-primary focus:ring-primary cursor-pointer transition-all"
+                                                    />
+                                                    <span className={`text-xs transition-all ${formData.peserta_rapat.includes(g.id) ? 'text-primary font-bold' : 'text-gray-600 dark:text-dark-text font-medium'}`}>
+                                                        {g.nama}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                            {filteredGuru.length === 0 && (
+                                                <div className="py-4 text-center text-xs text-gray-400 italic">Data guru tidak ditemukan...</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="p-8 space-y-8 overflow-y-auto max-h-[75vh] scrollbar-hide">
-                                {/* Section 1: Agenda Data */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Topik & Klasifikasi</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agenda Utama Rapat *</label>
-                                            <input required type="text" value={formData.agenda_rapat} onChange={(e) => setFormData({ ...formData, agenda_rapat: e.target.value })} className="input-standard" placeholder="Contoh: Rapat Koordinasi Kesiswaan, Evaluasi Kurikulum..." />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tipe Rapat</label>
-                                            <select value={formData.jenis_rapat} onChange={(e) => setFormData({ ...formData, jenis_rapat: e.target.value })} className="input-standard outline-none">
-                                                {jenisRapatList.map(j => <option key={j} value={j}>{j}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status Agenda</label>
-                                            <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-standard outline-none">
-                                                {statusList.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Section 2: Logistics */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Logistik Pertemuan</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                                        <div className="space-y-1.5 md:col-span-1">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tanggal *</label>
-                                            <input required type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} className="input-standard" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Mulai *</label>
-                                            <input required type="time" value={formData.waktu_mulai} onChange={(e) => setFormData({ ...formData, waktu_mulai: e.target.value })} className="input-standard" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Selesai *</label>
-                                            <input required type="time" value={formData.waktu_selesai} onChange={(e) => setFormData({ ...formData, waktu_selesai: e.target.value })} className="input-standard" />
-                                        </div>
-                                        <div className="space-y-1.5 relative md:col-span-1">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Lokasi Rapat *</label>
-                                            <div className="relative group">
-                                                <i className="fas fa-building absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                                <input required type="text" value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard pl-11" placeholder="Ruang Rapat, Aula..." />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Section 3: Personnel */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Kepemimpinan & Kesekretariatan</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-1.5 relative" ref={pimpinanDropdownRef}>
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Pimpinan Sidang *</label>
-                                            <div className="relative group">
-                                                <i className="fas fa-user-tie absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Cari atau Ketik Nama Pimpinan..."
-                                                    value={pimpinanSearch}
-                                                    onChange={(e) => { setPimpinanSearch(e.target.value); setFormData({ ...formData, pimpinan: e.target.value }); setShowPimpinanDropdown(true); }}
-                                                    onFocus={() => setShowPimpinanDropdown(true)}
-                                                    className="input-standard pl-11 font-bold"
-                                                    required
-                                                />
-                                            </div>
-                                            {showPimpinanDropdown && pimpinanSearch && (
-                                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
-                                                    {guruList.filter(g => g.nama?.toLowerCase().includes(pimpinanSearch.toLowerCase())).map(g => (
-                                                        <div key={g.id} onClick={() => { setFormData({ ...formData, pimpinan: g.nama, pimpinan_id: g.id }); setPimpinanSearch(g.nama); setShowPimpinanDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0">
-                                                            <span className="text-xs font-bold text-gray-700 dark:text-dark-text">{g.nama}</span>
-                                                            <span className="text-[10px] text-gray-400">{g.jabatan || 'Tenaga Pendidik'}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-1.5 relative" ref={sekretarisDropdownRef}>
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Notulis / Sekretaris *</label>
-                                            <div className="relative group">
-                                                <i className="fas fa-edit absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Cari atau Ketik Nama Notulis..."
-                                                    value={sekretarisSearch}
-                                                    onChange={(e) => { setSekretarisSearch(e.target.value); setFormData({ ...formData, sekretaris: e.target.value }); setShowSekretarisDropdown(true); }}
-                                                    onFocus={() => setShowSekretarisDropdown(true)}
-                                                    className="input-standard pl-11 font-bold"
-                                                    required
-                                                />
-                                            </div>
-                                            {showSekretarisDropdown && sekretarisSearch && (
-                                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
-                                                    {guruList.filter(g => g.nama?.toLowerCase().includes(sekretarisSearch.toLowerCase())).map(g => (
-                                                        <div key={g.id} onClick={() => { setFormData({ ...formData, sekretaris: g.nama, sekretaris_id: g.id }); setSekretarisSearch(g.nama); setShowSekretarisDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col border-b border-gray-50 dark:border-dark-border last:border-0">
-                                                            <span className="text-xs font-bold text-gray-700 dark:text-dark-text">{g.nama}</span>
-                                                            <span className="text-[10px] text-gray-400">{g.jabatan || 'Tenaga Pendidik'}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Section 4: Participants */}
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Daftar Kehadiran Peserta</label>
-                                    <div className="space-y-5">
-                                        <div className="relative" ref={pesertaDropdownRef}>
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Peserta Internal (Guru/Staff)</label>
-                                            <div className="relative group">
-                                                <i className="fas fa-users absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Cari & Tandai Nama Peserta..."
-                                                    value={pesertaSearch}
-                                                    onChange={(e) => { setPesertaSearch(e.target.value); setShowPesertaDropdown(true); }}
-                                                    onFocus={() => setShowPesertaDropdown(true)}
-                                                    className="input-standard pl-11"
-                                                />
-                                            </div>
-                                            {showPesertaDropdown && (
-                                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto p-2 grid grid-cols-1 md:grid-cols-2 gap-1 animate-fadeIn">
-                                                    {filteredGuru.map(g => (
-                                                        <div key={g.id} onClick={() => togglePeserta(g.id)} className={`px-4 py-2 rounded-lg cursor-pointer flex items-center justify-between transition-all ${formData.peserta_rapat.includes(g.id)
-                                                            ? 'bg-primary/10 text-primary border-primary/20'
-                                                            : 'hover:bg-gray-50 dark:hover:bg-dark-bg/40'
-                                                            }`}>
-                                                            <span className="text-xs font-bold">{g.nama}</span>
-                                                            {formData.peserta_rapat.includes(g.id) && <i className="fas fa-check-circle text-[10px]"></i>}
-                                                        </div>
-                                                    ))}
-                                                    {filteredGuru.length === 0 && <div className="col-span-2 py-3 text-center text-xs text-gray-400 italic">Data guru tidak ditemukan...</div>}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {formData.peserta_rapat.map(id => {
-                                                const g = guruList.find(x => x.id === id);
-                                                return g ? (
-                                                    <span key={id} onClick={() => togglePeserta(id)} className="px-3 py-1.5 bg-gray-100 dark:bg-dark-bg/50 rounded-xl text-[10px] font-bold text-gray-600 dark:text-gray-400 flex items-center gap-2 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-all">
-                                                        {g.nama} <i className="fas fa-times text-[8px] opacity-40 group-hover:opacity-100"></i>
-                                                    </span>
-                                                ) : null;
-                                            })}
-                                            {formData.peserta_rapat.length === 0 && <span className="text-[10px] text-gray-400 italic">Belum ada peserta internal terpilih...</span>}
-                                        </div>
-
-                                        <div className="space-y-1.5 pt-2">
-                                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Peserta Eksternal (Tamu/Komite/Wali - Pisahkan dengan Koma)</label>
-                                            <textarea
-                                                rows="2"
-                                                className="input-standard !h-auto py-3 leading-relaxed font-medium"
-                                                placeholder="Contoh: Bapak Ahmad (Komite), Ibu Sari (Wali Murid)..."
-                                                value={formData.peserta_eksternal.join(', ')}
-                                                onChange={(e) => setFormData({ ...formData, peserta_eksternal: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '') })}
-                                            ></textarea>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="space-y-4 pt-2">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Peserta Eksternal (Tamu/Komite/Wali)</label>
+                                <button
+                                    type="button"
+                                    onClick={addGuest}
+                                    className="px-3 py-1 bg-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-primary/90 transition-all flex items-center gap-1.5"
+                                >
+                                    <i className="fas fa-plus"></i>
+                                    Tambah Tamu
+                                </button>
                             </div>
 
-                            <div className="p-8 border-t border-gray-100 dark:border-dark-border flex gap-4 bg-gray-50/50 dark:bg-dark-bg/10">
-                                <button type="button" onClick={closeModal} className="flex-1 px-4 py-4 rounded-2xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white transition-all text-xs font-black uppercase tracking-widest">Batal</button>
-                                <button type="submit" className="flex-[2] px-4 py-4 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm font-black uppercase tracking-widest tracking-[0.1em]">{modalMode === 'add' ? 'Jadwalkan Sekarang' : 'Simpan Perubahan'}</button>
+                            <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 scrollbar-hide">
+                                {formData.peserta_eksternal.map((guest, idx) => (
+                                    <div key={idx} className="p-4 bg-gray-50 dark:bg-dark-bg/20 rounded-2xl border border-gray-100 dark:border-dark-border grid grid-cols-1 md:grid-cols-12 gap-3 items-end group">
+                                        <div className="md:col-span-1 flex items-center justify-center pb-2">
+                                            <div className="w-8 h-8 bg-white dark:bg-dark-surface rounded-xl border border-gray-100 dark:border-dark-border flex items-center justify-center text-[10px] font-black text-gray-400">
+                                                {idx + 1}
+                                            </div>
+                                        </div>
+                                        <div className="md:col-span-5">
+                                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Nama Tamu</label>
+                                            <input
+                                                type="text"
+                                                value={guest.nama}
+                                                onChange={(e) => updateGuest(idx, 'nama', e.target.value)}
+                                                placeholder="Contoh: Bpk. Ahmad"
+                                                className="input-standard !py-2.5"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-5">
+                                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Jabatan / Keterangan</label>
+                                            <input
+                                                type="text"
+                                                value={guest.jabatan}
+                                                onChange={(e) => updateGuest(idx, 'jabatan', e.target.value)}
+                                                placeholder="Contoh: Komite Sekolah"
+                                                className="input-standard !py-2.5"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1 flex items-center justify-center pb-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeGuest(idx)}
+                                                className="w-9 h-9 bg-rose-50 dark:bg-rose-900/10 text-rose-500 rounded-xl hover:bg-rose-100 transition-all flex items-center justify-center shadow-sm border border-rose-100 dark:border-rose-900/20"
+                                            >
+                                                <i className="fas fa-trash-alt text-[11px]"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {formData.peserta_eksternal.length === 0 && (
+                                    <div className="py-8 text-center border-2 border-dashed border-gray-100 dark:border-dark-border rounded-2xl">
+                                        <i className="fas fa-user-plus text-gray-200 text-3xl mb-3"></i>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Belum ada tamu eksternal</p>
+                                    </div>
+                                )}
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>,
-                document.body
-            )}
+                </div>
+            </CrudModal>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -785,12 +1001,30 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
     const fileInputRef = useRef(null);
 
+    // Sync formData when initialData changes (e.g. when API returns peserta_eksternal)
+    useEffect(() => {
+        if (initialData) {
+            // Normalize peserta_eksternal: ensure 'ttd' key is used (API may return 'tanda_tangan' or 'ttd')
+            const rawPE = initialData.peserta_eksternal || rapat?.peserta_eksternal || [];
+            const normalizedPE = rawPE.map(g => ({
+                ...g,
+                ttd: g.ttd || g.tanda_tangan || null,
+            }));
+            setFormData({
+                absensi_peserta: initialData.absensi_peserta || [],
+                notulensi: initialData.notulensi || '',
+                foto_rapat: initialData.foto_rapat || [],
+                peserta_eksternal: normalizedPE,
+            });
+        }
+    }, [initialData]);
+
     const addGuest = () => {
         setFormData(prev => ({
             ...prev,
             peserta_eksternal: [
                 ...prev.peserta_eksternal,
-                { nama: '', jabatan: '', tanda_tangan: null, status: 'Hadir' }
+                { nama: '', jabatan: '', ttd: null, status: 'Hadir' }
             ]
         }));
     };
@@ -817,7 +1051,7 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
 
     const handleSaveSignature = (base64) => {
         if (activeSignatureIndex !== null) {
-            updateGuest(activeSignatureIndex, 'tanda_tangan', base64);
+            updateGuest(activeSignatureIndex, 'ttd', base64);
         }
     };
 
@@ -853,9 +1087,10 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     };
 
     const removePhoto = (index) => {
-        const updated = [...formData.foto_rapat];
-        updated.splice(index, 1);
-        setFormData({ ...formData, foto_rapat: updated });
+        setFormData(prev => ({
+            ...prev,
+            foto_rapat: prev.foto_rapat.filter((_, i) => i !== index)
+        }));
     };
 
     const updateStatus = (index, status) => {
@@ -908,74 +1143,6 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
 
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-                        {/* External Participants Section */}
-                        <div className="space-y-4">
-                            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2">Peserta Eksternal (Tamu/Wali)</label>
-
-                            <div className="space-y-3">
-                                {formData.peserta_eksternal.map((guest, idx) => (
-                                    <div key={idx} className="bg-gray-50 dark:bg-dark-bg/40 p-4 rounded-2xl border border-gray-100 dark:border-dark-border animate-slideDown">
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                                            <div className="md:col-span-4">
-                                                <input
-                                                    type="text"
-                                                    value={guest.nama}
-                                                    onChange={(e) => updateGuest(idx, 'nama', e.target.value)}
-                                                    placeholder="Nama Tamu"
-                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-4">
-                                                <input
-                                                    type="text"
-                                                    value={guest.jabatan}
-                                                    onChange={(e) => updateGuest(idx, 'jabatan', e.target.value)}
-                                                    placeholder="Jabatan"
-                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-4 flex items-center justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openSignatureModal(idx)}
-                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${guest.tanda_tangan ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-white dark:bg-dark-card text-gray-400 border border-gray-100 dark:border-dark-border hover:bg-gray-50'}`}
-                                                    title="Tanda Tangan"
-                                                >
-                                                    {guest.tanda_tangan ? (
-                                                        <img src={guest.tanda_tangan} className="w-6 h-6 object-contain" alt="TTD" />
-                                                    ) : (
-                                                        <i className="fas fa-signature text-xs"></i>
-                                                    )}
-                                                </button>
-                                                <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/20">
-                                                    Hadir
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeGuest(idx)}
-                                                    className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400"
-                                                >
-                                                    <i className="fas fa-trash-alt text-xs"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {formData.peserta_eksternal.length === 0 && (
-                                    <div className="py-8 text-center bg-gray-50/50 dark:bg-dark-bg/20 rounded-2xl border-2 border-dashed border-gray-100 dark:border-dark-border">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Belum ada tamu yang ditambahkan</p>
-                                    </div>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={addGuest}
-                                    className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-                                >
-                                    <i className="fas fa-plus"></i> Tambah Tamu
-                                </button>
-                            </div>
-                        </div>
                         {/* Summary Stats */}
                         <div className="grid grid-cols-4 gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl text-center">
@@ -1027,6 +1194,75 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
                             ))}
                         </div>
 
+                        {/* External Participants Section */}
+                        <div className="space-y-4">
+                            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2">Peserta Eksternal (Tamu/Wali)</label>
+
+                            <div className="space-y-3">
+                                {formData.peserta_eksternal.map((guest, idx) => (
+                                    <div key={idx} className="bg-gray-50 dark:bg-dark-bg/40 p-4 rounded-2xl border border-gray-100 dark:border-dark-border animate-slideDown">
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                                            <div className="md:col-span-4">
+                                                <input
+                                                    type="text"
+                                                    value={guest.nama}
+                                                    onChange={(e) => updateGuest(idx, 'nama', e.target.value)}
+                                                    placeholder="Nama Tamu"
+                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                                <input
+                                                    type="text"
+                                                    value={guest.jabatan}
+                                                    onChange={(e) => updateGuest(idx, 'jabatan', e.target.value)}
+                                                    placeholder="Jabatan"
+                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4 flex items-center justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openSignatureModal(idx)}
+                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${guest.ttd ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-white dark:bg-dark-card text-gray-400 border border-gray-100 dark:border-dark-border hover:bg-gray-50'}`}
+                                                    title="Tanda Tangan"
+                                                >
+                                                    {guest.ttd ? (
+                                                        <img src={guest.ttd} className="w-6 h-6 object-contain" alt="TTD" />
+                                                    ) : (
+                                                        <i className="fas fa-signature text-xs"></i>
+                                                    )}
+                                                </button>
+                                                <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/20">
+                                                    Hadir
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeGuest(idx)}
+                                                    className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {formData.peserta_eksternal.length === 0 && (
+                                    <div className="py-8 text-center bg-gray-50/50 dark:bg-dark-bg/20 rounded-2xl border-2 border-dashed border-gray-100 dark:border-dark-border">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Belum ada tamu yang ditambahkan</p>
+                                    </div>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={addGuest}
+                                    className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                                >
+                                    <i className="fas fa-plus"></i> Tambah Tamu
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Foto Dokumentasi */}
                         <div className="space-y-3">
                             <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2 flex items-center gap-2">
@@ -1037,9 +1273,10 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
                                 {formData.foto_rapat.map((foto, idx) => (
                                     <div key={idx} className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-bg shadow-sm">
                                         <img
-                                            src={foto.startsWith('http') ? foto : (APP_BASE ? `${APP_BASE}/storage/${foto}` : `/storage/${foto}`)}
+                                            src={foto.startsWith('data:image') ? foto : foto.startsWith('http') ? foto : (APP_BASE ? `${APP_BASE}/storage/${foto}` : `/storage/${foto}`)}
                                             alt={`Dokumentasi ${idx + 1}`}
                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                            onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                             <i className="fas fa-search-plus text-white text-xl"></i>
@@ -1098,14 +1335,14 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-4 rounded-2xl bg-gray-100 dark:bg-dark-bg text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-200 dark:hover:bg-dark-border transition-all"
+                            className="flex-1 py-2.5 rounded-2xl bg-gray-100 dark:bg-dark-bg text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-200 dark:hover:bg-dark-border transition-all"
                         >
                             Batal
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-[2] py-4 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="flex-[2] py-2.5 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {loading && <i className="fas fa-spinner fa-spin"></i>}
                             Simpan Perubahan

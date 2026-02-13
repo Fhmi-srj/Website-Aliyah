@@ -26,6 +26,7 @@ class Kegiatan extends Model
         'status',
         'status_kbm', // Keep for backward compatibility
         'tahun_ajaran_id',
+        'kalender_id',
     ];
 
     protected $casts = [

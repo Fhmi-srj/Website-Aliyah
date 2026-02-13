@@ -131,7 +131,7 @@ function GuruLayout({ children }) {
                             {/* Tahun Ajaran - Text Only Display */}
                             <div className="border-t border-gray-100 px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                    <i className="fas fa-calendar-alt text-blue-500"></i>
+                                    <i className="fas fa-calendar-alt text-emerald-500"></i>
                                     <div>
                                         <span className="text-xs text-gray-400">Tahun Ajaran</span>
                                         <p className="text-sm font-medium text-gray-700">
@@ -213,7 +213,7 @@ function GuruLayout({ children }) {
                             onClick={() => handleAbsensiClick('kegiatan')}
                             className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
                         >
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <i className="fas fa-calendar-check text-white text-sm"></i>
                             </div>
                             <div className="flex-1 text-left">
@@ -228,7 +228,7 @@ function GuruLayout({ children }) {
                             onClick={() => handleAbsensiClick('rapat')}
                             className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
                         >
-                            <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <i className="fas fa-users text-white text-sm"></i>
                             </div>
                             <div className="flex-1 text-left">

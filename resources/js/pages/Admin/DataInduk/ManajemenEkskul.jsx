@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import CrudModal, { ModalSection } from '../../../components/CrudModal';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
@@ -17,7 +18,7 @@ function ManajemenEkskul() {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
-    const [isModalClosing, setIsModalClosing] = useState(false);
+
     const [formData, setFormData] = useState({
         nama_ekskul: '',
         kategori: 'Olahraga',
@@ -199,7 +200,7 @@ function ManajemenEkskul() {
             hari: 'Senin', jam_mulai: '14:00', jam_selesai: '16:00', tempat: '',
             deskripsi: '', status: 'Aktif'
         });
-        setIsModalClosing(false);
+
         setShowModal(true);
     };
 
@@ -217,17 +218,11 @@ function ManajemenEkskul() {
             deskripsi: item.deskripsi || '',
             status: item.status || 'Aktif'
         });
-        setIsModalClosing(false);
+
         setShowModal(true);
     };
 
-    const closeModal = () => {
-        setIsModalClosing(true);
-        setTimeout(() => {
-            setShowModal(false);
-            setIsModalClosing(false);
-        }, 200);
-    };
+    const closeModal = () => setShowModal(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -243,8 +238,14 @@ function ManajemenEkskul() {
                 closeModal();
                 fetchData();
                 Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Data ekskul tersimpan', timer: 1500, showConfirmButton: false });
+            } else {
+                const errData = await res.json().catch(() => null);
+                Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menyimpan data' });
             }
-        } catch (error) { console.error('Error saving:', error); }
+        } catch (error) {
+            console.error('Error saving:', error);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
+        }
     };
 
     const handleDelete = async (id) => {
@@ -255,8 +256,14 @@ function ManajemenEkskul() {
                 if (res.ok) {
                     fetchData();
                     Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Ekskul telah dihapus', timer: 1500, showConfirmButton: false });
+                } else {
+                    const errData = await res.json().catch(() => null);
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menghapus data' });
                 }
-            } catch (error) { console.error('Error deleting:', error); }
+            } catch (error) {
+                console.error('Error deleting:', error);
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
+            }
         }
     };
 
@@ -264,7 +271,7 @@ function ManajemenEkskul() {
     const openAnggotaModal = async (ekskul) => {
         setSelectedEkskul(ekskul);
         setShowAnggotaModal(true);
-        setIsModalClosing(false);
+
         fetchAnggota(ekskul.id);
     };
 
@@ -304,17 +311,13 @@ function ManajemenEkskul() {
     };
 
     const closeAnggotaModal = () => {
-        setIsModalClosing(true);
-        setTimeout(() => {
-            setShowAnggotaModal(false);
-            setIsModalClosing(false);
-            setSelectedEkskul(null);
-            setAnggotaList([]);
-        }, 200);
+        setShowAnggotaModal(false);
+        setSelectedEkskul(null);
+        setAnggotaList([]);
     };
 
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
+        <th className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
             <div className="flex items-center gap-1.5">
                 <span onClick={(e) => { e.stopPropagation(); handleSort(column); }} className="hover:text-primary transition-colors">
                     {label}
@@ -350,27 +353,27 @@ function ManajemenEkskul() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-volleyball-ball text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Ekstrakurikuler</h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Wadah kreativitas dan bakat siswa</p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Ekstrakurikuler</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Wadah kreativitas dan bakat siswa</p>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
+            <div className={`flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border ${isMobile ? 'mobile-sticky-header !mb-3 !p-2 !rounded-xl' : ''}`}>
+                <div className={`flex items-center w-full ${isMobile ? '' : 'md:w-[400px]'} relative group`}>
                     <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
                     <input
                         aria-label="Cari ekskul"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
+                        className={`w-full !pl-11 pr-4 ${isMobile ? 'py-2 text-xs' : 'py-3 text-sm'} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm`}
                         placeholder="Cari nama ekskul, pembina..."
                         type="search"
                         value={search}
@@ -378,13 +381,13 @@ function ManajemenEkskul() {
                     />
                 </div>
                 <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    <button onClick={handleExport} className="btn-secondary px-5 py-2.5 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+                    <button onClick={handleExport} className={`btn-secondary ${isMobile ? 'px-3 py-1.5' : 'px-5 py-2.5'} flex items-center gap-2 font-black text-[10px] uppercase tracking-widest`}>
                         <i className="fas fa-file-export"></i>
-                        <span>Export</span>
+                        {!isMobile && <span>Export</span>}
                     </button>
-                    <button onClick={openAddModal} className="btn-primary px-6 py-2.5 flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest">
+                    <button onClick={openAddModal} className={`btn-primary ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2.5'} flex items-center gap-2 group shadow-lg shadow-primary/20 font-black text-[10px] uppercase tracking-widest`}>
                         <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                        <span>Tambah Ekskul</span>
+                        {!isMobile && <span>Tambah Ekskul</span>}
                     </button>
                 </div>
             </div>
@@ -400,8 +403,8 @@ function ManajemenEkskul() {
                     <table className={`admin-table ${isMobile ? '' : 'min-w-[1000px]'}`}>
                         <thead>
                             <tr>
-                                <th className="select-none pl-8 py-4 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
-                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                {!isMobile && <th className="select-none pl-6 py-2.5 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                                {isMobile && <th className="select-none py-2.5 text-center"></th>}
                                 <SortableHeader label="Nama Ekskul" column="nama_ekskul" />
                                 <SortableHeader
                                     label="Kategori"
@@ -414,7 +417,7 @@ function ManajemenEkskul() {
                                     filterValue={filterKategori}
                                     setFilterValue={setFilterKategori}
                                 />
-                                <SortableHeader label="Pembina" column="pembina" />
+                                {!isMobile && <SortableHeader label="Pembina" column="pembina" />}
                                 {!isMobile && (
                                     <SortableHeader
                                         label="Hari"
@@ -428,43 +431,47 @@ function ManajemenEkskul() {
                                         setFilterValue={setFilterHari}
                                     />
                                 )}
-                                {!isMobile && <th className="select-none py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Jam</th>}
-                                <SortableHeader
-                                    label="Status"
-                                    column="status"
-                                    filterable
-                                    filterOptions={[
-                                        { label: 'Semua', value: '' },
-                                        { label: 'Aktif', value: 'Aktif' },
-                                        { label: 'Tidak Aktif', value: 'Tidak Aktif' }
-                                    ]}
-                                    filterValue={filterStatus}
-                                    setFilterValue={setFilterStatus}
-                                />
-                                <th className="select-none py-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest px-6">Aksi</th>
+                                {!isMobile && <th className="select-none py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest">Jam</th>}
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Status"
+                                        column="status"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua', value: '' },
+                                            { label: 'Aktif', value: 'Aktif' },
+                                            { label: 'Tidak Aktif', value: 'Tidak Aktif' }
+                                        ]}
+                                        filterValue={filterStatus}
+                                        setFilterValue={setFilterStatus}
+                                    />
+                                )}
+                                <th className="select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest px-6">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.map((item, idx) => (
                                 <React.Fragment key={item.id}>
                                     <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
-                                        <td className="pl-8 py-4 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
-                                            {(currentPage - 1) * itemsPerPage + idx + 1}
-                                        </td>
+                                        {!isMobile && (
+                                            <td className="pl-6 py-2.5 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
+                                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                                            </td>
+                                        )}
                                         {isMobile && (
-                                            <td className="py-4 align-middle text-center cursor-pointer px-2" onClick={() => toggleRowExpand(idx)}>
-                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
-                                                    <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                        <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.nama_ekskul}</span>
                                                 <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">Tempat: {item.tempat || '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                        <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.kategori === 'Olahraga' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
                                                 item.kategori === 'Seni' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
                                                     item.kategori === 'Akademik' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
@@ -473,53 +480,49 @@ function ManajemenEkskul() {
                                                 {item.kategori}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">
-                                            <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.pembina?.nama || '-'}</span>
-                                        </td>
                                         {!isMobile && (
-                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
+                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.pembina?.nama || '-'}</span>
+                                            </td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                                 <span className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">{item.hari}</span>
                                             </td>
                                         )}
                                         {!isMobile && (
-                                            <td className="py-4 px-2 align-middle whitespace-nowrap">
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                                 <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-gray-400">
                                                     <i className="fas fa-clock text-[10px] text-gray-400"></i>
                                                     {item.jam_mulai} - {item.jam_selesai}
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-4 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>
-                                        <td className="py-4 px-6 align-middle text-center">
+                                        {!isMobile && <td className="py-2.5 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>}
+                                        <td className={`${isMobile ? 'py-1 px-2' : 'py-2.5 px-6'} align-middle text-center`}>
                                             <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => openAnggotaModal(item)} className="w-8 h-8 rounded-xl bg-primary/10 text-primary hover:bg-primary transition-all hover:text-white flex items-center justify-center dark:bg-primary/20 dark:text-primary-light hover:scale-110 active:scale-95" title="Manajemen Anggota">
-                                                    <i className="fas fa-users text-[10px]"></i>
+                                                <button onClick={() => openAnggotaModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-primary/10 text-primary hover:bg-primary transition-all hover:text-white flex items-center justify-center dark:bg-primary/20 dark:text-primary-light hover:scale-110 active:scale-95`} title="Manajemen Anggota">
+                                                    <i className={`fas fa-users ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button onClick={() => openEditModal(item)} className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-all flex items-center justify-center dark:bg-amber-900/20 dark:text-amber-400 hover:scale-110 active:scale-95" title="Edit Data">
-                                                    <i className="fas fa-edit text-[10px]"></i>
+                                                <button onClick={() => openEditModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center dark:bg-orange-900/20 dark:text-orange-400 hover:scale-110 active:scale-95`} title="Edit Data">
+                                                    <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95" title="Hapus Data">
-                                                    <i className="fas fa-trash text-[10px]"></i>
+                                                <button onClick={() => handleDelete(item.id)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400 hover:scale-110 active:scale-95`} title="Hapus Data">
+                                                    <i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {isMobile && expandedRows.has(idx) && (
                                         <tr className="bg-gray-50/50 dark:bg-dark-bg/30 border-b border-gray-100 dark:border-dark-border">
-                                            <td colSpan="8" className="px-8 py-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Jadwal</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.hari}, {item.jam_mulai} - {item.jam_selesai}</span>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Tempat</span>
-                                                        <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.tempat || '-'}</span>
-                                                    </div>
-                                                    <div className="col-span-2 space-y-1">
-                                                        <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Deskripsi</span>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium italic">{item.deskripsi || 'Tidak ada deskripsi'}</p>
-                                                    </div>
+                                            <td colSpan="4" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item"><span className="expand-label">Pembina</span><span className="expand-value">{item.pembina?.nama || '-'}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Hari</span><span className="expand-value">{item.hari}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Jam</span><span className="expand-value">{item.jam_mulai} - {item.jam_selesai}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Status</span><span className="expand-value">{renderStatus(item.status)}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Tempat</span><span className="expand-value">{item.tempat || '-'}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Deskripsi</span><span className="expand-value">{item.deskripsi || '-'}</span></div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -553,105 +556,88 @@ function ManajemenEkskul() {
             )}
 
             {/* Modal Manajemen Ekskul */}
-            {showModal && ReactDOM.createPortal(
-                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeModal}>
-                    <div className={`bg-white dark:bg-dark-surface rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`} onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-primary to-green-600 px-6 py-5 text-white relative">
-                            <button onClick={closeModal} className="absolute top-4 right-4 text-white/80 hover:text-white cursor-pointer transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20" type="button"><i className="fas fa-times text-lg"></i></button>
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                                    <i className={`fas fa-${modalMode === 'add' ? 'plus' : 'edit'} text-lg`}></i>
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold">{modalMode === 'add' ? 'Ekskul Baru' : 'Perbarui Ekskul'}</h2>
-                                    <p className="text-xs text-white/80 mt-0.5 italic">Detail informasi kegiatan ekstrakurikuler</p>
-                                </div>
+            <CrudModal
+                show={showModal}
+                onClose={closeModal}
+                title={modalMode === 'add' ? 'Ekskul Baru' : 'Perbarui Ekskul'}
+                subtitle="Detail informasi kegiatan ekstrakurikuler"
+                icon={modalMode === 'add' ? 'plus' : 'edit'}
+                onSubmit={handleSubmit}
+                submitLabel={modalMode === 'add' ? 'Daftarkan Ekskul' : 'Simpan Perubahan'}
+                maxWidth="max-w-2xl"
+            >
+                <div>
+                    <ModalSection label="Informasi Dasar" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ekskul *</label>
+                            <input type="text" required value={formData.nama_ekskul} onChange={(e) => setFormData({ ...formData, nama_ekskul: e.target.value })} className="input-standard" placeholder="Contoh: Sepak Bola, Paduan Suara..." />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori *</label>
+                            <select value={formData.kategori} onChange={(e) => setFormData({ ...formData, kategori: e.target.value })} className="input-standard outline-none">
+                                {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pembina *</label>
+                            <select required value={formData.pembina_id} onChange={(e) => setFormData({ ...formData, pembina_id: e.target.value })} className="input-standard outline-none text-xs">
+                                <option value="">-- Pilih Guru Pembina --</option>
+                                {guruList.map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <ModalSection label="Jadwal & Lokasi" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hari Pelaksanaan *</label>
+                            <select value={formData.hari} onChange={(e) => setFormData({ ...formData, hari: e.target.value })} className="input-standard outline-none">
+                                {hariList.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mulai *</label>
+                                <input type="time" value={formData.jam_mulai} onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })} className="input-standard py-2" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Selesai *</label>
+                                <input type="time" value={formData.jam_selesai} onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })} className="input-standard py-2" />
                             </div>
                         </div>
-
-                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh] scrollbar-hide">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Informasi Dasar</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Ekskul *</label>
-                                            <input type="text" required value={formData.nama_ekskul} onChange={(e) => setFormData({ ...formData, nama_ekskul: e.target.value })} className="input-standard" placeholder="Contoh: Sepak Bola, Paduan Suara..." />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori *</label>
-                                            <select value={formData.kategori} onChange={(e) => setFormData({ ...formData, kategori: e.target.value })} className="input-standard outline-none">
-                                                {kategoriList.map(k => <option key={k} value={k}>{k}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pembina *</label>
-                                            <select required value={formData.pembina_id} onChange={(e) => setFormData({ ...formData, pembina_id: e.target.value })} className="input-standard outline-none text-xs">
-                                                <option value="">-- Pilih Guru Pembina --</option>
-                                                {guruList.map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Jadwal & Lokasi</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hari Pelaksanaan *</label>
-                                            <select value={formData.hari} onChange={(e) => setFormData({ ...formData, hari: e.target.value })} className="input-standard outline-none">
-                                                {hariList.map(h => <option key={h} value={h}>{h}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1.5">
-                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mulai *</label>
-                                                <input type="time" value={formData.jam_mulai} onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })} className="input-standard py-2" />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Selesai *</label>
-                                                <input type="time" value={formData.jam_selesai} onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })} className="input-standard py-2" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tempat / Lokasi *</label>
-                                            <input type="text" required value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Gedung Olahraga, Aula Utama, dll..." />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Tambahan</label>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Kegiatan</label>
-                                            <div className="flex gap-3">
-                                                {['Aktif', 'Tidak Aktif'].map(s => (
-                                                    <button key={s} type="button" onClick={() => setFormData({ ...formData, status: s })} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-2xl border transition-all ${formData.status === s ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>{s}</button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deskripsi Singkat</label>
-                                            <textarea value={formData.deskripsi} onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })} className="input-standard min-h-[100px] py-3 text-xs" placeholder="Ceritakan sedikit tentang kegiatan ekskul ini..."></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6 border-t border-gray-100 dark:border-dark-border flex gap-3 bg-gray-50/50 dark:bg-dark-bg/10">
-                                <button type="button" onClick={closeModal} className="flex-1 px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-400 hover:bg-white transition-all text-[10px] font-black uppercase tracking-[0.2em]">Batal</button>
-                                <button type="submit" className="flex-1 px-4 py-3.5 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-[10px] font-black uppercase tracking-[0.2em]">{modalMode === 'add' ? 'Daftarkan Ekskul' : 'Simpan Perubahan'}</button>
-                            </div>
-                        </form>
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tempat / Lokasi *</label>
+                            <input type="text" required value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Gedung Olahraga, Aula Utama, dll..." />
+                        </div>
                     </div>
-                </div>,
-                document.body
-            )}
+                </div>
+
+                <div>
+                    <ModalSection label="Tambahan" />
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status Kegiatan</label>
+                            <div className="flex gap-3">
+                                {['Aktif', 'Tidak Aktif'].map(s => (
+                                    <button key={s} type="button" onClick={() => setFormData({ ...formData, status: s })} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-2xl border transition-all ${formData.status === s ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' : 'bg-gray-50 dark:bg-dark-bg/50 border-gray-100 dark:border-dark-border text-gray-400'}`}>{s}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deskripsi Singkat</label>
+                            <textarea value={formData.deskripsi} onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })} className="input-standard min-h-[100px] py-3 text-xs" placeholder="Ceritakan sedikit tentang kegiatan ekskul ini..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </CrudModal>
 
             {/* Modal Manajemen Anggota */}
             {showAnggotaModal && ReactDOM.createPortal(
-                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm ${isModalClosing ? 'opacity-0' : 'opacity-100'}`} style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeAnggotaModal}>
-                    <div className={`bg-white dark:bg-dark-surface rounded-[2.5rem] shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transition-all duration-300 ${isModalClosing ? 'scale-95 translate-y-4 opacity-0' : 'scale-100 translate-y-0 opacity-100'}`} onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm opacity-100" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={closeAnggotaModal}>
+                    <div className="bg-white dark:bg-dark-surface rounded-[2.5rem] shadow-2xl max-w-2xl w-full flex flex-col relative overflow-hidden transition-all duration-300 scale-100 translate-y-0 opacity-100" onClick={(e) => e.stopPropagation()}>
                         <div className="bg-gradient-to-br from-primary to-green-700 px-8 py-8 text-white relative">
                             <button onClick={closeAnggotaModal} className="absolute top-6 right-6 text-white/80 hover:text-white cursor-pointer transition w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-white/20" type="button"><i className="fas fa-times text-xl"></i></button>
                             <div className="flex items-center gap-5">
@@ -675,7 +661,7 @@ function ManajemenEkskul() {
                                         <select
                                             value={selectedSiswa}
                                             onChange={(e) => setSelectedSiswa(e.target.value)}
-                                            className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-2xl text-xs font-bold text-gray-700 dark:text-dark-text outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all appearance-none"
+                                            className="w-full !pl-11 pr-4 py-3.5 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-2xl text-xs font-bold text-gray-700 dark:text-dark-text outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all appearance-none"
                                         >
                                             <option value="">-- Cari Nama Siswa --</option>
                                             {siswaList.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.kelas?.nama_kelas})</option>)}
@@ -697,7 +683,7 @@ function ManajemenEkskul() {
                                             placeholder="Cari di daftar..."
                                             value={anggotaSearch}
                                             onChange={(e) => setAnggotaSearch(e.target.value)}
-                                            className="pl-8 pr-4 py-2 bg-gray-50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-xl text-[10px] font-bold text-gray-600 dark:text-dark-text outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                            className="!pl-8 pr-4 py-2 bg-gray-50 dark:bg-dark-bg/50 border border-gray-100 dark:border-dark-border rounded-xl text-[10px] font-bold text-gray-600 dark:text-dark-text outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -747,7 +733,7 @@ function ManajemenEkskul() {
                         </div>
 
                         <div className="px-8 pb-8 pt-2">
-                            <button onClick={closeAnggotaModal} className="w-full py-4 rounded-2xl border border-gray-100 dark:border-dark-border text-gray-400 hover:text-gray-600 dark:hover:text-dark-text transition-all text-[10px] font-black uppercase tracking-[0.3em]">Selesai Konfigurasi</button>
+                            <button onClick={closeAnggotaModal} className="w-full py-2.5 rounded-2xl border border-gray-100 dark:border-dark-border text-gray-400 hover:text-gray-600 dark:hover:text-dark-text transition-all text-[10px] font-black uppercase tracking-[0.3em]">Selesai Konfigurasi</button>
                         </div>
                     </div>
                 </div>,

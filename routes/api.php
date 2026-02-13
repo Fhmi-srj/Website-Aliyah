@@ -13,18 +13,11 @@ use App\Http\Controllers\Api\Admin\EkskulController;
 use App\Http\Controllers\Api\Admin\RapatController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\SettingController;
-
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group.
-|
-*/
+use App\Http\Controllers\Api\Admin\WhatsappController;
+use App\Http\Controllers\Api\Admin\SuratKeluarController;
+use App\Http\Controllers\Api\Admin\SuratMasukController;
+use App\Http\Controllers\Api\Admin\TemplateSuratController;
+use App\Http\Controllers\Api\AttendanceTokenController;
 
 // Public Auth Routes
 Route::post('auth/login', [AuthController::class, 'login']);
@@ -32,6 +25,10 @@ Route::post('auth/login', [AuthController::class, 'login']);
 // Public Tahun Ajaran Routes (needed for login page)
 Route::get('tahun-ajaran', [TahunAjaranController::class, 'index']);
 Route::get('tahun-ajaran/active', [TahunAjaranController::class, 'getActive']);
+
+// Public Attendance Token Routes (no login required)
+Route::get('absen/{token}', [AttendanceTokenController::class, 'show']);
+Route::post('absen/{token}', [AttendanceTokenController::class, 'submit']);
 
 // Protected Auth Routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -70,12 +67,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('kegiatan/bulk-delete', [KegiatanController::class, 'bulkDelete']);
     Route::post('kegiatan/bulk-jenis', [KegiatanController::class, 'bulkUpdateJenis']);
     Route::apiResource('ekskul', EkskulController::class);
+    Route::post('rapat/bulk-delete', [RapatController::class, 'bulkDelete']);
     Route::apiResource('rapat', RapatController::class);
     Route::apiResource('jam-pelajaran', \App\Http\Controllers\Api\Admin\JamPelajaranController::class);
     Route::apiResource('kalender', \App\Http\Controllers\Api\Admin\KalenderController::class);
     Route::post('kalender/bulk-delete', [\App\Http\Controllers\Api\Admin\KalenderController::class, 'bulkDelete']);
     Route::post('kalender/bulk-status-kbm', [\App\Http\Controllers\Api\Admin\KalenderController::class, 'bulkUpdateStatusKbm']);
     Route::post('kalender/bulk-keterangan', [\App\Http\Controllers\Api\Admin\KalenderController::class, 'bulkUpdateKeterangan']);
+
+    // Surat Keluar Routes
+    Route::get('surat-keluar/mappings', [SuratKeluarController::class, 'getMappings']);
+    Route::post('surat-keluar/bulk-delete', [SuratKeluarController::class, 'bulkDelete']);
+    Route::post('surat-keluar/{id}/upload', [SuratKeluarController::class, 'upload']);
+    Route::apiResource('surat-keluar', SuratKeluarController::class);
+
+    // Surat Masuk Routes
+    Route::post('surat-masuk/scan', [SuratMasukController::class, 'scanWithAI']);
+    Route::post('surat-masuk/bulk-delete', [SuratMasukController::class, 'bulkDelete']);
+    Route::apiResource('surat-masuk', SuratMasukController::class)->parameters(['surat-masuk' => 'suratMasuk']);
+
+    // Template Surat Routes
+    Route::get('template-surat/data', [TemplateSuratController::class, 'getData']);
+    Route::post('template-surat/generate', [TemplateSuratController::class, 'generate']);
 
     // Admin Absensi Edit Routes
     Route::get('rapat/{id}/absensi-admin', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'getAbsensiRapat']);
@@ -97,6 +110,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('settings/{key}', [SettingController::class, 'update']);
     Route::post('settings/upload-logo', [SettingController::class, 'uploadLogo']);
     Route::post('settings/upload-kop', [SettingController::class, 'uploadKop']);
+
+    // WhatsApp MPWA Routes
+    Route::get('whatsapp/status', [WhatsappController::class, 'getStatus']);
+    Route::post('whatsapp/send-test', [WhatsappController::class, 'sendTest']);
+    Route::post('whatsapp/send-test-template', [WhatsappController::class, 'sendTestTemplate']);
+    Route::get('whatsapp/schedule-settings', [WhatsappController::class, 'getScheduleSettings']);
+    Route::put('whatsapp/schedule-settings', [WhatsappController::class, 'updateScheduleSettings']);
 
     // Activity Log Routes
     Route::prefix('activity-logs')->group(function () {

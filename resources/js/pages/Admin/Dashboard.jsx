@@ -41,6 +41,15 @@ function Dashboard() {
     const { activeTahunAjaran } = useTahunAjaran();
     const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
 
+    // Mobile detection
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Quick navigation cards
     const menuCards = [
         { to: '/data-induk/siswa', icon: 'fa-user-graduate', label: 'Siswa' },
@@ -84,14 +93,14 @@ function Dashboard() {
 
     // Chart colors
     const chartColors = [
-        'rgba(34, 197, 94, 0.8)',   // green
-        'rgba(59, 130, 246, 0.8)',  // blue
-        'rgba(168, 85, 247, 0.8)',  // purple
-        'rgba(249, 115, 22, 0.8)', // orange
-        'rgba(236, 72, 153, 0.8)', // pink
-        'rgba(20, 184, 166, 0.8)', // teal
-        'rgba(239, 68, 68, 0.8)',  // red
-        'rgba(234, 179, 8, 0.8)',  // yellow
+        'rgba(22, 163, 74, 0.8)',   // green-600
+        'rgba(5, 150, 105, 0.8)',   // emerald-600
+        'rgba(16, 185, 129, 0.8)',  // emerald-500
+        'rgba(132, 204, 22, 0.8)',  // lime-500
+        'rgba(20, 184, 166, 0.8)',  // teal-500
+        'rgba(101, 163, 13, 0.8)',  // lime-600
+        'rgba(21, 128, 61, 0.8)',   // green-700
+        'rgba(6, 95, 70, 0.8)',     // emerald-800
     ];
 
     // Format date
@@ -103,7 +112,23 @@ function Dashboard() {
 
     const formatTime = (timeStr) => {
         if (!timeStr) return '-';
+        // If it's a full ISO string (from ActivityLog), extract time
+        if (timeStr.includes('T') || (timeStr.includes('-') && timeStr.includes(':'))) {
+            const date = new Date(timeStr);
+            return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+        }
         return timeStr.substring(0, 5);
+    };
+
+    const getActionStyle = (action) => {
+        switch (action) {
+            case 'create': return { icon: 'fa-plus-circle', color: 'emerald' };
+            case 'update': return { icon: 'fa-pen-to-square', color: 'blue' };
+            case 'delete': return { icon: 'fa-trash-can', color: 'rose' };
+            case 'restore': return { icon: 'fa-rotate-left', color: 'purple' };
+            case 'attendance': return { icon: 'fa-calendar-check', color: 'amber' };
+            default: return { icon: 'fa-circle-info', color: 'gray' };
+        }
     };
 
     // Statistics cards data
@@ -190,14 +215,14 @@ function Dashboard() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto pb-6">
             {/* Header */}
-            <header className="mb-8 select-none">
-                <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Dashboard</h1>
+            <header className={`${isMobile ? 'mb-4' : 'mb-8'} select-none`}>
+                <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-800 tracking-tight`}>Dashboard</h1>
             </header>
 
             {/* Top Row: Today's Sales & Visitor Insights */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div className={`grid grid-cols-1 lg:grid-cols-3 ${isMobile ? 'gap-4 mb-4' : 'gap-6 mb-6'}`}>
                 {/* Today's Sales - Inspiration style */}
-                <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-soft border border-white">
+                <div className={`lg:col-span-2 bg-white rounded-3xl ${isMobile ? 'p-4' : 'p-6'} shadow-soft border border-white`}>
                     <div className="flex items-center justify-between mb-2">
                         <div>
                             <h2 className="text-lg font-bold text-gray-800">Today's Sales</h2>
@@ -224,7 +249,7 @@ function Dashboard() {
                 </div>
 
                 {/* Visitor Insights - Simplified inspiration style */}
-                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                <div className={`bg-white rounded-3xl ${isMobile ? 'p-4' : 'p-6'} shadow-soft border border-white`}>
                     <h2 className="text-lg font-bold text-gray-800 mb-6">Visitor Insights</h2>
                     <div className="h-[180px] relative">
                         {kegiatanPerBulanData ? (
@@ -240,9 +265,9 @@ function Dashboard() {
             </div>
 
             {/* Middle Row: Charts & Revenue */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${isMobile ? 'gap-4 mb-4' : 'gap-6 mb-6'}`}>
                 {/* Total Revenue Part - Bar Chart */}
-                <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-soft border border-white">
+                <div className={`lg:col-span-2 bg-white rounded-3xl ${isMobile ? 'p-4' : 'p-6'} shadow-soft border border-white`}>
                     <h2 className="text-lg font-bold text-gray-800 mb-6">Total Revenue</h2>
                     <div className="h-[250px]">
                         {siswaPerKelasData ? (
@@ -257,7 +282,7 @@ function Dashboard() {
                 </div>
 
                 {/* Customer Satisfaction - Simplified Radar/Doughnut */}
-                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                <div className={`bg-white rounded-3xl ${isMobile ? 'p-4' : 'p-6'} shadow-soft border border-white`}>
                     <h2 className="text-lg font-bold text-gray-800 mb-6">Customer Satisfaction</h2>
                     <div className="h-[250px] flex items-center justify-center">
                         {guruPerJabatanData ? (
@@ -270,9 +295,9 @@ function Dashboard() {
             </div>
 
             {/* Bottom Row: Activities & Quick Nav */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className={`grid grid-cols-1 lg:grid-cols-2 ${isMobile ? 'gap-4' : 'gap-6'}`}>
                 {/* Quick Navigation Cards */}
-                <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
+                <div className={`bg-white rounded-3xl ${isMobile ? 'p-4' : 'p-6'} shadow-soft border border-white`}>
                     <h2 className="text-lg font-bold text-gray-800 mb-6">Quick Navigation</h2>
                     <div className="grid grid-cols-4 gap-4">
                         {menuCards.map((card, index) => (
@@ -290,28 +315,31 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Recent Activity List */}
                 <div className="bg-white rounded-3xl p-6 shadow-soft border border-white">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-bold text-gray-800">Recent Activity</h2>
-                        <Link to="/log-aktivitas" className="text-[10px] font-bold text-primary uppercase tracking-wider">See All</Link>
+                        <Link to="/log-aktivitas" className="text-[10px] font-bold text-primary uppercase tracking-wider hover:underline">See All</Link>
                     </div>
-                    {activity?.upcoming_kegiatan?.length > 0 ? (
-                        <div className="space-y-4">
-                            {activity.upcoming_kegiatan.slice(0, 3).map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-4 group cursor-pointer">
-                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-all">
-                                        <i className="fas fa-tasks text-gray-400 group-hover:text-primary transition-colors"></i>
+                    {activity?.recent_logs?.length > 0 ? (
+                        <div className="space-y-4 max-h-[320px] overflow-y-auto pr-2 scrollbar-hide">
+                            {activity.recent_logs.map((log, idx) => {
+                                const style = getActionStyle(log.action);
+                                return (
+                                    <div key={idx} className="flex items-start gap-4 group cursor-default">
+                                        <div className={`w-10 h-10 rounded-xl bg-${style.color}-50 dark:bg-${style.color}-900/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all shadow-sm`}>
+                                            <i className={`fas ${style.icon} text-${style.color}-500 dark:text-${style.color}-400 text-sm`}></i>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-300 leading-tight mb-1 line-clamp-2">{log.description}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{log.user?.nama || 'System'}</span>
+                                                <span className="w-1 h-1 rounded-full bg-gray-200 dark:bg-dark-border"></span>
+                                                <span className="text-[9px] text-gray-400 font-bold uppercase">{formatTime(log.created_at)}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-800 truncate">{item.nama_kegiatan}</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                                            {formatDate(item.waktu_mulai)} • {item.tempat || 'N/A'}
-                                        </p>
-                                    </div>
-                                    <i className="fas fa-chevron-right text-[10px] text-gray-200 group-hover:text-gray-400 transition-all"></i>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="text-center py-10">

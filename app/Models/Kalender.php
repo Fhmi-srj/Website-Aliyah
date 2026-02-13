@@ -15,6 +15,7 @@ class Kalender extends Model
         'tanggal_mulai',
         'tanggal_berakhir',
         'kegiatan',
+        'tempat',
         'status_kbm',
         'guru_id',
         'kegiatan_id',
@@ -24,8 +25,8 @@ class Kalender extends Model
     ];
 
     protected $casts = [
-        'tanggal_mulai' => 'date',
-        'tanggal_berakhir' => 'date',
+        'tanggal_mulai' => 'datetime',
+        'tanggal_berakhir' => 'datetime',
         'rab' => 'decimal:2',
     ];
 

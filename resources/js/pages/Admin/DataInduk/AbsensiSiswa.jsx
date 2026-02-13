@@ -104,6 +104,13 @@ function AbsensiSiswa() {
     const [selectedGuruIds, setSelectedGuruIds] = useState([]);
     const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
     const [printing, setPrinting] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     const { tahunAjaran: authTahunAjaran, token } = useAuth();
     const { activeTahunAjaran } = useTahunAjaran();
@@ -213,17 +220,17 @@ function AbsensiSiswa() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-print text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
+                            <h1 className="page-header-title text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">
                                 Pelaporan & Cetak
                             </h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
                                 Daftar hadir kolektif dan jurnal mengajar
                             </p>
                         </div>
@@ -243,14 +250,14 @@ function AbsensiSiswa() {
                         <span className="ml-4 text-sm font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Menyiapkan Mesin Cetak...</span>
                     </div>
                 ) : (
-                    <div className="p-10 md:p-14">
+                    <div className={`${isMobile ? 'p-4' : 'p-10 md:p-14'}`}>
                         {/* Mode Tabs */}
-                        <div className="flex flex-wrap gap-3 bg-gray-50/50 dark:bg-dark-bg/30 p-2 rounded-[2rem] mb-12 w-fit border border-gray-100 dark:border-dark-border mx-auto md:mx-0">
+                        <div className={`flex flex-wrap gap-3 bg-gray-50/50 dark:bg-dark-bg/30 p-2 rounded-[2rem] mb-8 w-fit border border-gray-100 dark:border-dark-border ${isMobile ? '' : 'mx-auto md:mx-0'}`}>
                             {modes.map(m => (
                                 <button
                                     key={m.key}
                                     onClick={() => setMode(m.key)}
-                                    className={`group flex items-center gap-3 px-8 py-3 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all duration-300 ${mode === m.key
+                                    className={`group flex items-center gap-3 ${isMobile ? 'px-4 py-2 text-[9px]' : 'px-8 py-3 text-xs'} rounded-[1.5rem] font-black uppercase tracking-widest transition-all duration-300 ${mode === m.key
                                         ? 'bg-white dark:bg-dark-surface text-primary shadow-xl shadow-primary/5 ring-1 ring-black/[0.03] scale-105'
                                         : 'text-gray-400 dark:text-dark-muted hover:text-gray-600 dark:hover:text-dark-text hover:bg-white/50'
                                         }`}
@@ -262,7 +269,7 @@ function AbsensiSiswa() {
                         </div>
 
                         {/* Filter Controls */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 items-end">
+                        <div className={`grid grid-cols-1 ${isMobile ? 'md:grid-cols-2 gap-4 mb-8' : 'md:grid-cols-3 gap-8 mb-12'} items-end`}>
                             {/* Dynamic Filters */}
                             {mode === 'absensi-siswa' && (
                                 <CheckboxDropdown
@@ -348,23 +355,23 @@ function AbsensiSiswa() {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-white/50 dark:bg-dark-surface/50 border-b border-gray-100 dark:border-dark-border">
-                                            <th className="pl-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">Urutan</th>
-                                            <th className="py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identitas Pelaporan</th>
-                                            <th className="pr-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Tipe Dokumen</th>
+                                            <th className="pl-6 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">Urutan</th>
+                                            <th className="py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identitas Pelaporan</th>
+                                            <th className="pr-8 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Tipe Dokumen</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50 dark:divide-dark-border/50">
                                         {previewItems.map((item, idx) => (
                                             <tr key={item.key} className="group hover:bg-white dark:hover:bg-dark-surface/50 transition-colors">
-                                                <td className="pl-8 py-4 text-center font-black text-xs text-gray-300 group-hover:text-primary transition-colors">
+                                                <td className="pl-6 py-2.5 text-center font-black text-xs text-gray-300 group-hover:text-primary transition-colors">
                                                     {(idx + 1).toString().padStart(2, '0')}
                                                 </td>
-                                                <td className="py-4">
+                                                <td className="py-2.5">
                                                     <span className="text-sm font-bold text-gray-700 dark:text-dark-text group-hover:translate-x-1 transition-transform inline-block">
                                                         {item.label}
                                                     </span>
                                                 </td>
-                                                <td className="pr-8 py-4 text-center">
+                                                <td className="pr-8 py-2.5 text-center">
                                                     <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-primary/5 text-primary border border-primary/10 shadow-sm transition-all group-hover:scale-105 active:scale-95">
                                                         <i className={`fas ${docTypeIcon} text-[10px]`}></i>
                                                         {docTypeLabel}
@@ -390,7 +397,7 @@ function AbsensiSiswa() {
                             <button
                                 onClick={handleCetak}
                                 disabled={previewItems.length === 0 || printing}
-                                className={`group relative btn-primary h-20 px-16 rounded-[2rem] flex items-center gap-5 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 active:scale-95 transition-all duration-300 disabled:opacity-30 disabled:grayscale disabled:scale-100 disabled:pointer-events-none ${printing ? 'w-full md:w-[400px]' : 'hover:px-20'}`}
+                                className={`group relative btn-primary ${isMobile ? 'h-14 px-8 rounded-xl text-sm' : 'h-20 px-16 rounded-[2rem] text-lg'} flex items-center gap-5 font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 active:scale-95 transition-all duration-300 disabled:opacity-30 disabled:grayscale disabled:scale-100 disabled:pointer-events-none ${printing ? 'w-full md:w-[400px]' : isMobile ? '' : 'hover:px-20'}`}
                             >
                                 <div className="absolute inset-0 bg-white/20 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500 skew-x-12"></div>
                                 {printing ? (

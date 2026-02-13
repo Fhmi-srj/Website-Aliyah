@@ -145,7 +145,7 @@ function ManajemenAlumni() {
     };
 
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
-        <th className="select-none py-4 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
+        <th className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
             <div className="flex items-center gap-1.5">
                 <span onClick={(e) => { e.stopPropagation(); handleSort(column); }} className="hover:text-primary transition-colors">
                     {label}
@@ -181,56 +181,58 @@ function ManajemenAlumni() {
     return (
         <div className="animate-fadeIn flex flex-col flex-grow max-w-full overflow-auto">
             {/* Header */}
-            <header className="mb-6">
+            <header className={`${isMobile ? 'mb-3 mobile-sticky-header pt-2 pb-2 px-1' : 'mb-6'}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon w-12 h-12 bg-gradient-to-br from-primary to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
                             <i className="fas fa-graduation-cap text-white text-xl"></i>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Data Alumni</h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Arsip data siswa yang telah lulus</p>
+                            <h1 className="page-header-title text-xl font-black text-gray-800 dark:text-dark-text uppercase tracking-tight">Data Alumni</h1>
+                            <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Arsip data siswa yang telah lulus</p>
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-gray-50/50 dark:bg-dark-bg/20 p-4 rounded-2xl border border-gray-100 dark:border-dark-border">
-                <div className="flex items-center w-full md:w-[400px] relative group">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                    <input
-                        aria-label="Cari alumni"
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm"
-                        placeholder="Cari nama atau NIS..."
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap md:flex-nowrap items-center">
-                    <button onClick={handleExport} className="btn-secondary px-5 py-3 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                        <i className="fas fa-file-export"></i>
-                        <span>Export Excel</span>
-                    </button>
+            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
+                <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 dark:bg-dark-bg/20 rounded-2xl border border-gray-100 dark:border-dark-border'}`}>
+                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
+                        <input
+                            aria-label="Cari alumni"
+                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400 shadow-sm`}
+                            placeholder={isMobile ? 'Cari...' : 'Cari nama atau NIS...'}
+                            type="search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-3 text-[10px] rounded-xl'}`}>
+                            <i className="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Stats Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-primary to-green-600 dark:from-primary/20 dark:to-green-900/20 rounded-3xl shadow-lg shadow-primary/10 p-8 mb-8 text-white border border-white/10 group">
+            <div className={`relative overflow-hidden bg-gradient-to-br from-primary to-green-600 dark:from-primary/20 dark:to-green-900/20 rounded-3xl shadow-lg shadow-primary/10 ${isMobile ? 'p-4 mb-4' : 'p-8 mb-8'} text-white border border-white/10 group`}>
                 <div className="relative z-10 flex justify-between items-center">
                     <div>
                         <p className="text-[10px] font-black opacity-80 uppercase tracking-[0.2em] mb-2">Total Alumni Terdata</p>
                         <div className="flex items-baseline gap-2">
-                            <p className="text-5xl font-black tracking-tighter">{data.length}</p>
-                            <span className="text-sm font-bold opacity-60">Siswa Lulus</span>
+                            <p className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-black tracking-tighter`}>{data.length}</p>
+                            <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold opacity-60`}>Siswa Lulus</span>
                         </div>
                     </div>
-                    <div className="w-20 h-20 rounded-[2rem] bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 transform group-hover:rotate-12 transition-transform duration-500">
-                        <i className="fas fa-user-graduate text-3xl opacity-90"></i>
-                    </div>
+                    {!isMobile && (
+                        <div className="w-20 h-20 rounded-[2rem] bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 transform group-hover:rotate-12 transition-transform duration-500">
+                            <i className="fas fa-user-graduate text-3xl opacity-90"></i>
+                        </div>
+                    )}
                 </div>
-                {/* Abstract shapes */}
                 <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl transition-all duration-700 group-hover:scale-150"></div>
                 <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-primary-light/10 rounded-full blur-2xl group-hover:translate-x-full duration-1000"></div>
             </div>
@@ -242,15 +244,15 @@ function ManajemenAlumni() {
                     <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">Mengumpulkan Arsip...</span>
                 </div>
             ) : (
-                <div className="overflow-x-auto scrollbar-hide max-w-full bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border">
-                    <table className={`admin-table ${isMobile ? '' : 'min-w-[800px]'}`}>
+                <div className={`bg-white dark:bg-dark-surface rounded-2xl shadow-soft border border-gray-100 dark:border-dark-border ${isMobile ? 'overflow-hidden' : 'overflow-x-auto scrollbar-hide max-w-full'}`}>
+                    <table className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[800px]'}`}>
                         <thead>
                             <tr className="border-b border-gray-100 dark:border-dark-border">
-                                <th className="select-none pl-8 py-5 w-16 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>
-                                {isMobile && <th className="select-none py-4 text-center"></th>}
+                                {!isMobile && <th className="select-none pl-6 py-2.5 w-16 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                                {isMobile && <th className="select-none py-2.5 text-center"></th>}
                                 <SortableHeader label="Nama Alumni" column="nama" />
-                                <SortableHeader label="NIS / NISN" column="nis" />
-                                <th className="select-none py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Kelas Terakhir</th>
+                                {!isMobile && <SortableHeader label="NIS / NISN" column="nis" />}
+                                {!isMobile && <th className="select-none py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest">Kelas Terakhir</th>}
                                 <SortableHeader
                                     label="Tahun Lulus"
                                     column="tahun_lulus"
@@ -262,7 +264,7 @@ function ManajemenAlumni() {
                                     filterValue={filterTahunLulus}
                                     setFilterValue={setFilterTahunLulus}
                                 />
-                                {!isMobile && <th className="select-none py-5 text-xs font-black text-gray-400 uppercase tracking-widest">Asal Sekolah</th>}
+                                {!isMobile && <th className="select-none py-2.5 text-xs font-black text-gray-400 uppercase tracking-widest">Asal Sekolah</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -271,61 +273,53 @@ function ManajemenAlumni() {
                                 return (
                                     <React.Fragment key={item.id}>
                                         <tr className="hover:bg-gray-50/50 dark:hover:bg-dark-bg/20 transition-colors border-b border-gray-100 dark:border-dark-border last:border-0 group">
-                                            <td className="pl-8 py-5 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
-                                                {(currentPage - 1) * itemsPerPage + idx + 1}
-                                            </td>
+                                            {!isMobile && (
+                                                <td className="pl-6 py-2.5 align-middle text-center text-xs font-bold text-gray-400 dark:text-gray-500">
+                                                    {(currentPage - 1) * itemsPerPage + idx + 1}
+                                                </td>
+                                            )}
                                             {isMobile && (
-                                                <td className="py-5 align-middle text-center cursor-pointer px-2" onClick={() => toggleRow(idx)}>
-                                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-dark-border text-gray-400'}`}>
-                                                        <i className={`fas fa-${expandedRows.has(idx) ? 'minus' : 'plus'} text-[10px]`}></i>
+                                                <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRow(idx)}>
+                                                    <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                        <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
                                                     </div>
                                                 </td>
                                             )}
-                                            <td className="py-5 px-2 align-middle whitespace-nowrap">
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                                 <span className="text-sm font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.nama}</span>
                                             </td>
-                                            <td className="py-5 px-2 align-middle whitespace-nowrap">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="px-2 py-0.5 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[10px] font-bold text-gray-500 dark:text-gray-400 w-fit">{item.nis}</span>
-                                                    <span className="text-[10px] text-gray-400 dark:text-gray-600 font-medium">NISN: {item.nisn || '-'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-5 px-2 align-middle whitespace-nowrap">
-                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase tracking-wider">{lulusRecord?.kelas?.nama_kelas || item.kelas?.nama_kelas || '-'}</span>
-                                            </td>
-                                            <td className="py-5 px-2 align-middle whitespace-nowrap">
+                                            {!isMobile && (
+                                                <td className="py-2.5 px-2 align-middle whitespace-nowrap">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[10px] font-bold text-gray-500 dark:text-gray-400 w-fit">{item.nis}</span>
+                                                        <span className="text-[10px] text-gray-400 dark:text-gray-600 font-medium">NISN: {item.nisn || '-'}</span>
+                                                    </div>
+                                                </td>
+                                            )}
+                                            {!isMobile && (
+                                                <td className="py-2.5 px-2 align-middle whitespace-nowrap">
+                                                    <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase tracking-wider">{lulusRecord?.kelas?.nama_kelas || item.kelas?.nama_kelas || '-'}</span>
+                                                </td>
+                                            )}
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100 dark:border-emerald-900/10">
                                                     {lulusRecord?.tahun_ajaran?.nama || '-'}
                                                 </span>
                                             </td>
                                             {!isMobile && (
-                                                <td className="py-5 px-2 align-middle whitespace-nowrap">
+                                                <td className="py-2.5 px-2 align-middle whitespace-nowrap">
                                                     <span className="text-xs font-medium text-gray-500 dark:text-dark-text italic">{item.asal_sekolah || '-'}</span>
                                                 </td>
                                             )}
                                         </tr>
                                         {isMobile && expandedRows.has(idx) && (
                                             <tr className="bg-gray-50/50 dark:bg-dark-bg/30 border-b border-gray-100 dark:border-dark-border">
-                                                <td colSpan="8" className="px-8 py-4">
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-dark-border flex items-center justify-center text-gray-400">
-                                                                <i className="fas fa-school text-xs"></i>
-                                                            </div>
-                                                            <div className="space-y-0.5">
-                                                                <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Asal Sekolah</span>
-                                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text italic">{item.asal_sekolah || '-'}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-dark-border flex items-center justify-center text-gray-400">
-                                                                <i className="fas fa-fingerprint text-xs"></i>
-                                                            </div>
-                                                            <div className="space-y-0.5">
-                                                                <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">NISN</span>
-                                                                <span className="text-xs font-bold text-gray-600 dark:text-dark-text">{item.nisn || '-'}</span>
-                                                            </div>
-                                                        </div>
+                                                <td colSpan="3" className="p-0">
+                                                    <div className="mobile-expand-grid">
+                                                        <div className="expand-item"><span className="expand-label">NIS</span><span className="expand-value">{item.nis}</span></div>
+                                                        <div className="expand-item"><span className="expand-label">NISN</span><span className="expand-value">{item.nisn || '-'}</span></div>
+                                                        <div className="expand-item"><span className="expand-label">Kelas Terakhir</span><span className="expand-value">{lulusRecord?.kelas?.nama_kelas || item.kelas?.nama_kelas || '-'}</span></div>
+                                                        <div className="expand-item"><span className="expand-label">Asal Sekolah</span><span className="expand-value">{item.asal_sekolah || '-'}</span></div>
                                                     </div>
                                                 </td>
                                             </tr>

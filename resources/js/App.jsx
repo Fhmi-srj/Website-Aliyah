@@ -19,6 +19,7 @@ import ManajemenEkskul from './pages/Admin/DataInduk/ManajemenEkskul';
 import ManajemenRapat from './pages/Admin/DataInduk/ManajemenRapat';
 import ManajemenJamPelajaran from './pages/Admin/DataInduk/ManajemenJamPelajaran';
 import ManajemenKalender from './pages/Admin/DataInduk/ManajemenKalender';
+import SuratMenyurat from './pages/Admin/DataInduk/SuratMenyurat';
 import AbsensiSiswa from './pages/Admin/DataInduk/AbsensiSiswa';
 import ManajemenRole from './pages/Admin/ManajemenRole';
 import LogAktivitas from './pages/Admin/LogAktivitas';
@@ -107,6 +108,7 @@ function App() {
                                         <Route path="/data-induk/rapat" element={<ManajemenRapat />} />
                                         <Route path="/data-induk/jam-pelajaran" element={<ManajemenJamPelajaran />} />
                                         <Route path="/data-induk/kalender" element={<ManajemenKalender />} />
+                                        <Route path="/data-induk/surat" element={<SuratMenyurat />} />
                                     </Routes>
                                 </AdminLayout>
                             </TahunAjaranProvider>
