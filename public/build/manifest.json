@@ -1,0 +1,23 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-oefjBgyN.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/images/logo.png": {
+    "file": "assets/logo-KVNS57bw.png",
+    "src": "resources/images/logo.png"
+  },
+  "resources/js/main.jsx": {
+    "file": "assets/main-Cizn5crl.js",
+    "name": "main",
+    "src": "resources/js/main.jsx",
+    "isEntry": true,
+    "css": [
+      "assets/app-oefjBgyN.css"
+    ],
+    "assets": [
+      "assets/logo-KVNS57bw.png"
+    ]
+  }
+}
