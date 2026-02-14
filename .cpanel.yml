@@ -1,0 +1,4 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/diantar2/absen.mahakam.sch.id/
+    - /bin/cp -R * $DEPLOYPATH
