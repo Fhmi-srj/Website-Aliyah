@@ -4,7 +4,21 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Laravel</title>
+        <title>{{ config('app.name', 'Laravel') }}</title>
+
+        @php
+            $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga', 'MA Al-Hikam');
+            $motoLembaga = \App\Models\AppSetting::getValue('moto_lembaga', 'Sistem Informasi Madrasah');
+            $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
+            $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : asset('images/logo.png');
+        @endphp
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="{{ $logoUrl }}">
+        <link rel="apple-touch-icon" href="{{ $logoUrl }}">
+
+        <!-- Meta Description -->
+        <meta name="description" content="{{ $motoLembaga }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
