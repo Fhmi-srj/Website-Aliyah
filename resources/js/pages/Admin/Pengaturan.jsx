@@ -724,9 +724,16 @@ function Pengaturan() {
                                     </div>
                                     <div>
                                         <h4 className="font-medium text-gray-800">{waStatus.configured ? 'MPWA Terkonfigurasi' : 'MPWA Belum Dikonfigurasi'}</h4>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm text-gray-500 mb-2">
                                             {waStatus.configured ? `Sender: ${waStatus.sender}` : 'Periksa MPWA_URL, MPWA_API_KEY, dan MPWA_SENDER di file .env'}
                                         </p>
+                                        {!waStatus.configured && waStatus.debug && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {waStatus.debug.url_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_URL MISSING</span>}
+                                                {waStatus.debug.key_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_API_KEY MISSING</span>}
+                                                {waStatus.debug.sender_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_SENDER MISSING</span>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <button onClick={fetchWaStatus} disabled={waLoading} className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm transition-colors">
