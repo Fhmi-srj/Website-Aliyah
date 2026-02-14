@@ -14,8 +14,8 @@
         @endphp
 
         <!-- Favicon -->
-        <link rel="icon" type="image/png" href="{{ $logoUrl }}">
-        <link rel="apple-touch-icon" href="{{ $logoUrl }}">
+        <link rel="icon" type="image/png" href="{{ $logoUrl }}?v=1.0">
+        <link rel="apple-touch-icon" href="{{ $logoUrl }}?v=1.0">
 
         <!-- Meta Description -->
         <meta name="description" content="{{ $motoLembaga }}">

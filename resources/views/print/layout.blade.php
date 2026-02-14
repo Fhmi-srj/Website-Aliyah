@@ -12,8 +12,8 @@
     @endphp
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ $logoUrlFavicon }}">
-    <link rel="apple-touch-icon" href="{{ $logoUrlFavicon }}">
+    <link rel="icon" type="image/png" href="{{ $logoUrlFavicon }}?v=1.0">
+    <link rel="apple-touch-icon" href="{{ $logoUrlFavicon }}?v=1.0">
     <style>
         * {
             margin: 0;

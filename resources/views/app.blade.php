@@ -33,8 +33,8 @@
     <meta property="twitter:image" content="{{ $logoUrl }}">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ $logoUrl }}">
-    <link rel="apple-touch-icon" href="{{ $logoUrl }}">
+    <link rel="icon" type="image/png" href="{{ $logoUrl }}?v=1.0">
+    <link rel="apple-touch-icon" href="{{ $logoUrl }}?v=1.0">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
