@@ -474,7 +474,7 @@ function Pengaturan() {
         {
             title: 'Integrasi',
             items: [
-                { id: 'whatsapp', label: 'WhatsApp', subtitle: 'Notifikasi, jadwal pesan', icon: 'fab fa-whatsapp' },
+                { id: 'whatsapp', label: 'WhatsApp (v2)', subtitle: 'Notifikasi, jadwal pesan', icon: 'fab fa-whatsapp' },
                 { id: 'ai', label: 'AI / Gemini', subtitle: 'API key, fitur AI', icon: 'fa-robot' },
             ]
         },
@@ -728,15 +728,27 @@ function Pengaturan() {
                                             {waStatus.configured ? `Sender: ${waStatus.sender}` : 'Periksa MPWA_URL, MPWA_API_KEY, dan MPWA_SENDER di file .env'}
                                         </p>
                                         {!waStatus.configured && waStatus.debug && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {waStatus.debug.url_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_URL MISSING</span>}
-                                                {waStatus.debug.key_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_API_KEY MISSING</span>}
-                                                {waStatus.debug.sender_empty && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium">MPWA_SENDER MISSING</span>}
+                                            <div className="space-y-2 mt-3 p-3 bg-white/50 rounded-lg border border-red-100">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {waStatus.debug.url_empty ?
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium border border-red-200">URL KOSONG</span> :
+                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-medium border border-green-200">URL OK: {waStatus.debug.url_preview}</span>
+                                                    }
+                                                    {waStatus.debug.key_empty ?
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium border border-red-200">KEY KOSONG</span> :
+                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-medium border border-green-200">KEY OK: {waStatus.debug.key_preview}</span>
+                                                    }
+                                                    {waStatus.debug.sender_empty ?
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full font-medium border border-red-200">SENDER KOSONG</span> :
+                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full font-medium border border-green-200">SENDER OK: {waStatus.debug.sender_preview}</span>
+                                                    }
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 italic">*Preview 3 karakter awal untuk memastikan .env terbaca</p>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                <button onClick={fetchWaStatus} disabled={waLoading} className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm transition-colors">
+                                <button onClick={fetchWaStatus} disabled={waLoading} className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm transition-colors shadow-sm">
                                     {waLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync-alt"></i>}
                                 </button>
                             </div>

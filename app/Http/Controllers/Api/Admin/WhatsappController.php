@@ -27,6 +27,9 @@ class WhatsappController extends Controller
                     'url_empty' => empty(config('services.mpwa.url')),
                     'key_empty' => empty(config('services.mpwa.api_key')),
                     'sender_empty' => empty(config('services.mpwa.sender')),
+                    'url_preview' => substr(config('services.mpwa.url'), 0, 10) . '...',
+                    'key_preview' => substr(config('services.mpwa.api_key'), 0, 3) . '***',
+                    'sender_preview' => substr(config('services.mpwa.sender'), 0, 3) . '***',
                 ]
             ],
         ]);
