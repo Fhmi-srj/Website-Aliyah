@@ -15,7 +15,7 @@ class InstitutionSettingsSeeder extends Seeder
         $settings = [
             [
                 'key' => 'nama_lembaga',
-                'value' => 'MA Al-Hikam',
+                'value' => 'MAHAKAM APP',
                 'type' => 'string',
                 'description' => 'Nama resmi lembaga/madrasah',
             ],

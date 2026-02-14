@@ -12,8 +12,9 @@
     @endphp
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ $logoUrl }}">
-    <link rel="apple-touch-icon" href="{{ $logoUrl }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.1">
+    <link rel="icon" type="image/png" href="{{ $logoUrl }}?v=1.1">
+    <link rel="apple-touch-icon" href="{{ $logoUrl }}?v=1.1">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

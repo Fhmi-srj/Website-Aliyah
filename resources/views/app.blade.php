@@ -7,13 +7,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @php
-        $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga', 'MA Al-Hikam');
+        $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga', 'MAHAKAM APP');
         $motoLembaga = \App\Models\AppSetting::getValue('moto_lembaga', 'Sistem Informasi Madrasah');
         $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
         $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : asset('images/logo.png');
     @endphp
 
-    <title>{{ $namaLembaga }} - SIMAKA</title>
+    <title>{{ $namaLembaga }} - MAHAKAM APP</title>
 
     <!-- Meta Description -->
     <meta name="description" content="{{ $motoLembaga }}">
@@ -33,8 +33,9 @@
     <meta property="twitter:image" content="{{ $logoUrl }}">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ $logoUrl }}?v=1.0">
-    <link rel="apple-touch-icon" href="{{ $logoUrl }}?v=1.0">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.1">
+    <link rel="icon" type="image/png" href="{{ $logoUrl }}?v=1.1">
+    <link rel="apple-touch-icon" href="{{ $logoUrl }}?v=1.1">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
