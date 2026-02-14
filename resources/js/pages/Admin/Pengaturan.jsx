@@ -535,7 +535,7 @@ function Pengaturan() {
                                                 {institutionData.logo_lembaga ? (
                                                     <img src={`/storage/${institutionData.logo_lembaga}`} alt="Logo" className="w-full h-full object-contain p-4" />
                                                 ) : (
-                                                    <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain p-4 opacity-50" />
+                                                    <img src={logoImage} alt="Logo" className="w-full h-full object-contain p-4 opacity-50" />
                                                 )}
                                                 {uploadingLogo && (
                                                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">
