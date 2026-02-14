@@ -23,6 +23,11 @@ class WhatsappController extends Controller
                 'sender' => config('services.mpwa.sender'),
                 'url' => config('services.mpwa.url') ? true : false,
                 'group_id' => config('services.mpwa.group_id') ? true : false,
+                'debug' => [
+                    'url_empty' => empty(config('services.mpwa.url')),
+                    'key_empty' => empty(config('services.mpwa.api_key')),
+                    'sender_empty' => empty(config('services.mpwa.sender')),
+                ]
             ],
         ]);
     }
