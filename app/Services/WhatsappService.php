@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsappService
 {
-    protected string $url;
-    protected string $apiKey;
-    protected string $sender;
-    protected string $groupId;
+    protected ?string $url;
+    protected ?string $apiKey;
+    protected ?string $sender;
+    protected ?string $groupId;
 
     public function __construct()
     {
