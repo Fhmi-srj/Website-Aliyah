@@ -5,6 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Cetak Dokumen')</title>
+
+    @php
+        $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
+        $logoUrlFavicon = $logoLembaga ? asset('storage/' . $logoLembaga) : asset('images/logo.png');
+    @endphp
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ $logoUrlFavicon }}">
+    <link rel="apple-touch-icon" href="{{ $logoUrlFavicon }}">
     <style>
         * {
             margin: 0;

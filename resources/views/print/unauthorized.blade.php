@@ -5,6 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Akses Ditolak</title>
+
+    @php
+        $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
+        $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : asset('images/logo.png');
+    @endphp
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ $logoUrl }}">
+    <link rel="apple-touch-icon" href="{{ $logoUrl }}">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
