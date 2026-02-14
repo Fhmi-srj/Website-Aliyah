@@ -150,7 +150,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                                     <span className="font-bold text-gray-800 dark:text-dark-text text-sm tracking-tight whitespace-nowrap">
                                         {institutionName || 'MAHAKAM APP'}
                                     </span>
-                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Manajemen Al Hikam</span>
+                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Informasi Terpadu</span>
                                 </div>
                             </div>
 
@@ -278,7 +278,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                             <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <i className="fas fa-university text-4xl text-primary"></i>
                             </div>
-                            <p className="text-[11px] font-bold text-primary uppercase tracking-wider mb-1 truncate">{institutionName || 'MA Aliyah'}</p>
+                            <p className="text-[11px] font-bold text-primary uppercase tracking-wider mb-1 truncate">{institutionName || 'MAHAKAM APP'}</p>
                             <p className="text-[10px] text-primary/60 dark:text-primary/70 leading-tight">Sistem Informasi Terpadu</p>
                         </div>
                     )}

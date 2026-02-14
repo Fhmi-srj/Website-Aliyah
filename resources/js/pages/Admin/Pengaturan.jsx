@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE, authFetch } from '../../config/api';
 import Swal from 'sweetalert2';
+import logoImage from '../../../images/logo.png';
 
 function Pengaturan() {
     const navigate = useNavigate();
@@ -534,10 +535,7 @@ function Pengaturan() {
                                                 {institutionData.logo_lembaga ? (
                                                     <img src={`/storage/${institutionData.logo_lembaga}`} alt="Logo" className="w-full h-full object-contain p-4" />
                                                 ) : (
-                                                    <>
-                                                        <i className="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                                                        <span className="text-xs text-gray-500">Klik untuk upload</span>
-                                                    </>
+                                                    <img src={logoImage} alt="Logo" className="w-full h-full object-contain p-4 opacity-50" />
                                                 )}
                                                 {uploadingLogo && (
                                                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl">

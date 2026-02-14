@@ -155,7 +155,7 @@ function AdminLayout({ children }) {
                                 <img src={settings?.logo_url || logoImage} alt="Logo" className="w-10 h-10 object-contain" />
                                 <div className="flex flex-col">
                                     <span className="font-bold text-gray-800 dark:text-dark-text text-sm tracking-tight whitespace-nowrap">MAHAKAM APP</span>
-                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Manajemen Al Hikam</span>
+                                    <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">Sistem Informasi Terpadu</span>
                                 </div>
                             </div>
 

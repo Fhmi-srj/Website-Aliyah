@@ -95,12 +95,12 @@ function GuruLayout({ children }) {
                 <div className="flex items-center gap-3">
                     <img
                         src={logoImage}
-                        alt="Logo MA Mamba'ul Huda"
+                        alt="Logo"
                         className="w-10 h-10 object-contain"
                     />
                     <div>
-                        <h1 className="font-bold text-green-800 text-sm leading-tight">MA Al Hikam</h1>
-                        <p className="text-[10px] text-green-600">Sistem Absensi Guru</p>
+                        <h1 className="font-bold text-green-800 text-sm leading-tight">MAHAKAM APP</h1>
+                        <p className="text-[10px] text-green-600">Sistem Informasi Terpadu</p>
                     </div>
                 </div>
 
