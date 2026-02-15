@@ -176,7 +176,7 @@ class DashboardController extends Controller
                 ->get(['id', 'nama_kegiatan', 'waktu_berakhir', 'status']);
 
             // Recent system logs
-            $recentLogs = ActivityLog::with('user:id,nama')
+            $recentLogs = ActivityLog::with('user:id,name')
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get();
