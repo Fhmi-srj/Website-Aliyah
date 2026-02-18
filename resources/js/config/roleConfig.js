@@ -196,9 +196,108 @@ export const getRoleInfo = (roleName) => {
     };
 };
 
+// Dynamic role page permissions (populated from API)
+// Fallback defaults used before API data loads
+let _dynamicRolePages = {
+    superadmin: '*',
+    kepala_madrasah: '*',
+    waka_kurikulum: [
+        '/dashboard',
+        '/data-induk/jadwal',
+        '/data-induk/jam-pelajaran',
+        '/data-induk/mapel',
+        '/data-induk/kelas',
+        '/data-induk/kalender',
+        '/data-induk/absensi-siswa',
+        '/data-induk/ekskul',
+        '/data-induk/rapat',
+        '/data-induk/surat',
+        '/profil',
+    ],
+    waka_kesiswaan: [
+        '/dashboard',
+        '/data-induk/siswa',
+        '/data-induk/alumni',
+        '/data-induk/ekskul',
+        '/data-induk/kegiatan',
+        '/data-induk/absensi-siswa',
+        '/data-induk/kalender',
+        '/profil',
+    ],
+    wali_kelas: [
+        '/dashboard',
+        '/data-induk/absensi-siswa',
+        '/profil',
+    ],
+    tata_usaha: [
+        '/dashboard',
+        '/data-induk/siswa',
+        '/data-induk/alumni',
+        '/data-induk/ekskul',
+        '/data-induk/kegiatan',
+        '/data-induk/absensi-siswa',
+        '/data-induk/kalender',
+        '/data-induk/surat',
+        '/transaksi',
+        '/profil',
+    ],
+};
+
+// Set dynamic role pages from API data (called after login/fetchUser)
+export const setDynamicRolePages = (roles) => {
+    if (!roles || !Array.isArray(roles)) return;
+
+    roles.forEach(role => {
+        if (role.allowed_pages !== null && role.allowed_pages !== undefined) {
+            _dynamicRolePages[role.name] = role.allowed_pages;
+        }
+    });
+};
+
+// Get the current dynamic role pages (for ManajemenRole UI)
+export const getDynamicRolePages = () => _dynamicRolePages;
+
+// All available admin pages for the permission UI
+export const allAdminPages = [
+    { path: '/dashboard', label: 'Dashboard', icon: 'fa-home', group: 'Umum' },
+    { path: '/data-induk/siswa', label: 'Manajemen Siswa', icon: 'fa-user-graduate', group: 'Data Induk' },
+    { path: '/data-induk/absensi-siswa', label: 'Absensi Siswa', icon: 'fa-clipboard-list', group: 'Data Induk' },
+    { path: '/data-induk/alumni', label: 'Data Alumni', icon: 'fa-graduation-cap', group: 'Data Induk' },
+    { path: '/data-induk/guru', label: 'Manajemen Guru', icon: 'fa-chalkboard-teacher', group: 'Data Induk' },
+    { path: '/data-induk/kelas', label: 'Manajemen Kelas', icon: 'fa-door-open', group: 'Data Induk' },
+    { path: '/data-induk/mapel', label: 'Manajemen Mapel', icon: 'fa-book', group: 'Data Induk' },
+    { path: '/data-induk/jadwal', label: 'Manajemen Jadwal', icon: 'fa-calendar-alt', group: 'Data Induk' },
+    { path: '/data-induk/jam-pelajaran', label: 'Jam Pelajaran', icon: 'fa-clock', group: 'Data Induk' },
+    { path: '/data-induk/kegiatan', label: 'Manajemen Kegiatan', icon: 'fa-tasks', group: 'Data Induk' },
+    { path: '/data-induk/ekskul', label: 'Manajemen Ekstrakurikuler', icon: 'fa-futbol', group: 'Data Induk' },
+    { path: '/data-induk/rapat', label: 'Manajemen Rapat', icon: 'fa-users', group: 'Data Induk' },
+    { path: '/data-induk/kalender', label: 'Kalender Pendidikan', icon: 'fa-calendar-check', group: 'Data Induk' },
+    { path: '/data-induk/surat', label: 'Surat Menyurat', icon: 'fa-envelope', group: 'Data Induk' },
+    { path: '/data-induk/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check', group: 'Data Induk' },
+    { path: '/transaksi', label: 'Transaksi', icon: 'fa-money-bill-wave', group: 'Umum' },
+    { path: '/manajemen-role', label: 'Manajemen Role', icon: 'fa-user-shield', group: 'Sistem' },
+    { path: '/log-aktivitas', label: 'Log Aktivitas', icon: 'fa-history', group: 'Sistem' },
+    { path: '/profil', label: 'Profil', icon: 'fa-user', group: 'Umum' },
+    { path: '/pengaturan', label: 'Pengaturan', icon: 'fa-cog', group: 'Sistem' },
+];
+
 // Check if role has admin panel access
 export const hasAdminAccess = (roleName) => {
-    return roleName === 'superadmin';
+    return roleName in _dynamicRolePages;
+};
+
+// Check if a specific admin path is allowed for a role
+export const canAccessAdminPage = (roleName, path) => {
+    const pages = _dynamicRolePages[roleName];
+    if (!pages) return false;
+    if (pages === '*') return true;
+    if (!Array.isArray(pages)) return false;
+    return pages.some(p => path === p || path.startsWith(p + '/'));
+};
+
+// Get all admin-access role names
+export const getAdminRoles = () => {
+    return Object.keys(_dynamicRolePages);
 };
 
 // Get default role from user's roles array
@@ -217,3 +316,4 @@ export const getDefaultRole = (roles) => {
 
     return sortedRoles[0]?.name || 'guru';
 };
+

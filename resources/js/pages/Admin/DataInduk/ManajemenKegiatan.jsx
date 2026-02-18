@@ -297,6 +297,27 @@ function ManajemenKegiatan() {
         }
     };
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const response = await authFetch(`${API_BASE}/export-pdf/kegiatan`);
+            if (!response.ok) throw new Error('Gagal mengunduh PDF');
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Kegiatan_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengunduh PDF', timer: 2000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => ({
             'No': idx + 1,
@@ -534,6 +555,10 @@ function ManajemenKegiatan() {
                             <span>Hapus ({selectedItems.size})</span>
                         </button>
                     )}
+                    <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary ${isMobile ? 'flex-1 py-2.5' : 'px-5 py-2.5'} flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest`} type="button" title="Download PDF">
+                        <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                        <span>PDF</span>
+                    </button>
                     <button onClick={handleExport} className={`btn-secondary ${isMobile ? 'flex-1 py-2.5' : 'px-5 py-2.5'} flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest`}>
                         <i className="fas fa-file-export"></i>
                         <span>Export</span>

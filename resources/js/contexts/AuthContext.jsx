@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_BASE } from '../config/api';
-import { getDefaultRole, hasAdminAccess } from '../config/roleConfig';
+import { getDefaultRole, hasAdminAccess, setDynamicRolePages } from '../config/roleConfig';
 
 const AuthContext = createContext(null);
 
@@ -32,8 +32,9 @@ export function AuthProvider({ children }) {
                 const data = await response.json();
                 setUser(data.data);
 
-                // Set default active role if not set
+                // Initialize dynamic role pages from API data
                 const userRoles = data.data.roles || [];
+                setDynamicRolePages(userRoles);
                 const savedRole = localStorage.getItem('active_role');
 
                 // Verify saved role is still valid for this user
@@ -77,13 +78,16 @@ export function AuthProvider({ children }) {
                 setUser(userData);
                 localStorage.setItem('auth_token', authToken);
 
+                // Initialize dynamic role pages from API data
+                const userRoles = userData.roles || [];
+                setDynamicRolePages(userRoles);
+
                 // Store tahun ajaran info
                 if (tahunAjaranData) {
                     localStorage.setItem('tahun_ajaran', JSON.stringify(tahunAjaranData));
                 }
 
                 // Set default active role based on user's roles
-                const userRoles = userData.roles || [];
                 const defaultRole = getDefaultRole(userRoles);
                 setActiveRole(defaultRole);
                 localStorage.setItem('active_role', defaultRole);

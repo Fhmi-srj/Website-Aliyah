@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-CpFogQAY.css",
+    "file": "assets/app-BFai_3db.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -9,12 +9,12 @@
     "src": "resources/images/logo.png"
   },
   "resources/js/main.jsx": {
-    "file": "assets/main-soOsB27Q.js",
+    "file": "assets/main-N8N4-TJR.js",
     "name": "main",
     "src": "resources/js/main.jsx",
     "isEntry": true,
     "css": [
-      "assets/app-CpFogQAY.css"
+      "assets/app-BFai_3db.css"
     ],
     "assets": [
       "assets/logo-KVNS57bw.png"

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { roleLabels, roleIcons, roleColors, getRoleInfo } from '../config/roleConfig';
+import { roleLabels, roleIcons, roleColors, getRoleInfo, hasAdminAccess } from '../config/roleConfig';
 
 /**
  * RoleSwitcher Component
@@ -8,6 +9,7 @@ import { roleLabels, roleIcons, roleColors, getRoleInfo } from '../config/roleCo
  */
 function RoleSwitcher({ onSwitch, compact = false }) {
     const { user, activeRole, switchRole } = useAuth();
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -30,6 +32,12 @@ function RoleSwitcher({ onSwitch, compact = false }) {
             const success = switchRole(roleName);
             if (success) {
                 setIsOpen(false);
+                // Navigate based on role type
+                if (hasAdminAccess(roleName)) {
+                    navigate('/dashboard');
+                } else {
+                    navigate('/guru');
+                }
                 if (onSwitch) {
                     onSwitch(roleName);
                 }

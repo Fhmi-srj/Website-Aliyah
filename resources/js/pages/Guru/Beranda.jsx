@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../lib/axios";
+import { API_BASE } from "../../config/api";
 import { BerandaSkeleton } from "./components/Skeleton";
 import { AnimatedTabs } from "./components/AnimatedTabs";
 
@@ -25,6 +26,10 @@ function Beranda() {
 
     // State for upcoming events (next 7 days)
     const [upcomingEvents, setUpcomingEvents] = useState([]);
+
+    // State for supervisi
+    const [supervisiData, setSupervisiData] = useState({ jadwal: [], hasil: [] });
+    const [loadingSupervisi, setLoadingSupervisi] = useState(true);
     const [loadingUpcoming, setLoadingUpcoming] = useState(true);
 
     // Stats tab state
@@ -69,9 +74,60 @@ function Beranda() {
             }
         };
 
+        // Fetch supervisi data
+        const fetchSupervisi = async () => {
+            try {
+                setLoadingSupervisi(true);
+                const response = await api.get('/guru-panel/supervisi');
+                setSupervisiData({
+                    jadwal: response.data.jadwal || [],
+                    hasil: response.data.hasil || [],
+                });
+            } catch (err) {
+                console.error('Error fetching supervisi:', err);
+            } finally {
+                setLoadingSupervisi(false);
+            }
+        };
+
         fetchDashboard();
         fetchUpcomingEvents();
+        fetchSupervisi();
     }, []);
+
+    // Helper: format date for supervisi
+    const formatTanggal = (dateStr) => {
+        if (!dateStr) return '-';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch (e) { return dateStr; }
+    };
+
+    // Helper: calculate supervisi scores
+    const calcSupervisiScores = (hasil_supervisi) => {
+        if (!hasil_supervisi) return { rataA: 0, rataB: 0, rataTotal: 0, predikat: '-' };
+        const a = hasil_supervisi.bagian_a || {};
+        const b = hasil_supervisi.bagian_b || {};
+        const valsA = Object.values(a).map(Number).filter(v => v > 0);
+        const valsB = Object.values(b).map(Number).filter(v => v > 0);
+        const rataA = valsA.length > 0 ? valsA.reduce((s, v) => s + v, 0) / valsA.length : 0;
+        const rataB = valsB.length > 0 ? valsB.reduce((s, v) => s + v, 0) / valsB.length : 0;
+        const all = [...valsA, ...valsB];
+        const rataTotal = all.length > 0 ? all.reduce((s, v) => s + v, 0) / all.length : 0;
+        let predikat = 'Kurang';
+        if (rataTotal >= 3.5) predikat = 'Sangat Baik';
+        else if (rataTotal >= 2.5) predikat = 'Baik';
+        else if (rataTotal >= 1.5) predikat = 'Cukup';
+        return { rataA: rataA.toFixed(2), rataB: rataB.toFixed(2), rataTotal: rataTotal.toFixed(2), predikat };
+    };
+
+    // Helper: open print supervisi PDF
+    const handlePrintSupervisi = (item) => {
+        const token = localStorage.getItem('auth_token');
+        const url = `${API_BASE}/supervisi/${item.id}/print-supervisi?token=${token}`;
+        window.open(url, '_blank');
+    };
 
     // Loading state
     if (loading) {
@@ -424,6 +480,162 @@ function Beranda() {
                         <div className="bg-gray-50 rounded-xl p-6 text-center">
                             <i className="fas fa-calendar-check text-gray-300 text-2xl mb-2"></i>
                             <p className="text-gray-500 text-sm">Tidak ada agenda dalam 7 hari ke depan</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Supervisi Section */}
+                <div>
+                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <i className="fas fa-clipboard-check text-green-500"></i>
+                        Supervisi
+                    </h3>
+                    {loadingSupervisi ? (
+                        <div className="flex items-center justify-center py-6">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
+                        </div>
+                    ) : supervisiData.jadwal.length === 0 && supervisiData.hasil.length === 0 ? (
+                        <div className="bg-gray-50 rounded-xl p-6 text-center">
+                            <i className="fas fa-clipboard-check text-gray-300 text-2xl mb-2"></i>
+                            <p className="text-gray-500 text-sm">Belum ada jadwal supervisi</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Jadwal Supervisi (Pending) */}
+                            {supervisiData.jadwal.length > 0 && (
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+                                        <i className="fas fa-clock text-yellow-500 text-[10px]"></i>
+                                        Jadwal Pelaksanaan
+                                    </p>
+                                    <div className="space-y-2">
+                                        {supervisiData.jadwal.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center flex-shrink-0">
+                                                        <i className="fas fa-calendar-day text-yellow-500"></i>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-gray-800 text-sm font-medium truncate">
+                                                            {item.mapel?.nama_mapel || 'Supervisi'}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                <i className="far fa-calendar-alt text-[8px]"></i>
+                                                                {formatTanggal(item.tanggal)}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 flex items-center gap-1 truncate">
+                                                                <i className="fas fa-user-tie text-[8px]"></i>
+                                                                {item.supervisor?.nama || '-'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[9px] px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-semibold flex-shrink-0">
+                                                        Dijadwalkan
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hasil Supervisi (Completed) */}
+                            {supervisiData.hasil.length > 0 && (
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+                                        <i className="fas fa-check-circle text-green-500 text-[10px]"></i>
+                                        Hasil Supervisi
+                                    </p>
+                                    <div className="space-y-2">
+                                        {supervisiData.hasil.map((item) => {
+                                            const scores = calcSupervisiScores(item.hasil_supervisi);
+                                            const predikatColor = scores.predikat === 'Sangat Baik' ? 'bg-emerald-100 text-emerald-700'
+                                                : scores.predikat === 'Baik' ? 'bg-blue-100 text-blue-700'
+                                                    : scores.predikat === 'Cukup' ? 'bg-yellow-100 text-yellow-700'
+                                                        : 'bg-red-100 text-red-700';
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100"
+                                                >
+                                                    {/* Header row */}
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                                                            <i className="fas fa-clipboard-check text-green-500"></i>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-gray-800 text-sm font-medium truncate">
+                                                                {item.mapel?.nama_mapel || 'Supervisi'}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                                <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                    <i className="far fa-calendar-alt text-[8px]"></i>
+                                                                    {formatTanggal(item.tanggal)}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 flex items-center gap-1 truncate">
+                                                                    <i className="fas fa-user-tie text-[8px]"></i>
+                                                                    {item.supervisor?.nama || '-'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <span className={`text-[9px] px-2 py-1 rounded-full font-semibold flex-shrink-0 ${predikatColor}`}>
+                                                            {scores.predikat}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Score bars */}
+                                                    <div className="space-y-2 mb-3">
+                                                        <div>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-[10px] text-gray-500 font-medium">Perencanaan (A)</span>
+                                                                <span className="text-[10px] font-bold text-gray-700">{scores.rataA}/4</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                                                <div
+                                                                    className="bg-gradient-to-r from-green-400 to-green-500 h-1.5 rounded-full transition-all"
+                                                                    style={{ width: `${(scores.rataA / 4) * 100}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-[10px] text-gray-500 font-medium">Pelaksanaan (B)</span>
+                                                                <span className="text-[10px] font-bold text-gray-700">{scores.rataB}/4</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                                                <div
+                                                                    className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-1.5 rounded-full transition-all"
+                                                                    style={{ width: `${(scores.rataB / 4) * 100}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Footer: average + download */}
+                                                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] text-gray-400">Rata-rata:</span>
+                                                            <span className="text-sm font-bold text-green-600">{scores.rataTotal}</span>
+                                                            <span className="text-[10px] text-gray-400">/4</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handlePrintSupervisi(item)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-[10px] font-semibold hover:shadow-md transition-all hover:scale-[1.02] active:scale-95"
+                                                        >
+                                                            <i className="fas fa-file-pdf"></i>
+                                                            Download PDF
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { TahunAjaranProvider } from './contexts/TahunAjaranContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { getAdminRoles } from './config/roleConfig';
 import AdminLayout from './pages/Admin/components/AdminLayout';
 import Login from './pages/Auth/Login';
 import Dashboard from './pages/Admin/Dashboard';
@@ -20,9 +21,11 @@ import ManajemenRapat from './pages/Admin/DataInduk/ManajemenRapat';
 import ManajemenJamPelajaran from './pages/Admin/DataInduk/ManajemenJamPelajaran';
 import ManajemenKalender from './pages/Admin/DataInduk/ManajemenKalender';
 import SuratMenyurat from './pages/Admin/DataInduk/SuratMenyurat';
+import ManajemenSupervisi from './pages/Admin/DataInduk/ManajemenSupervisi';
 import AbsensiSiswa from './pages/Admin/DataInduk/AbsensiSiswa';
 import ManajemenRole from './pages/Admin/ManajemenRole';
 import LogAktivitas from './pages/Admin/LogAktivitas';
+import Transaksi from './pages/Admin/Transaksi';
 import PergantianTahun from './pages/Admin/Settings/WizardTahunAjaran';
 
 // Guru Pages
@@ -80,11 +83,11 @@ function App() {
                     }
                 />
 
-                {/* Admin Routes */}
+                {/* Admin Routes - accessible by all roles with admin access */}
                 <Route
                     path="/*"
                     element={
-                        <ProtectedRoute requiredRoles={['superadmin']}>
+                        <ProtectedRoute requiredRoles={getAdminRoles()}>
                             <TahunAjaranProvider>
                                 <AdminLayout>
                                     <Routes>
@@ -94,6 +97,7 @@ function App() {
                                         <Route path="/pengaturan" element={<Pengaturan />} />
                                         <Route path="/pergantian-tahun" element={<PergantianTahun />} />
                                         <Route path="/manajemen-role" element={<ManajemenRole />} />
+                                        <Route path="/transaksi" element={<Transaksi />} />
                                         <Route path="/log-aktivitas" element={<LogAktivitas />} />
                                         <Route path="/data-induk" element={<Navigate to="/data-induk/siswa" replace />} />
                                         <Route path="/data-induk/siswa" element={<ManajemenSiswa />} />
@@ -109,6 +113,7 @@ function App() {
                                         <Route path="/data-induk/jam-pelajaran" element={<ManajemenJamPelajaran />} />
                                         <Route path="/data-induk/kalender" element={<ManajemenKalender />} />
                                         <Route path="/data-induk/surat" element={<SuratMenyurat />} />
+                                        <Route path="/data-induk/supervisi" element={<ManajemenSupervisi />} />
                                     </Routes>
                                 </AdminLayout>
                             </TahunAjaranProvider>

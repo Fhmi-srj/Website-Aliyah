@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
+use App\Models\Guru;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -65,6 +67,11 @@ class KelasController extends Controller
 
             $kelas = Kelas::create($validated);
 
+            // Auto-sync wali_kelas role
+            if ($validated['wali_kelas_id'] ?? null) {
+                $this->syncWaliKelasRole($validated['wali_kelas_id']);
+            }
+
             // Return fresh data with relations
             $kelas = Kelas::with('waliKelas:id,nama')
                 ->withCount('siswa')
@@ -103,8 +110,9 @@ class KelasController extends Controller
     public function update(Request $request, Kelas $kelas): JsonResponse
     {
         try {
-            // Get the original ID before any operations
+            // Get the original ID and old wali_kelas_id before any operations
             $kelasId = $kelas->id;
+            $oldWaliKelasId = $kelas->wali_kelas_id;
 
             // Convert empty string to null before validation
             $data = $request->all();
@@ -131,9 +139,22 @@ class KelasController extends Controller
             }
 
             $validated = $validator->validated();
+            $newWaliKelasId = $validated['wali_kelas_id'] ?? null;
 
             // Use DB query to update directly
             Kelas::where('id', $kelasId)->update($validated);
+
+            // Auto-sync wali_kelas role when wali kelas changes
+            if ($oldWaliKelasId != $newWaliKelasId) {
+                // Assign role to new wali kelas
+                if ($newWaliKelasId) {
+                    $this->syncWaliKelasRole($newWaliKelasId);
+                }
+                // Remove role from old wali kelas if no longer wali kelas of any class
+                if ($oldWaliKelasId) {
+                    $this->removeWaliKelasRoleIfOrphan($oldWaliKelasId);
+                }
+            }
 
             // Return fresh data with relations
             $updatedKelas = Kelas::with('waliKelas:id,nama')
@@ -159,11 +180,61 @@ class KelasController extends Controller
      */
     public function destroy(Kelas $kelas): JsonResponse
     {
+        $oldWaliKelasId = $kelas->wali_kelas_id;
+
         $kelas->delete();
+
+        // Remove wali_kelas role if guru is no longer wali kelas of any class
+        if ($oldWaliKelasId) {
+            $this->removeWaliKelasRoleIfOrphan($oldWaliKelasId);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Kelas berhasil dihapus'
         ]);
+    }
+
+    /**
+     * Auto-assign wali_kelas role to a guru's user account
+     */
+    private function syncWaliKelasRole(int $guruId): void
+    {
+        $guru = Guru::find($guruId);
+        if (!$guru || !$guru->user_id)
+            return;
+
+        $role = Role::where('name', 'wali_kelas')->first();
+        if (!$role)
+            return;
+
+        $user = $guru->user;
+        if ($user && !$user->roles()->where('roles.id', $role->id)->exists()) {
+            $user->roles()->attach($role->id);
+        }
+    }
+
+    /**
+     * Remove wali_kelas role from guru if they are no longer wali kelas of any class
+     */
+    private function removeWaliKelasRoleIfOrphan(int $guruId): void
+    {
+        // Check if this guru is still wali kelas of any other class
+        $stillWaliKelas = Kelas::where('wali_kelas_id', $guruId)->exists();
+        if ($stillWaliKelas)
+            return;
+
+        $guru = Guru::find($guruId);
+        if (!$guru || !$guru->user_id)
+            return;
+
+        $role = Role::where('name', 'wali_kelas')->first();
+        if (!$role)
+            return;
+
+        $user = $guru->user;
+        if ($user) {
+            $user->roles()->detach($role->id);
+        }
     }
 }

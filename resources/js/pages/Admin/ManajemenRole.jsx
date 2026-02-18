@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { authFetch } from '../../config/api';
+import { allAdminPages } from '../../config/roleConfig';
 import Swal from 'sweetalert2';
 
 const API_BASE = '/api';
@@ -10,6 +11,7 @@ function ManajemenRole() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [showUserModal, setShowUserModal] = useState(false);
+    const [showPageModal, setShowPageModal] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
     const [formData, setFormData] = useState({
@@ -181,6 +183,12 @@ function ManajemenRole() {
         setShowUserModal(true);
     };
 
+    // Open page permission modal
+    const handleManagePages = (role) => {
+        setSelectedRole(role);
+        setShowPageModal(true);
+    };
+
     // Get level color
     const getLevelColor = (level) => {
         if (level >= 90) return 'bg-red-500';
@@ -275,6 +283,15 @@ function ManajemenRole() {
                                     >
                                         <i className="fas fa-users-cog"></i>
                                     </button>
+                                    {role.name !== 'superadmin' && (
+                                        <button
+                                            onClick={() => handleManagePages(role)}
+                                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            title="Kelola Akses Halaman"
+                                        >
+                                            <i className="fas fa-key"></i>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => handleEdit(role)}
                                         className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
@@ -419,6 +436,224 @@ function ManajemenRole() {
                     }}
                 />
             )}
+
+            {/* Page Permission Modal */}
+            {showPageModal && selectedRole && (
+                <PagePermissionModal
+                    role={selectedRole}
+                    onClose={() => {
+                        setShowPageModal(false);
+                        fetchData();
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+// Page Permission Modal Component
+function PagePermissionModal({ role, onClose }) {
+    const isFullAccess = role.allowed_pages === '*';
+    const [fullAccess, setFullAccess] = useState(isFullAccess);
+    const [selectedPages, setSelectedPages] = useState(
+        isFullAccess ? allAdminPages.map(p => p.path) : (Array.isArray(role.allowed_pages) ? role.allowed_pages : [])
+    );
+    const [saving, setSaving] = useState(false);
+
+    // Group pages by category
+    const groups = allAdminPages.reduce((acc, page) => {
+        if (!acc[page.group]) acc[page.group] = [];
+        acc[page.group].push(page);
+        return acc;
+    }, {});
+
+    const togglePage = (path) => {
+        setSelectedPages(prev =>
+            prev.includes(path)
+                ? prev.filter(p => p !== path)
+                : [...prev, path]
+        );
+    };
+
+    const toggleGroup = (groupPages) => {
+        const groupPaths = groupPages.map(p => p.path);
+        const allSelected = groupPaths.every(p => selectedPages.includes(p));
+        if (allSelected) {
+            setSelectedPages(prev => prev.filter(p => !groupPaths.includes(p)));
+        } else {
+            setSelectedPages(prev => [...new Set([...prev, ...groupPaths])]);
+        }
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                allowed_pages: fullAccess ? '*' : selectedPages,
+            };
+
+            const response = await authFetch(`${API_BASE}/roles/${role.id}/pages`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Akses halaman berhasil diperbarui',
+                    timer: 1500,
+                });
+                onClose();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message,
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message,
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const groupOrder = ['Umum', 'Data Induk', 'Sistem'];
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">
+                                <i className="fas fa-key text-indigo-500 mr-2"></i>
+                                Akses Halaman
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Role: <span className="font-semibold text-gray-700">{role.display_name}</span>
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            <i className="fas fa-times text-gray-500"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                    {/* Full Access Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                <i className="fas fa-crown text-white"></i>
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-800">Akses Penuh</p>
+                                <p className="text-xs text-gray-500">Akses ke semua halaman admin</p>
+                            </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={fullAccess}
+                                onChange={(e) => setFullAccess(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    {/* Page Checkboxes (hidden when full access) */}
+                    {!fullAccess && groupOrder.map(groupName => {
+                        const groupPages = groups[groupName];
+                        if (!groupPages) return null;
+                        const allGroupSelected = groupPages.every(p => selectedPages.includes(p.path));
+                        const someGroupSelected = groupPages.some(p => selectedPages.includes(p.path));
+
+                        return (
+                            <div key={groupName} className="border border-gray-200 rounded-xl overflow-hidden">
+                                {/* Group Header */}
+                                <button
+                                    onClick={() => toggleGroup(groupPages)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                                >
+                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${allGroupSelected
+                                            ? 'bg-green-500 border-green-500'
+                                            : someGroupSelected
+                                                ? 'bg-green-200 border-green-400'
+                                                : 'border-gray-300'
+                                        }`}>
+                                        {allGroupSelected && <i className="fas fa-check text-white text-xs"></i>}
+                                        {!allGroupSelected && someGroupSelected && <i className="fas fa-minus text-green-700 text-xs"></i>}
+                                    </div>
+                                    <span className="font-semibold text-gray-700 text-sm">{groupName}</span>
+                                    <span className="text-xs text-gray-400 ml-auto">
+                                        {groupPages.filter(p => selectedPages.includes(p.path)).length}/{groupPages.length}
+                                    </span>
+                                </button>
+
+                                {/* Group Items */}
+                                <div className="divide-y divide-gray-100">
+                                    {groupPages.map(page => (
+                                        <label
+                                            key={page.path}
+                                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedPages.includes(page.path)}
+                                                onChange={() => togglePage(page.path)}
+                                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                            />
+                                            <i className={`fas ${page.icon} text-gray-400 w-5 text-center`}></i>
+                                            <span className="text-sm text-gray-700">{page.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {!fullAccess && (
+                        <p className="text-xs text-gray-400 text-center">
+                            {selectedPages.length} dari {allAdminPages.length} halaman dipilih
+                        </p>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-gray-100 flex gap-3 flex-shrink-0">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
+                    >
+                        {saving ? (
+                            <><i className="fas fa-spinner fa-spin mr-2"></i>Menyimpan...</>
+                        ) : (
+                            <><i className="fas fa-save mr-2"></i>Simpan</>
+                        )}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

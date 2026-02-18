@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 const API_BASE = '/api';
 
 function LogAktivitas() {
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 360);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [expandedRows, setExpandedRows] = useState(new Set());
     const toggleRowExpand = (idx) => { setExpandedRows(prev => { const next = new Set(prev); next.has(idx) ? next.delete(idx) : next.add(idx); return next; }); };
     const [logs, setLogs] = useState([]);
@@ -75,6 +75,12 @@ function LogAktivitas() {
 
     useEffect(() => {
         fetchStats();
+    }, []);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     // Handle filter change
@@ -200,70 +206,100 @@ function LogAktivitas() {
             {/* Stats Cards */}
             {stats && (
                 <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-4'}`}>
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i className="fas fa-clock text-blue-600"></i>
+                    <div className={`bg-white rounded-xl ${isMobile ? 'p-3' : 'p-4'} shadow-sm`}>
+                        <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                            <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-blue-100 rounded-lg flex items-center justify-center`}>
+                                <i className={`fas fa-clock text-blue-600 ${isMobile ? 'text-xs' : ''}`}></i>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-gray-800">{stats.today}</p>
-                                <p className="text-xs text-gray-500">Hari Ini</p>
+                                <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-gray-800`}>{stats.today}</p>
+                                <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Hari Ini</p>
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i className="fas fa-plus text-green-600"></i>
+                    <div className={`bg-white rounded-xl ${isMobile ? 'p-3' : 'p-4'} shadow-sm`}>
+                        <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                            <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-green-100 rounded-lg flex items-center justify-center`}>
+                                <i className={`fas fa-plus text-green-600 ${isMobile ? 'text-xs' : ''}`}></i>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-gray-800">{stats.by_action?.create || 0}</p>
-                                <p className="text-xs text-gray-500">Tambah</p>
+                                <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-gray-800`}>{stats.by_action?.create || 0}</p>
+                                <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Tambah</p>
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <i className="fas fa-edit text-orange-600"></i>
+                    <div className={`bg-white rounded-xl ${isMobile ? 'p-3' : 'p-4'} shadow-sm`}>
+                        <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                            <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-orange-100 rounded-lg flex items-center justify-center`}>
+                                <i className={`fas fa-edit text-orange-600 ${isMobile ? 'text-xs' : ''}`}></i>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-gray-800">{stats.by_action?.update || 0}</p>
-                                <p className="text-xs text-gray-500">Edit</p>
+                                <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-gray-800`}>{stats.by_action?.update || 0}</p>
+                                <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Edit</p>
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                <i className="fas fa-trash text-red-600"></i>
+                    <div className={`bg-white rounded-xl ${isMobile ? 'p-3' : 'p-4'} shadow-sm`}>
+                        <div className={`flex items-center ${isMobile ? 'gap-2' : 'gap-3'}`}>
+                            <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} bg-red-100 rounded-lg flex items-center justify-center`}>
+                                <i className={`fas fa-trash text-red-600 ${isMobile ? 'text-xs' : ''}`}></i>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-gray-800">{stats.by_action?.delete || 0}</p>
-                                <p className="text-xs text-gray-500">Hapus</p>
+                                <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold text-gray-800`}>{stats.by_action?.delete || 0}</p>
+                                <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Hapus</p>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
-                <div className={`bg-white rounded-xl shadow-sm ${isMobile ? '' : 'p-4'}`}>
-                    <div className={`${isMobile ? 'mobile-controls-row' : 'grid grid-cols-1 md:grid-cols-5 gap-4'}`}>
-                        <div className={`${isMobile ? 'mobile-search-wrap' : 'md:col-span-2'} relative`}>
-                            <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 ${isMobile ? 'text-[10px]' : ''}`}></i>
+            <div className={`${isMobile ? '' : ''}`}>
+                <div className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-3' : 'p-4'}`}>
+                    <div className={`${isMobile ? 'space-y-2' : 'grid grid-cols-1 md:grid-cols-5 gap-4'}`}>
+                        <div className={`${isMobile ? '' : 'md:col-span-2'} relative`}>
+                            <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 ${isMobile ? 'text-xs' : ''}`}></i>
                             <input
                                 type="text"
-                                placeholder={isMobile ? 'Cari...' : 'Cari aktivitas...'}
+                                placeholder={isMobile ? 'Cari aktivitas...' : 'Cari aktivitas...'}
                                 value={filters.search}
                                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                                className={`w-full pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-2'} border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                                className={`w-full pl-8 pr-2 ${isMobile ? 'py-2 text-xs' : 'py-2'} border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent`}
                             />
                         </div>
 
-                        {!isMobile && (
+                        {isMobile ? (
+                            <div className="grid grid-cols-3 gap-2">
+                                <select
+                                    value={filters.action}
+                                    onChange={(e) => handleFilterChange('action', e.target.value)}
+                                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Semua Aksi</option>
+                                    <option value="create">Tambah</option>
+                                    <option value="update">Edit</option>
+                                    <option value="delete">Hapus</option>
+                                    <option value="restore">Restore</option>
+                                    <option value="attendance">Absensi</option>
+                                </select>
+                                <select
+                                    value={filters.model_type}
+                                    onChange={(e) => handleFilterChange('model_type', e.target.value)}
+                                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                >
+                                    <option value="">Semua Tabel</option>
+                                    {modelTypes.map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                                <input
+                                    type="date"
+                                    value={filters.date_from}
+                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                />
+                            </div>
+                        ) : (
                             <>
-                                {/* Action Filter */}
                                 <select
                                     value={filters.action}
                                     onChange={(e) => handleFilterChange('action', e.target.value)}
@@ -276,8 +312,6 @@ function LogAktivitas() {
                                     <option value="restore">Restore</option>
                                     <option value="attendance">Absensi</option>
                                 </select>
-
-                                {/* Model Type Filter */}
                                 <select
                                     value={filters.model_type}
                                     onChange={(e) => handleFilterChange('model_type', e.target.value)}
@@ -288,8 +322,6 @@ function LogAktivitas() {
                                         <option key={type} value={type}>{type}</option>
                                     ))}
                                 </select>
-
-                                {/* Date Filter */}
                                 <input
                                     type="date"
                                     value={filters.date_from}
@@ -310,153 +342,173 @@ function LogAktivitas() {
                     </div>
                 ) : logs.length > 0 ? (
                     <>
-                        <div className={`${isMobile ? '' : 'overflow-x-auto'}`}>
-                            <table className={`w-full ${isMobile ? 'mobile-table-fixed' : ''}`}>
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        {isMobile && (
-                                            <th className="col-expand py-2 text-center"></th>
-                                        )}
-                                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Tanggal
-                                        </th>
-                                        {!isMobile && (
+                        {isMobile ? (
+                            /* Mobile: Card-based layout */
+                            <div className="divide-y divide-gray-100">
+                                {logs.map((log) => {
+                                    const badge = getActionBadge(log.action);
+                                    const modelInfo = getModelLabel(log.model_type);
+                                    return (
+                                        <div key={log.id} className="p-3 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-start gap-2.5">
+                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${badge.bg}`}>
+                                                    <i className={`fas ${badge.icon} text-[10px] ${badge.text}`}></i>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-semibold text-gray-800 leading-tight mb-1 line-clamp-2">{log.description}</p>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${modelInfo.bg} ${modelInfo.text}`}>
+                                                            <i className={`fas ${modelInfo.icon}`}></i>
+                                                            {modelInfo.label}
+                                                        </span>
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${badge.bg} ${badge.text}`}>
+                                                            {log.action_label}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{log.user_name}</span>
+                                                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                                        <span className="text-[9px] text-gray-400">{log.created_at_formatted}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => handleViewDetail(log)}
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Lihat Detail"
+                                                    >
+                                                        <i className="fas fa-eye text-xs"></i>
+                                                    </button>
+                                                    {log.can_restore && (
+                                                        <button
+                                                            onClick={() => handleRestore(log)}
+                                                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                                            title="Restore"
+                                                        >
+                                                            <i className="fas fa-undo text-xs"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            /* Desktop: Table layout */
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                Tanggal
+                                            </th>
                                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                 User
                                             </th>
-                                        )}
-                                        {!isMobile && (
                                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                 Objek
                                             </th>
-                                        )}
-                                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Aktivitas
-                                        </th>
-                                        {!isMobile && (
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                Aktivitas
+                                            </th>
                                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                                 Detail
                                             </th>
-                                        )}
-                                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {logs.map((log, idx) => {
-                                        const badge = getActionBadge(log.action);
-                                        return (
-                                            <React.Fragment key={log.id}>
-                                                <tr className="hover:bg-gray-50 transition-colors">
-                                                    {isMobile && (
-                                                        <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
-                                                            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
-                                                                <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
-                                                            </div>
-                                                        </td>
-                                                    )}
+                                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                Aksi
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {logs.map((log) => {
+                                            const badge = getActionBadge(log.action);
+                                            return (
+                                                <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-4 py-2.5 whitespace-nowrap">
-                                                        <div className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-gray-900`}>{log.created_at_formatted}</div>
+                                                        <div className="text-sm text-gray-900">{log.created_at_formatted}</div>
                                                     </td>
-                                                    {!isMobile && (
-                                                        <td className="px-4 py-2.5 whitespace-nowrap">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                                                    <i className="fas fa-user text-green-600 text-sm"></i>
-                                                                </div>
-                                                                <span className="text-sm font-medium text-gray-900">{log.user_name}</span>
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                    {!isMobile && (
-                                                        <td className="px-4 py-2.5 whitespace-nowrap">
-                                                            {(() => {
-                                                                const modelInfo = getModelLabel(log.model_type);
-                                                                return (
-                                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${modelInfo.bg} ${modelInfo.text}`}>
-                                                                        <i className={`fas ${modelInfo.icon}`}></i>
-                                                                        {modelInfo.label}
-                                                                    </span>
-                                                                );
-                                                            })()}
-                                                        </td>
-                                                    )}
                                                     <td className="px-4 py-2.5 whitespace-nowrap">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isMobile ? 'text-[9px]' : 'text-xs'} font-medium ${badge.bg} ${badge.text}`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                                <i className="fas fa-user text-green-600 text-sm"></i>
+                                                            </div>
+                                                            <span className="text-sm font-medium text-gray-900">{log.user_name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2.5 whitespace-nowrap">
+                                                        {(() => {
+                                                            const modelInfo = getModelLabel(log.model_type);
+                                                            return (
+                                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${modelInfo.bg} ${modelInfo.text}`}>
+                                                                    <i className={`fas ${modelInfo.icon}`}></i>
+                                                                    {modelInfo.label}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 whitespace-nowrap">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
                                                             <i className={`fas ${badge.icon}`}></i>
                                                             {log.action_label}
                                                         </span>
                                                     </td>
-                                                    {!isMobile && (
-                                                        <td className="px-4 py-2.5">
-                                                            <p className="text-sm text-gray-700 max-w-xs truncate" title={log.description}>
-                                                                {log.description}
-                                                            </p>
-                                                        </td>
-                                                    )}
+                                                    <td className="px-4 py-2.5">
+                                                        <p className="text-sm text-gray-700 max-w-xs truncate" title={log.description}>
+                                                            {log.description}
+                                                        </p>
+                                                    </td>
                                                     <td className="px-4 py-2.5 text-center">
                                                         <div className="flex justify-center gap-2">
                                                             <button
                                                                 onClick={() => handleViewDetail(log)}
-                                                                className={`${isMobile ? 'p-1' : 'p-2'} text-blue-600 hover:bg-blue-50 rounded-lg transition-colors`}
+                                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                                 title="Lihat Detail"
                                                             >
-                                                                <i className={`fas fa-eye ${isMobile ? 'text-[10px]' : ''}`}></i>
+                                                                <i className="fas fa-eye"></i>
                                                             </button>
                                                             {log.can_restore && (
                                                                 <button
                                                                     onClick={() => handleRestore(log)}
-                                                                    className={`${isMobile ? 'p-1' : 'p-2'} text-purple-600 hover:bg-purple-50 rounded-lg transition-colors`}
+                                                                    className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                                                                     title="Restore"
                                                                 >
-                                                                    <i className={`fas fa-undo ${isMobile ? 'text-[10px]' : ''}`}></i>
+                                                                    <i className="fas fa-undo"></i>
                                                                 </button>
                                                             )}
                                                         </div>
                                                     </td>
                                                 </tr>
-                                                {isMobile && expandedRows.has(idx) && (
-                                                    <tr className="bg-gray-50/50 border-b border-gray-100">
-                                                        <td colSpan="4" className="p-0">
-                                                            <div className="mobile-expand-grid">
-                                                                <div className="expand-item"><span className="expand-label">User</span><span className="expand-value">{log.user_name}</span></div>
-                                                                <div className="expand-item"><span className="expand-label">Objek</span><span className="expand-value">{(() => { const m = getModelLabel(log.model_type); return m.label; })()}</span></div>
-                                                                <div className="expand-item"><span className="expand-label">Detail</span><span className="expand-value text-[10px]">{log.description || '-'}</span></div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
                         {/* Pagination */}
                         {pagination.last_page > 1 && (
-                            <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
-                                <p className="text-sm text-gray-500">
-                                    Menampilkan {logs.length} dari {pagination.total} aktivitas
+                            <div className={`${isMobile ? 'px-3 py-2' : 'px-4 py-2.5'} border-t border-gray-100 flex items-center justify-between`}>
+                                <p className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-gray-500`}>
+                                    {isMobile ? `${logs.length}/${pagination.total}` : `Menampilkan ${logs.length} dari ${pagination.total} aktivitas`}
                                 </p>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1.5 items-center">
                                     <button
                                         onClick={() => handleFilterChange('page', pagination.current_page - 1)}
                                         disabled={pagination.current_page === 1}
-                                        className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                                        className={`${isMobile ? 'px-2 py-1' : 'px-3 py-1'} border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50`}
                                     >
-                                        <i className="fas fa-chevron-left"></i>
+                                        <i className={`fas fa-chevron-left ${isMobile ? 'text-[10px]' : ''}`}></i>
                                     </button>
-                                    <span className="px-3 py-1 text-sm text-gray-600">
-                                        {pagination.current_page} / {pagination.last_page}
+                                    <span className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1 text-sm'} text-gray-600`}>
+                                        {pagination.current_page}/{pagination.last_page}
                                     </span>
                                     <button
                                         onClick={() => handleFilterChange('page', pagination.current_page + 1)}
                                         disabled={pagination.current_page === pagination.last_page}
-                                        className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                                        className={`${isMobile ? 'px-2 py-1' : 'px-3 py-1'} border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50`}
                                     >
-                                        <i className="fas fa-chevron-right"></i>
+                                        <i className={`fas fa-chevron-right ${isMobile ? 'text-[10px]' : ''}`}></i>
                                     </button>
                                 </div>
                             </div>

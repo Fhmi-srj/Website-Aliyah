@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\JadwalController;
 use App\Http\Controllers\Api\Admin\KegiatanController;
 use App\Http\Controllers\Api\Admin\EkskulController;
 use App\Http\Controllers\Api\Admin\RapatController;
+use App\Http\Controllers\Api\Admin\SupervisiController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\WhatsappController;
@@ -69,6 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('ekskul', EkskulController::class);
     Route::post('rapat/bulk-delete', [RapatController::class, 'bulkDelete']);
     Route::apiResource('rapat', RapatController::class);
+    Route::post('supervisi/bulk-delete', [SupervisiController::class, 'bulkDelete']);
+    Route::get('supervisi/{supervisi}/print', [SupervisiController::class, 'print']);
+
+    Route::post('supervisi/{supervisi}/submit-hasil', [SupervisiController::class, 'submitHasil']);
+    Route::apiResource('supervisi', SupervisiController::class);
     Route::apiResource('jam-pelajaran', \App\Http\Controllers\Api\Admin\JamPelajaranController::class);
     Route::apiResource('kalender', \App\Http\Controllers\Api\Admin\KalenderController::class);
     Route::post('kalender/bulk-delete', [\App\Http\Controllers\Api\Admin\KalenderController::class, 'bulkDelete']);
@@ -132,13 +138,64 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/users-list', [\App\Http\Controllers\Api\Admin\RoleController::class, 'getAllUsers']);
         Route::get('/{id}', [\App\Http\Controllers\Api\Admin\RoleController::class, 'show']);
         Route::put('/{id}', [\App\Http\Controllers\Api\Admin\RoleController::class, 'update']);
+        Route::put('/{id}/pages', [\App\Http\Controllers\Api\Admin\RoleController::class, 'updatePages']);
         Route::delete('/{id}', [\App\Http\Controllers\Api\Admin\RoleController::class, 'destroy']);
         Route::get('/{id}/users', [\App\Http\Controllers\Api\Admin\RoleController::class, 'getUsers']);
         Route::post('/assign', [\App\Http\Controllers\Api\Admin\RoleController::class, 'assignToUser']);
         Route::post('/remove', [\App\Http\Controllers\Api\Admin\RoleController::class, 'removeFromUser']);
         Route::post('/users/{userId}/sync', [\App\Http\Controllers\Api\Admin\RoleController::class, 'syncUserRoles']);
     });
+
+    // Transaksi Routes — Tagihan
+    Route::apiResource('tagihan', \App\Http\Controllers\Api\Admin\TagihanController::class);
+    Route::get('tagihan-siswa-grid', [\App\Http\Controllers\Api\Admin\TagihanController::class, 'siswaGrid']);
+    Route::post('tagihan/assign-siswa', [\App\Http\Controllers\Api\Admin\TagihanController::class, 'assignSiswa']);
+    Route::post('tagihan/bulk-nominal', [\App\Http\Controllers\Api\Admin\TagihanController::class, 'bulkNominal']);
+    Route::get('tagihan/{id}/export-pdf', [\App\Http\Controllers\Api\Admin\TagihanController::class, 'exportPdf']);
+
+    // Transaksi Routes — Pembayaran
+    Route::post('pembayaran', [\App\Http\Controllers\Api\Admin\PembayaranController::class, 'store']);
+    Route::get('pembayaran/siswa/{siswaId}', [\App\Http\Controllers\Api\Admin\PembayaranController::class, 'historySiswa']);
+    Route::get('pembayaran/search', [\App\Http\Controllers\Api\Admin\PembayaranController::class, 'searchSiswa']);
+    Route::delete('pembayaran/{id}', [\App\Http\Controllers\Api\Admin\PembayaranController::class, 'destroy']);
+    Route::put('pembayaran/{id}', [\App\Http\Controllers\Api\Admin\PembayaranController::class, 'update']);
+
+    Route::apiResource('pemasukan', \App\Http\Controllers\Api\Admin\PemasukanController::class);
+    Route::get('pemasukan-export-pdf', [\App\Http\Controllers\Api\Admin\PemasukanController::class, 'exportPdf']);
+    Route::get('pemasukan-export-excel', [\App\Http\Controllers\Api\Admin\PemasukanController::class, 'exportExcel']);
+
+    Route::apiResource('pengeluaran', \App\Http\Controllers\Api\Admin\PengeluaranController::class);
+    Route::get('pengeluaran-export-pdf', [\App\Http\Controllers\Api\Admin\PengeluaranController::class, 'exportPdf']);
+    Route::get('pengeluaran-export-excel', [\App\Http\Controllers\Api\Admin\PengeluaranController::class, 'exportExcel']);
+
+    Route::get('transaksi-kategori', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'index']);
+    Route::post('transaksi-kategori', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'store']);
+    Route::put('transaksi-kategori/{id}', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'update']);
+    Route::delete('transaksi-kategori/{id}', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'destroy']);
+
+    // Table PDF Export Routes
+    Route::prefix('export-pdf')->group(function () {
+        Route::get('guru', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportGuru']);
+        Route::get('siswa', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportSiswa']);
+        Route::get('kelas', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportKelas']);
+        Route::get('mapel', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportMapel']);
+        Route::get('jadwal', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportJadwal']);
+        Route::get('jam-pelajaran', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportJamPelajaran']);
+        Route::get('kalender', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportKalender']);
+        Route::get('kegiatan', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportKegiatan']);
+        Route::get('ekskul', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportEkskul']);
+        Route::get('rapat', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportRapat']);
+        Route::get('supervisi', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportSupervisi']);
+        Route::get('alumni', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportAlumni']);
+        Route::get('surat-keluar', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportSuratKeluar']);
+        Route::get('surat-masuk', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportSuratMasuk']);
+        Route::get('absensi-siswa', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportAbsensiSiswa']);
+        Route::get('pemasukan', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportPemasukan']);
+        Route::get('pengeluaran', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportPengeluaran']);
+        Route::get('tagihan', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportTagihan']);
+    });
 });
+
 
 // Guru Panel Routes (for guru role)
 Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
@@ -191,6 +248,9 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
 
     Route::get('jurnal-kelas/list', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'getKelasList']);
     Route::get('wali-kelas-info', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'waliKelasInfo']);
+
+    // Supervisi
+    Route::get('supervisi', [\App\Http\Controllers\Api\Guru\GuruSupervisiController::class, 'index']);
 });
 
 // Print Routes - separate group with token_auth middleware
@@ -201,5 +261,10 @@ Route::prefix('guru-panel')->middleware('token_auth')->group(function () {
     Route::get('print/hasil-kegiatan/{absensiId}', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'hasilKegiatan']);
     Route::get('print/hasil-kegiatan-bulk', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'hasilKegiatanBulk']);
     Route::get('print/profil', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'profilGuru']);
+});
+
+// Admin Print Routes - separate group with token_auth middleware
+Route::middleware('token_auth')->group(function () {
+    Route::get('supervisi/{supervisi}/print-supervisi', [\App\Http\Controllers\Api\Admin\SupervisiController::class, 'printSupervisi']);
 });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE } from '../../config/api';
+import { hasAdminAccess } from '../../config/roleConfig';
 import logoImage from '../../../images/logo.png';
 
 function Login() {
@@ -55,8 +56,13 @@ function Login() {
         const result = await login(username, password, remember, parseInt(tahunAjaranId));
 
         if (result.success) {
-            // Always redirect to dashboard after login
-            navigate('/dashboard', { replace: true });
+            // Redirect based on user's default role (set by AuthContext during login)
+            const activeRole = localStorage.getItem('active_role') || 'guru';
+            if (hasAdminAccess(activeRole)) {
+                navigate('/dashboard', { replace: true });
+            } else {
+                navigate('/guru', { replace: true });
+            }
         } else {
             setError(result.message);
         }
@@ -216,49 +222,122 @@ function Login() {
                             <span className="text-sm font-medium">Quick Login (Testing Only)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
+                            {/* Super Admin */}
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setUsername('admin');
-                                    setPassword('password');
-                                }}
-                                className="py-2 px-3 bg-green-700 hover:bg-green-800 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                onClick={() => { setUsername('admin'); setPassword('password'); }}
+                                className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
-                                <i className="fas fa-user-shield"></i>
-                                <span>Admin</span>
+                                <i className="fas fa-crown"></i>
+                                <span>Super Admin</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setUsername('akromadabi');
-                                    setPassword('password');
-                                }}
-                                className="py-2 px-3 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                onClick={() => { setUsername('ariefarfan'); setPassword('password'); }}
+                                className="py-2 px-3 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
-                                <i className="fas fa-chalkboard-teacher"></i>
-                                <span>Guru (Akrom)</span>
+                                <i className="fas fa-crown"></i>
+                                <span>SA (Arief)</span>
                             </button>
+
+                            {/* Kepala Madrasah */}
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setUsername('adibkaromi');
-                                    setPassword('password');
-                                }}
-                                className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                                onClick={() => { setUsername('akromadabi'); setPassword('password'); }}
+                                className="py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 col-span-2"
                             >
                                 <i className="fas fa-user-tie"></i>
+                                <span>Kepala Madrasah (Akrom)</span>
+                            </button>
+
+                            {/* Waka Kurikulum */}
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('dewi'); setPassword('password'); }}
+                                className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-book"></i>
+                                <span>Waka Kurikulum (Dewi)</span>
+                            </button>
+
+                            {/* Waka Kesiswaan */}
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('rinomukti'); setPassword('password'); }}
+                                className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-users"></i>
+                                <span>Waka Kesiswaan (Rino)</span>
+                            </button>
+
+                            {/* Wali Kelas */}
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('fathina'); setPassword('password'); }}
+                                className="py-2 px-3 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-house-user"></i>
+                                <span>Wali X (Fathina)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('rinomukti'); setPassword('password'); }}
+                                className="py-2 px-3 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-house-user"></i>
+                                <span>Wali XI (Rino)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('akromadabi'); setPassword('password'); }}
+                                className="py-2 px-3 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-house-user"></i>
+                                <span>Wali XII (Akrom)</span>
+                            </button>
+
+                            {/* Guru */}
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('adibkaromi'); setPassword('password'); }}
+                                className="py-2 px-3 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-chalkboard-teacher"></i>
                                 <span>Guru (Adib)</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setUsername('fathina');
-                                    setPassword('password');
-                                }}
+                                onClick={() => { setUsername('zaenalabidin'); setPassword('password'); }}
+                                className="py-2 px-3 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-chalkboard-teacher"></i>
+                                <span>Guru (Zaenal)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('sirotnur'); setPassword('password'); }}
+                                className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
+                            >
+                                <i className="fas fa-chalkboard-teacher"></i>
+                                <span>Guru (Ihdisyiroth)</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('maafi'); setPassword('password'); }}
                                 className="py-2 px-3 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1"
                             >
-                                <i className="fas fa-female"></i>
-                                <span>Guru (Dewi)</span>
+                                <i className="fas fa-chalkboard-teacher"></i>
+                                <span>Guru (Maafi)</span>
+                            </button>
+
+                            {/* Tata Usaha */}
+                            <button
+                                type="button"
+                                onClick={() => { setUsername('ariefarfan'); setPassword('password'); }}
+                                className="py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1 col-span-2"
+                            >
+                                <i className="fas fa-clipboard"></i>
+                                <span>Tata Usaha (Arief)</span>
                             </button>
                         </div>
                         <p className="text-[10px] text-yellow-600 mt-2 text-center">

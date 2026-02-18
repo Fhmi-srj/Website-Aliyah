@@ -234,6 +234,30 @@ function ManajemenKelas() {
         e.target.value = '';
     };
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const params = new URLSearchParams();
+            if (tahunAjaranId) params.append('tahun_ajaran_id', tahunAjaranId);
+            const url = `${API_BASE}/export-pdf/kelas${params.toString() ? '?' + params.toString() : ''}`;
+            const response = await authFetch(url);
+            if (!response.ok) throw new Error('Gagal mengunduh PDF');
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Data_Kelas_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengunduh PDF', timer: 2000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     // Export Excel
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => ({
@@ -433,6 +457,10 @@ function ManajemenKelas() {
                     </div>
                     <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls" className="hidden" />
+                        <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button" title="Download PDF">
+                            <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                            <span>PDF</span>
+                        </button>
                         <button onClick={() => fileInputRef.current?.click()} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
                             <i className="fas fa-file-import"></i>
                             <span>Import</span>

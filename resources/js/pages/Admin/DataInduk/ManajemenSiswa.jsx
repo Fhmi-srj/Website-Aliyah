@@ -320,6 +320,30 @@ function ManajemenSiswa() {
         e.target.value = '';
     };
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const params = new URLSearchParams();
+            if (tahunAjaranId) params.append('tahun_ajaran_id', tahunAjaranId);
+            const url = `${API_BASE}/export-pdf/siswa${params.toString() ? '?' + params.toString() : ''}`;
+            const response = await authFetch(url);
+            if (!response.ok) throw new Error('Gagal mengunduh PDF');
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Data_Siswa_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengunduh PDF', timer: 2000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     // Export Excel
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => ({
@@ -494,17 +518,44 @@ function ManajemenSiswa() {
             {/* Controls */}
             <div className={`${isMobile ? 'mobile-sticky-header' : ''}`}>
                 <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100'}`}>
-                    <div className={`${isMobile ? 'mobile-search-wrap' : 'flex items-center w-full md:w-[400px]'} relative group`}>
-                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors ${isMobile ? 'text-[10px]' : ''}`}></i>
-                        <input
-                            aria-label="Cari siswa"
-                            className={`w-full !pl-8 pr-2 ${isMobile ? 'py-1.5 text-[10px]' : 'py-3 text-sm'} bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm`}
-                            placeholder={isMobile ? 'Cari...' : 'Cari nama, NIS, atau kelas...'}
-                            type="search"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
+                    {isMobile ? (
+                        <div className="flex gap-1.5 w-full">
+                            <div className="relative group" style={{ width: '40%' }}>
+                                <i className="fas fa-filter absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors text-[10px]"></i>
+                                <select
+                                    value={filterKelas}
+                                    onChange={(e) => setFilterKelas(e.target.value)}
+                                    className="w-full !pl-7 pr-2 py-1.5 text-[10px] bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-gray-600 shadow-sm appearance-none font-bold"
+                                >
+                                    <option value="">Semua Kelas</option>
+                                    {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
+                                </select>
+                            </div>
+                            <div className="relative group" style={{ width: '60%' }}>
+                                <i className="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors text-[10px]"></i>
+                                <input
+                                    aria-label="Cari siswa"
+                                    className="w-full !pl-7 pr-2 py-1.5 text-[10px] bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
+                                    placeholder="Cari nama siswa..."
+                                    type="search"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center w-full md:w-[400px] relative group">
+                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                            <input
+                                aria-label="Cari siswa"
+                                className="w-full !pl-8 pr-2 py-3 text-sm bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
+                                placeholder="Cari nama, NIS, atau kelas..."
+                                type="search"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                    )}
                     <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls" className="hidden" />
                         {selectedItems.size > 0 && (
@@ -513,6 +564,10 @@ function ManajemenSiswa() {
                                 <span>{isMobile ? selectedItems.size : `Hapus (${selectedItems.size})`}</span>
                             </button>
                         )}
+                        <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button" title="Download PDF">
+                            <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                            <span>PDF</span>
+                        </button>
                         <button onClick={() => fileInputRef.current?.click()} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
                             <i className="fas fa-file-import"></i>
                             <span>{isMobile ? 'Import' : 'Import'}</span>

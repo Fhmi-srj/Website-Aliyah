@@ -256,6 +256,27 @@ function ManajemenRapat() {
         }
     };
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const response = await authFetch(`${API_BASE}/export-pdf/rapat`);
+            if (!response.ok) throw new Error('Gagal mengunduh PDF');
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Rapat_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengunduh PDF', timer: 2000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => ({
             'No': idx + 1,
@@ -487,6 +508,10 @@ function ManajemenRapat() {
                                 <span>({selectedItems.size})</span>
                             </button>
                         )}
+                        <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button" title="Download PDF">
+                            <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                            <span>PDF</span>
+                        </button>
                         <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
                             <i className="fas fa-file-export"></i>
                             <span>Export</span>

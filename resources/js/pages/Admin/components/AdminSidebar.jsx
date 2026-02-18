@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
+import { canAccessAdminPage, getRoleInfo } from '../../../config/roleConfig';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
 
@@ -30,7 +31,14 @@ const menuItems = [
             { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
             { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
             { id: 'surat', label: 'Surat Menyurat', path: '/data-induk/surat', icon: 'fa-envelope' },
+            { id: 'supervisi', label: 'Supervisi', path: '/data-induk/supervisi', icon: 'fa-clipboard-check' },
         ],
+    },
+    {
+        id: 'transaksi',
+        label: 'Transaksi',
+        icon: 'fa-money-bill-wave',
+        path: '/transaksi',
     },
     {
         id: 'manajemen-role',
@@ -82,10 +90,36 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
     const location = useLocation();
     const navigate = useNavigate();
     // Use AuthContext tahunAjaran with fallback to TahunAjaranContext
-    const { logout, tahunAjaran: authTahunAjaran } = useAuth();
+    const { logout, tahunAjaran: authTahunAjaran, activeRole, switchRole } = useAuth();
     const { activeTahunAjaran } = useTahunAjaran();
     const tahunAjaran = authTahunAjaran || activeTahunAjaran;
     const [expandedMenus, setExpandedMenus] = useState(['data-induk']);
+
+    const currentRoleInfo = getRoleInfo(activeRole);
+    const isSuperadmin = activeRole === 'superadmin';
+
+    // Filter menu items based on active role
+    const filteredMenuItems = useMemo(() => {
+        if (isSuperadmin) return menuItems;
+
+        return menuItems.reduce((acc, item) => {
+            if (item.children) {
+                // Filter children based on role access
+                const allowedChildren = item.children.filter(child =>
+                    canAccessAdminPage(activeRole, child.path)
+                );
+                if (allowedChildren.length > 0) {
+                    acc.push({ ...item, children: allowedChildren });
+                }
+            } else {
+                // Check if top-level item is accessible
+                if (canAccessAdminPage(activeRole, item.path)) {
+                    acc.push(item);
+                }
+            }
+            return acc;
+        }, []);
+    }, [activeRole, isSuperadmin]);
 
     const toggleMenu = (menuId) => {
         setExpandedMenus(prev =>
@@ -165,9 +199,29 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                     )}
                 </div>
 
-                {/* Navigation */}
+                {/* Role Badge - show which role is active */}
+                {!isSuperadmin && !isCollapsed && (
+                    <div className="mb-4 flex-shrink-0">
+                        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-${currentRoleInfo.color}-50 border border-${currentRoleInfo.color}-200`}>
+                            <i className={`fas ${currentRoleInfo.icon} text-${currentRoleInfo.color}-500 text-sm`}></i>
+                            <span className={`text-xs font-semibold text-${currentRoleInfo.color}-700 flex-1`}>{currentRoleInfo.label}</span>
+                        </div>
+                    </div>
+                )}
+                {!isSuperadmin && isCollapsed && (
+                    <div className="mb-4 flex-shrink-0 flex justify-center">
+                        <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center bg-${currentRoleInfo.color}-50 text-${currentRoleInfo.color}-500`}
+                            title={currentRoleInfo.label}
+                        >
+                            <i className={`fas ${currentRoleInfo.icon} text-sm`}></i>
+                        </div>
+                    </div>
+                )}
+
+
                 <nav className="flex flex-col space-y-1 text-gray-500 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                    {menuItems.map(item => (
+                    {filteredMenuItems.map(item => (
                         <div key={item.id} className="relative">
                             {item.children ? (
                                 // Parent menu with children
@@ -205,7 +259,7 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
                                         <div
                                             className={`
                                             overflow-hidden transition-all duration-300 ease-in-out
-                                            ${expandedMenus.includes(item.id) ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}
+                                            ${expandedMenus.includes(item.id) ? 'max-h-[800px] opacity-100 mt-1' : 'max-h-0 opacity-0'}
                                         `}
                                         >
                                             <div className="ml-10 space-y-1 border-l-2 border-gray-100 dark:border-dark-border pl-4 py-1">

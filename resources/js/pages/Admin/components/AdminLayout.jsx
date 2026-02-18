@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import AdminSidebar from './AdminSidebar';
+import RoleSwitcher from '../../../components/RoleSwitcher';
 import { API_BASE } from '../../../config/api';
+import { canAccessAdminPage, getRoleInfo } from '../../../config/roleConfig';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
 
@@ -21,7 +23,9 @@ function AdminLayout({ children }) {
 
     const [settings, setSettings] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const { user, logout, tahunAjaran } = useAuth();
+    const { user, logout, tahunAjaran, activeRole, switchRole } = useAuth();
+    const isSuperadmin = activeRole === 'superadmin';
+    const currentRoleInfo = getRoleInfo(activeRole);
 
     const toggleCollapse = () => {
         setIsCollapsed(!isCollapsed);
@@ -114,8 +118,9 @@ function AdminLayout({ children }) {
     ];
 
     // All menu items for dropup
-    const menuItems = [
+    const allMenuItems = [
         { id: 'siswa', label: 'Manajemen Siswa', path: '/data-induk/siswa', icon: 'fa-user-graduate' },
+        { id: 'absensi-siswa', label: 'Absensi Siswa', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
         { id: 'alumni', label: 'Data Alumni', path: '/data-induk/alumni', icon: 'fa-graduation-cap' },
         { id: 'guru', label: 'Manajemen Guru', path: '/data-induk/guru', icon: 'fa-chalkboard-teacher' },
         { id: 'kelas', label: 'Manajemen Kelas', path: '/data-induk/kelas', icon: 'fa-door-open' },
@@ -126,10 +131,19 @@ function AdminLayout({ children }) {
         { id: 'ekskul', label: 'Manajemen Ekskul', path: '/data-induk/ekskul', icon: 'fa-futbol' },
         { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
         { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
-        { id: 'absensi-siswa', label: 'Absensi Siswa', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
+        { id: 'surat', label: 'Surat Menyurat', path: '/data-induk/surat', icon: 'fa-envelope' },
+        { id: 'supervisi', label: 'Supervisi', path: '/data-induk/supervisi', icon: 'fa-clipboard-check' },
+        { id: 'transaksi', label: 'Transaksi', path: '/transaksi', icon: 'fa-money-bill-wave' },
         { id: 'role', label: 'Manajemen Role', path: '/manajemen-role', icon: 'fa-user-shield' },
+        { id: 'log-aktivitas', label: 'Log Aktivitas', path: '/log-aktivitas', icon: 'fa-history' },
         { id: 'profil', label: 'Profil Saya', path: '/profil', icon: 'fa-user' },
     ];
+
+    // Filter menu items based on active role
+    const menuItems = useMemo(() => {
+        if (isSuperadmin) return allMenuItems;
+        return allMenuItems.filter(item => canAccessAdminPage(activeRole, item.path));
+    }, [activeRole, isSuperadmin]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f8f9fe] dark:bg-dark-bg transition-colors duration-300">
@@ -183,7 +197,7 @@ function AdminLayout({ children }) {
                                         </div>
                                         <div className="hidden lg:block text-left mr-2">
                                             <p className="text-xs font-bold text-gray-800 dark:text-dark-text leading-tight">{user?.nama?.split(' ')[0] || 'Admin'}</p>
-                                            <p className="text-[10px] text-gray-500 dark:text-dark-muted font-medium tracking-wide">Admin</p>
+                                            <p className={`text-[10px] font-medium tracking-wide ${isSuperadmin ? 'text-gray-500 dark:text-dark-muted' : `text-${currentRoleInfo.color}-600`}`}>{currentRoleInfo.label}</p>
                                         </div>
                                     </div>
 
@@ -201,6 +215,14 @@ function AdminLayout({ children }) {
                                                 <i className="fas fa-user text-primary text-xs"></i>
                                                 <span className="text-xs font-medium text-gray-700 dark:text-dark-text">Profil Saya</span>
                                             </button>
+                                            {/* Role Switcher - for users with multiple roles */}
+                                            <div className="border-t border-gray-50 dark:border-dark-border">
+                                                <RoleSwitcher
+                                                    onSwitch={() => setProfileMenuOpen(false)}
+                                                    compact={true}
+                                                />
+                                            </div>
+
                                             <div className="px-4 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <i className="fas fa-calendar-alt text-emerald-500 text-xs"></i>

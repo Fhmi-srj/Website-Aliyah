@@ -110,6 +110,7 @@ class RoleController extends Controller
                 'display_name' => $request->display_name,
                 'description' => $request->description,
                 'level' => $request->level ?? 0,
+                'allowed_pages' => $request->allowed_pages ?? [],
             ]);
 
             return response()->json([
@@ -157,12 +158,18 @@ class RoleController extends Controller
                 ], 422);
             }
 
-            $role->update([
+            $updateData = [
                 'name' => $request->name,
                 'display_name' => $request->display_name,
                 'description' => $request->description,
                 'level' => $request->level ?? $role->level,
-            ]);
+            ];
+
+            if ($request->has('allowed_pages')) {
+                $updateData['allowed_pages'] = $request->allowed_pages;
+            }
+
+            $role->update($updateData);
 
             return response()->json([
                 'success' => true,
@@ -173,6 +180,51 @@ class RoleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal memperbarui role: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update allowed pages for a role
+     */
+    public function updatePages(Request $request, $id)
+    {
+        try {
+            $role = Role::findOrFail($id);
+
+            // Prevent editing superadmin pages
+            if ($role->name === 'superadmin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat mengubah akses halaman superadmin'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'allowed_pages' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $role->update([
+                'allowed_pages' => $request->allowed_pages,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Akses halaman berhasil diperbarui',
+                'data' => $role
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui akses halaman: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -148,6 +148,7 @@ class AuthController extends Controller
                 'id' => $r->id,
                 'name' => $r->name,
                 'display_name' => $r->display_name,
+                'allowed_pages' => $r->allowed_pages,
             ])->toArray(),
         ];
 
@@ -207,6 +208,7 @@ class AuthController extends Controller
                     'id' => $r->id,
                     'name' => $r->name,
                     'display_name' => $r->display_name,
+                    'allowed_pages' => $r->allowed_pages,
                 ])->toArray(),
                 'is_active' => $user->is_active,
                 'last_login_at' => $user->last_login_at,

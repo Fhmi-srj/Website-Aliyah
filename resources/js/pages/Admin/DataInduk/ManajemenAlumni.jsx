@@ -4,6 +4,7 @@ import { API_BASE, authFetch } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 
 const ITEMS_PER_PAGE_DEFAULT = 10;
@@ -125,6 +126,27 @@ function ManajemenAlumni() {
         setCurrentPage(1);
     }, [search, filterTahunLulus]);
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const response = await authFetch(`${API_BASE}/export-pdf/alumni`);
+            if (!response.ok) throw new Error('Gagal mengunduh PDF');
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Alumni_${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: 'Gagal mengunduh PDF', timer: 2000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     const handleExport = () => {
         const exportData = filteredData.map((item, idx) => {
             const lulusRecord = item.kelas_history?.find(h => h.status === 'Lulus');
@@ -209,6 +231,10 @@ function ManajemenAlumni() {
                         />
                     </div>
                     <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
+                        <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-3 text-[10px] rounded-xl'}`} type="button" title="Download PDF">
+                            <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                            <span>PDF</span>
+                        </button>
                         <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-3 text-[10px] rounded-xl'}`}>
                             <i className="fas fa-file-export"></i>
                             <span>Export</span>

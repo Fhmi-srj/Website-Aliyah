@@ -303,6 +303,47 @@ function ManajemenMapel() {
         e.target.value = '';
     };
 
+    // Export PDF
+    const [pdfLoading, setPdfLoading] = useState(false);
+    const handleExportPdf = async () => {
+        try {
+            setPdfLoading(true);
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_BASE}/export-pdf/mapel`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/pdf',
+                },
+            });
+            console.log('PDF Response status:', response.status);
+            console.log('PDF Response type:', response.headers.get('content-type'));
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('PDF Error response:', text);
+                throw new Error('Gagal mengunduh PDF');
+            }
+            const blob = await response.blob();
+            console.log('PDF Blob size:', blob.size, 'type:', blob.type);
+            if (blob.size === 0) {
+                throw new Error('PDF kosong (0 bytes)');
+            }
+            const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Data_Mapel_${new Date().toISOString().split('T')[0]}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+        } catch (error) {
+            console.error('Error export PDF:', error);
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: error.message || 'Gagal mengunduh PDF', timer: 3000, showConfirmButton: false });
+        } finally {
+            setPdfLoading(false);
+        }
+    };
+
     // Export Excel
     const handleExportExcel = () => {
         const exportData = filteredData.map((item, idx) => ({
@@ -393,6 +434,10 @@ function ManajemenMapel() {
                     </div>
                     <div className={`${isMobile ? 'mobile-btn-group' : 'flex gap-2 flex-wrap md:flex-nowrap items-center'}`}>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls" className="hidden" />
+                        <button onClick={handleExportPdf} disabled={pdfLoading} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button" title="Download PDF">
+                            <i className={`fas ${pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
+                            <span>PDF</span>
+                        </button>
                         <button onClick={() => fileInputRef.current?.click()} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} type="button">
                             <i className="fas fa-file-import"></i>
                             <span>Import</span>

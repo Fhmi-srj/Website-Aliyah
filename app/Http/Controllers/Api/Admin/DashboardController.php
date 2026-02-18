@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Siswa;
 use App\Models\SiswaKelas;
 use App\Models\Guru;
+use App\Models\Role;
 use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\Jadwal;
@@ -94,15 +95,39 @@ class DashboardController extends Controller
                     'count' => $k->siswa_count
                 ]);
 
-            // Guru per jabatan
-            $guruPerJabatan = Guru::where('status', 'Aktif')
-                ->selectRaw('jabatan, COUNT(*) as count')
-                ->groupBy('jabatan')
-                ->get()
-                ->map(fn($g) => [
-                    'label' => $g->jabatan ?: 'Belum Ada',
-                    'count' => $g->count
-                ]);
+            // Guru per role (via user->roles relationship)
+            $roleLabels = [
+                'superadmin' => 'Super Admin',
+                'kepala_madrasah' => 'Kepala Madrasah',
+                'waka_kurikulum' => 'Waka Kurikulum',
+                'waka_kesiswaan' => 'Waka Kesiswaan',
+                'tata_usaha' => 'Tata Usaha',
+                'wali_kelas' => 'Wali Kelas',
+                'guru' => 'Guru',
+            ];
+
+            $guruPerRole = [];
+            $guruIds = Guru::where('status', 'Aktif')->whereNotNull('user_id')->pluck('user_id')->toArray();
+
+            if (!empty($guruIds)) {
+                $roleCounts = \DB::table('role_user')
+                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                    ->whereIn('role_user.user_id', $guruIds)
+                    ->select('roles.name', \DB::raw('COUNT(*) as count'))
+                    ->groupBy('roles.name')
+                    ->get();
+
+                foreach ($roleCounts as $rc) {
+                    $guruPerRole[] = [
+                        'label' => $roleLabels[$rc->name] ?? ucfirst(str_replace('_', ' ', $rc->name)),
+                        'count' => $rc->count
+                    ];
+                }
+            }
+
+            if (empty($guruPerRole)) {
+                $guruPerRole[] = ['label' => 'Guru', 'count' => Guru::where('status', 'Aktif')->count()];
+            }
 
             // Kegiatan per bulan (last 6 months)
             $kegiatanPerBulan = [];
@@ -131,7 +156,7 @@ class DashboardController extends Controller
                 'success' => true,
                 'data' => [
                     'siswa_per_kelas' => $siswaPerKelas,
-                    'guru_per_jabatan' => $guruPerJabatan,
+                    'guru_per_jabatan' => $guruPerRole,
                     'kegiatan_per_bulan' => $kegiatanPerBulan,
                     'ekskul_per_kategori' => $ekskulPerKategori,
                 ]

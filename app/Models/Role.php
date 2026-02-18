@@ -14,6 +14,11 @@ class Role extends Model
         'display_name',
         'description',
         'level',
+        'allowed_pages',
+    ];
+
+    protected $casts = [
+        'allowed_pages' => 'json',
     ];
 
     /**
@@ -30,6 +35,34 @@ class Role extends Model
     public function isSuperadmin(): bool
     {
         return $this->name === 'superadmin';
+    }
+
+    /**
+     * Check if this role has full access (all pages)
+     */
+    public function hasFullAccess(): bool
+    {
+        return $this->allowed_pages === '*';
+    }
+
+    /**
+     * Check if this role can access a specific admin page
+     */
+    public function canAccessPage(string $path): bool
+    {
+        $pages = $this->allowed_pages;
+
+        if ($pages === '*')
+            return true;
+        if (!is_array($pages))
+            return false;
+
+        foreach ($pages as $p) {
+            if ($path === $p || str_starts_with($path, $p . '/')) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
