@@ -253,25 +253,31 @@ function ManajemenJadwal() {
         } catch (error) { console.error('Error saving:', error); }
     };
 
-    const handleDelete = async (id) => {
-        const result = await Swal.fire({ title: 'Hapus Jadwal?', text: 'Data tidak dapat dikembalikan!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal' });
-        if (result.isConfirmed) {
-            try {
-                const res = await authFetch(`${API_BASE}/jadwal/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
-                if (res.ok) {
-                    fetchData();
-                    Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Jadwal telah dihapus', timer: 1500, showConfirmButton: false });
+    const handleDelete = async (id, force = false) => {
+        if (!force) {
+            const result = await Swal.fire({ title: 'Hapus Jadwal?', text: 'Data tidak dapat dikembalikan!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal' });
+            if (!result.isConfirmed) return;
+        }
+        try {
+            const url = force ? `${API_BASE}/jadwal/${id}?force=true` : `${API_BASE}/jadwal/${id}`;
+            const res = await authFetch(url, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+            if (res.ok) {
+                fetchData();
+                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Jadwal telah dihapus', timer: 1500, showConfirmButton: false });
+            } else {
+                const errData = await res.json().catch(() => null);
+                if (errData?.requires_force) {
+                    const forceResult = await Swal.fire({ title: 'Data Terkait Ditemukan!', html: `<p>${errData.message}</p>`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: '⚠️ Hapus Paksa', cancelButtonText: 'Batal' });
+                    if (forceResult.isConfirmed) handleDelete(id, true);
                 } else {
-                    const errData = await res.json().catch(() => null);
                     Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menghapus data' });
                 }
-            } catch (error) {
-                console.error('Error deleting:', error);
-                Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
             }
+        } catch (error) {
+            console.error('Error deleting:', error);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
         }
     };
-
     const SortableHeader = ({ label, column, filterable, filterOptions, filterValue, setFilterValue }) => (
         <th className="select-none py-2.5 px-2 cursor-pointer whitespace-nowrap group" onClick={() => !filterable && handleSort(column)}>
             <div className="flex items-center gap-1.5">

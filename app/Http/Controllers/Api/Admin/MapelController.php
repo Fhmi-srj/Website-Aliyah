@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mapel;
+use App\Models\Jadwal;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -94,9 +95,21 @@ class MapelController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related jadwal records before deleting.
      */
-    public function destroy(Mapel $mapel): JsonResponse
+    public function destroy(Request $request, Mapel $mapel): JsonResponse
     {
+        $jadwalCount = Jadwal::where('mapel_id', $mapel->id)->count();
+
+        if ($jadwalCount > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Mata Pelajaran ini memiliki {$jadwalCount} data jadwal yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => ['jadwal' => $jadwalCount],
+            ], 409);
+        }
+
         $mapel->delete();
 
         return response()->json([

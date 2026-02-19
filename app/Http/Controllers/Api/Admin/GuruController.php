@@ -7,6 +7,11 @@ use App\Models\Guru;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\ActivityLog;
+use App\Models\Jadwal;
+use App\Models\AbsensiMengajar;
+use App\Models\Kegiatan;
+use App\Models\Rapat;
+use App\Models\Supervisi;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -203,12 +208,31 @@ class GuruController extends Controller
 
     /**
      * Remove the specified resource from storage.
-     * Also deactivates linked user account (doesn't delete to preserve history)
+     * Checks for related records before deleting to prevent cascading data loss.
+     * Use ?force=true to delete even with related records.
      */
-    public function destroy(Guru $guru): JsonResponse
+    public function destroy(Request $request, Guru $guru): JsonResponse
     {
         try {
             DB::beginTransaction();
+
+            // Count related records that would be affected
+            $relatedCounts = $this->countRelatedRecords($guru->id);
+            $totalRelated = array_sum($relatedCounts);
+
+            // If related records exist and force is not set, warn user
+            if ($totalRelated > 0 && !$request->boolean('force')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Guru memiliki data terkait yang akan ikut terhapus. Gunakan opsi "Hapus Paksa" untuk melanjutkan.',
+                    'requires_force' => true,
+                    'related_counts' => $relatedCounts,
+                ], 409);
+            }
+
+            // Clean up JSON references in kegiatan and rapat before deleting
+            $this->cleanupJsonReferences($guru->id);
 
             // Deactivate linked user instead of deleting
             if ($guru->user_id && $guru->user) {
@@ -269,26 +293,63 @@ class GuruController extends Controller
 
     /**
      * Remove multiple resources from storage.
+     * Checks for related records before deleting.
      */
     public function bulkDelete(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'exists:guru,id'
+            'ids.*' => 'exists:guru,id',
+            'force' => 'sometimes|boolean',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Get all users linked to these guru records
+            // Count total related records across all selected guru
+            if (!$request->boolean('force')) {
+                $totalRelated = 0;
+                $summary = [];
+                foreach ($validated['ids'] as $guruId) {
+                    $counts = $this->countRelatedRecords($guruId);
+                    $sum = array_sum($counts);
+                    if ($sum > 0) {
+                        $guru = Guru::find($guruId);
+                        $summary[] = ($guru->nama ?? "ID:$guruId") . " ($sum data terkait)";
+                    }
+                    $totalRelated += $sum;
+                }
+
+                if ($totalRelated > 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Beberapa guru memiliki data terkait yang akan ikut terhapus: ' . implode(', ', array_slice($summary, 0, 5)),
+                        'requires_force' => true,
+                    ], 409);
+                }
+            }
+
             $guruRecords = Guru::whereIn('id', $validated['ids'])->get();
+
+            // Clean up JSON references for each guru
+            foreach ($validated['ids'] as $guruId) {
+                $this->cleanupJsonReferences($guruId);
+            }
+
+            // Deactivate linked user accounts
             $userIds = $guruRecords->pluck('user_id')->filter()->toArray();
+            if (!empty($userIds)) {
+                User::whereIn('id', $userIds)->update(['is_active' => false]);
+            }
+
+            // Log activity
+            foreach ($guruRecords as $guru) {
+                ActivityLog::logDelete($guru, "Menghapus guru (bulk): {$guru->nama}");
+            }
 
             // Delete guru records
             $count = Guru::whereIn('id', $validated['ids'])->delete();
-
-            // Optionally delete linked users (commented out for safety)
-            // User::whereIn('id', $userIds)->delete();
 
             DB::commit();
 
@@ -362,6 +423,44 @@ class GuruController extends Controller
                 'success' => false,
                 'message' => 'Gagal mengupload TTD: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Count related records that would be affected by guru deletion.
+     */
+    private function countRelatedRecords(int $guruId): array
+    {
+        return [
+            'jadwal' => Jadwal::where('guru_id', $guruId)->count(),
+            'absensi_mengajar' => AbsensiMengajar::where('guru_id', $guruId)->count(),
+            'kegiatan_pj' => Kegiatan::where('penanggung_jawab_id', $guruId)->count(),
+            'rapat_pimpinan' => Rapat::where('pimpinan_id', $guruId)->count(),
+            'rapat_sekretaris' => Rapat::where('sekretaris_id', $guruId)->count(),
+            'supervisi' => Supervisi::where('guru_id', $guruId)->orWhere('supervisor_id', $guruId)->count(),
+        ];
+    }
+
+    /**
+     * Clean up JSON references to a guru in kegiatan and rapat tables.
+     * Removes the guru_id from JSON arrays so they don't become stale.
+     */
+    private function cleanupJsonReferences(int $guruId): void
+    {
+        // Clean kegiatan.guru_pendamping
+        $kegiatans = Kegiatan::whereJsonContains('guru_pendamping', $guruId)->get();
+        foreach ($kegiatans as $kegiatan) {
+            $pendamping = $kegiatan->guru_pendamping ?? [];
+            $pendamping = array_values(array_filter($pendamping, fn($id) => (int)$id !== $guruId));
+            $kegiatan->update(['guru_pendamping' => $pendamping]);
+        }
+
+        // Clean rapat.peserta_rapat
+        $rapats = Rapat::whereJsonContains('peserta_rapat', $guruId)->get();
+        foreach ($rapats as $rapat) {
+            $peserta = $rapat->peserta_rapat ?? [];
+            $peserta = array_values(array_filter($peserta, fn($id) => (int)$id !== $guruId));
+            $rapat->update(['peserta_rapat' => $peserta]);
         }
     }
 }

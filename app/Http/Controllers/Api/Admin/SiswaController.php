@@ -8,6 +8,7 @@ use App\Models\SiswaKelas;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class SiswaController extends Controller
 {
@@ -215,9 +216,22 @@ class SiswaController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related records before deleting.
      */
-    public function destroy(Siswa $siswa): JsonResponse
+    public function destroy(Request $request, Siswa $siswa): JsonResponse
     {
+        $relatedCounts = $this->countSiswaRelatedRecords($siswa->id);
+        $totalRelated = array_sum($relatedCounts);
+
+        if ($totalRelated > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Siswa ini memiliki data terkait (kelas, absensi, tagihan) yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => $relatedCounts,
+            ], 409);
+        }
+
         // Log activity before delete
         ActivityLog::logDelete($siswa, "Menghapus siswa: {$siswa->nama}");
 
@@ -231,13 +245,36 @@ class SiswaController extends Controller
 
     /**
      * Remove multiple resources from storage.
+     * Checks for related records before deleting.
      */
     public function bulkDelete(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'exists:siswa,id'
+            'ids.*' => 'exists:siswa,id',
+            'force' => 'sometimes|boolean',
         ]);
+
+        if (!$request->boolean('force')) {
+            $totalRelated = 0;
+            foreach ($validated['ids'] as $siswaId) {
+                $totalRelated += array_sum($this->countSiswaRelatedRecords($siswaId));
+            }
+
+            if ($totalRelated > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Beberapa siswa memiliki data terkait yang akan ikut terhapus. Gunakan opsi "Hapus Paksa" untuk melanjutkan.',
+                    'requires_force' => true,
+                ], 409);
+            }
+        }
+
+        // Log activity
+        $siswaRecords = Siswa::whereIn('id', $validated['ids'])->get();
+        foreach ($siswaRecords as $siswa) {
+            ActivityLog::logDelete($siswa, "Menghapus siswa (bulk): {$siswa->nama}");
+        }
 
         $count = Siswa::whereIn('id', $validated['ids'])->delete();
 
@@ -245,5 +282,17 @@ class SiswaController extends Controller
             'success' => true,
             'message' => "$count siswa berhasil dihapus"
         ]);
+    }
+
+    /**
+     * Count related records for a siswa.
+     */
+    private function countSiswaRelatedRecords(int $siswaId): array
+    {
+        return [
+            'siswa_kelas' => SiswaKelas::where('siswa_id', $siswaId)->count(),
+            'absensi_siswa' => DB::table('absensi_siswa')->where('siswa_id', $siswaId)->count(),
+            'tagihan_siswa' => DB::table('tagihan_siswa')->where('siswa_id', $siswaId)->count(),
+        ];
     }
 }

@@ -216,40 +216,43 @@ function ManajemenMapel() {
         }
     };
 
-    const handleDelete = async (id) => {
-        const result = await Swal.fire({
-            title: 'Yakin ingin menghapus?',
-            text: 'Data yang dihapus tidak dapat dikembalikan!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        });
-
-        if (!result.isConfirmed) return;
+    const handleDelete = async (id, force = false) => {
+        if (!force) {
+            const result = await Swal.fire({
+                title: 'Yakin ingin menghapus?',
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            });
+            if (!result.isConfirmed) return;
+        }
 
         try {
-            const response = await authFetch(`${API_BASE}/mapel/${id}`, {
+            const url = force ? `${API_BASE}/mapel/${id}?force=true` : `${API_BASE}/mapel/${id}`;
+            const response = await authFetch(url, {
                 method: 'DELETE',
                 headers: { 'Accept': 'application/json' }
             });
             if (response.ok) {
                 fetchData();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Terhapus!',
-                    text: 'Data mapel berhasil dihapus',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data mapel berhasil dihapus', timer: 1500, showConfirmButton: false });
+            } else {
+                const error = await response.json();
+                if (error.requires_force) {
+                    const forceResult = await Swal.fire({ title: 'Data Terkait Ditemukan!', html: `<p>${error.message}</p>`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: '⚠️ Hapus Paksa', cancelButtonText: 'Batal' });
+                    if (forceResult.isConfirmed) handleDelete(id, true);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal!', text: error.message || 'Terjadi kesalahan' });
+                }
             }
         } catch (error) {
             console.error('Error deleting:', error);
         }
     };
-
     // Import Excel
     const handleFileChange = async (e) => {
         const file = e.target.files[0];

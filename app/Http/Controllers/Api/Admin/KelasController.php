@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\Guru;
 use App\Models\Role;
+use App\Models\Jadwal;
+use App\Models\SiswaKelas;
+use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -177,9 +180,27 @@ class KelasController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related records before deleting.
      */
-    public function destroy(Kelas $kelas): JsonResponse
+    public function destroy(Request $request, Kelas $kelas): JsonResponse
     {
+        // Count related records
+        $relatedCounts = [
+            'siswa' => Siswa::where('kelas_id', $kelas->id)->count(),
+            'siswa_kelas' => SiswaKelas::where('kelas_id', $kelas->id)->count(),
+            'jadwal' => Jadwal::where('kelas_id', $kelas->id)->count(),
+        ];
+        $totalRelated = array_sum($relatedCounts);
+
+        if ($totalRelated > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Kelas ini memiliki data terkait (siswa, jadwal) yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => $relatedCounts,
+            ], 409);
+        }
+
         $oldWaliKelasId = $kelas->wali_kelas_id;
 
         $kelas->delete();

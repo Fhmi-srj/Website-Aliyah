@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Jadwal;
+use App\Models\AbsensiMengajar;
 use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -152,9 +153,21 @@ class JadwalController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related absensi records before deleting.
      */
-    public function destroy(Jadwal $jadwal): JsonResponse
+    public function destroy(Request $request, Jadwal $jadwal): JsonResponse
     {
+        $absensiCount = AbsensiMengajar::where('jadwal_id', $jadwal->id)->count();
+
+        if ($absensiCount > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Jadwal ini memiliki {$absensiCount} data absensi mengajar yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => ['absensi_mengajar' => $absensiCount],
+            ], 409);
+        }
+
         $jadwal->delete();
 
         return response()->json([

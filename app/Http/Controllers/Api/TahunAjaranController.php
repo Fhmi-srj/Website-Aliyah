@@ -79,8 +79,9 @@ class TahunAjaranController extends Controller
 
     /**
      * Delete a tahun ajaran (admin only).
+     * Checks for related records before deleting.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $tahunAjaran = TahunAjaran::findOrFail($id);
 
@@ -92,6 +93,29 @@ class TahunAjaranController extends Controller
                 'message' => 'Tidak dapat menghapus tahun ajaran yang sedang berjalan'
             ], 422);
         }
+
+        // Count related records
+        $relatedCounts = [
+            'jadwal' => \App\Models\Jadwal::where('tahun_ajaran_id', $id)->count(),
+            'kegiatan' => \App\Models\Kegiatan::where('tahun_ajaran_id', $id)->count(),
+            'rapat' => \App\Models\Rapat::where('tahun_ajaran_id', $id)->count(),
+            'kelas' => \App\Models\Kelas::where('tahun_ajaran_id', $id)->count(),
+            'siswa_kelas' => \App\Models\SiswaKelas::where('tahun_ajaran_id', $id)->count(),
+            'user' => \App\Models\User::where('tahun_ajaran_id', $id)->count(),
+        ];
+        $totalRelated = array_sum($relatedCounts);
+
+        if ($totalRelated > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tahun ajaran ini memiliki data terkait yang akan ikut terhapus. Gunakan opsi "Hapus Paksa" untuk melanjutkan.',
+                'requires_force' => true,
+                'related_counts' => $relatedCounts,
+            ], 409);
+        }
+
+        // Nullify user references before deleting
+        \App\Models\User::where('tahun_ajaran_id', $id)->update(['tahun_ajaran_id' => null]);
 
         $tahunAjaran->delete();
 

@@ -196,21 +196,22 @@ function ManajemenGuru() {
         }
     };
 
-    const handleBulkDelete = async () => {
+    const handleBulkDelete = async (force = false) => {
         if (selectedItems.size === 0) return;
 
-        const result = await Swal.fire({
-            title: `Hapus ${selectedItems.size} guru?`,
-            text: 'Data yang dihapus tidak dapat dikembalikan!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus Semua!',
-            cancelButtonText: 'Batal'
-        });
-
-        if (!result.isConfirmed) return;
+        if (!force) {
+            const result = await Swal.fire({
+                title: `Hapus ${selectedItems.size} guru?`,
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus Semua!',
+                cancelButtonText: 'Batal'
+            });
+            if (!result.isConfirmed) return;
+        }
 
         try {
             const response = await authFetch(`${API_BASE}/guru/bulk-delete`, {
@@ -219,7 +220,7 @@ function ManajemenGuru() {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ ids: Array.from(selectedItems) })
+                body: JSON.stringify({ ids: Array.from(selectedItems), force })
             });
 
             if (response.ok) {
@@ -234,13 +235,29 @@ function ManajemenGuru() {
                 });
             } else {
                 const error = await response.json();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: error.message || 'Terjadi kesalahan',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                if (error.requires_force) {
+                    const forceResult = await Swal.fire({
+                        title: 'Data Terkait Ditemukan!',
+                        html: `<p>${error.message}</p>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc2626',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: '⚠️ Hapus Paksa',
+                        cancelButtonText: 'Batal'
+                    });
+                    if (forceResult.isConfirmed) {
+                        handleBulkDelete(true);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: error.message || 'Terjadi kesalahan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
             }
         } catch (error) {
             console.error('Error bulk delete:', error);
@@ -378,7 +395,7 @@ function ManajemenGuru() {
             email: item.email || '',
             sk: item.sk || '',
             jenis_kelamin: item.jenis_kelamin || 'L',
-            tempat_lahir: item.tempat_lahir || '',
+            tempat_lahir: item.tempat_lahir?.split('T')[0] || '',
             tanggal_lahir: item.tanggal_lahir?.split('T')[0] || '',
             alamat: item.alamat || '',
             pendidikan: item.pendidikan || '',
@@ -532,22 +549,24 @@ function ManajemenGuru() {
         }
     };
 
-    const handleDelete = async (id) => {
-        const result = await Swal.fire({
-            title: 'Yakin ingin menghapus?',
-            text: 'Data yang dihapus tidak dapat dikembalikan!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        });
-
-        if (!result.isConfirmed) return;
+    const handleDelete = async (id, force = false) => {
+        if (!force) {
+            const result = await Swal.fire({
+                title: 'Yakin ingin menghapus?',
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            });
+            if (!result.isConfirmed) return;
+        }
 
         try {
-            const response = await authFetch(`${API_BASE}/guru/${id}`, {
+            const url = force ? `${API_BASE}/guru/${id}?force=true` : `${API_BASE}/guru/${id}`;
+            const response = await authFetch(url, {
                 method: 'DELETE',
                 headers: { 'Accept': 'application/json' }
             });
@@ -560,9 +579,41 @@ function ManajemenGuru() {
                     timer: 1500,
                     showConfirmButton: false
                 });
+            } else {
+                const error = await response.json();
+                if (error.requires_force) {
+                    const forceResult = await Swal.fire({
+                        title: 'Data Terkait Ditemukan!',
+                        html: `<p>${error.message}</p>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#dc2626',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: '⚠️ Hapus Paksa',
+                        cancelButtonText: 'Batal'
+                    });
+                    if (forceResult.isConfirmed) {
+                        handleDelete(id, true);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: error.message || 'Terjadi kesalahan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
             }
         } catch (error) {
             console.error('Error deleting:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Gagal menghapus data',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
     };
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Rapat;
+use App\Models\AbsensiRapat;
 use App\Models\TahunAjaran;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
@@ -154,9 +155,21 @@ class RapatController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related absensi records before deleting.
      */
-    public function destroy(Rapat $rapat): JsonResponse
+    public function destroy(Request $request, Rapat $rapat): JsonResponse
     {
+        $absensiCount = AbsensiRapat::where('rapat_id', $rapat->id)->count();
+
+        if ($absensiCount > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Rapat ini memiliki {$absensiCount} data absensi yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => ['absensi_rapat' => $absensiCount],
+            ], 409);
+        }
+
         // Log activity before delete
         ActivityLog::logDelete($rapat, "Menghapus rapat: {$rapat->agenda_rapat}");
 
@@ -170,25 +183,38 @@ class RapatController extends Controller
 
     /**
      * Bulk delete rapat entries.
+     * Checks for related absensi records before deleting.
      */
     public function bulkDelete(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'exists:rapat,id'
+            'ids.*' => 'exists:rapat,id',
+            'force' => 'sometimes|boolean',
         ]);
 
-        $rapats = Rapat::whereIn('id', $request->ids)->get();
+        $absensiCount = AbsensiRapat::whereIn('rapat_id', $validated['ids'])->count();
+
+        if ($absensiCount > 0 && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Beberapa rapat memiliki {$absensiCount} data absensi yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => ['absensi_rapat' => $absensiCount],
+            ], 409);
+        }
+
+        $rapats = Rapat::whereIn('id', $validated['ids'])->get();
 
         foreach ($rapats as $rapat) {
             ActivityLog::logDelete($rapat, "Menghapus rapat (bulk): {$rapat->agenda_rapat}");
         }
 
-        Rapat::whereIn('id', $request->ids)->delete();
+        Rapat::whereIn('id', $validated['ids'])->delete();
 
         return response()->json([
             'success' => true,
-            'message' => count($request->ids) . ' agenda rapat berhasil dihapus'
+            'message' => count($validated['ids']) . ' agenda rapat berhasil dihapus'
         ]);
     }
 }

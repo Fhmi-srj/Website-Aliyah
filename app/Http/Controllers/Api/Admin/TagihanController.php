@@ -76,10 +76,29 @@ class TagihanController extends Controller
 
     /**
      * Delete a tagihan.
+     * Checks for related tagihan_siswa records before deleting.
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         $tagihan = Tagihan::findOrFail($id);
+
+        $tagihanSiswaCount = TagihanSiswa::where('tagihan_id', $id)->count();
+        $pembayaranCount = \App\Models\Pembayaran::whereHas('tagihanSiswa', function ($q) use ($id) {
+            $q->where('tagihan_id', $id);
+        })->count();
+
+        if (($tagihanSiswaCount > 0 || $pembayaranCount > 0) && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false,
+                'message' => "Tagihan ini memiliki {$tagihanSiswaCount} data tagihan siswa dan {$pembayaranCount} data pembayaran yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                'requires_force' => true,
+                'related_counts' => [
+                    'tagihan_siswa' => $tagihanSiswaCount,
+                    'pembayaran' => $pembayaranCount,
+                ],
+            ], 409);
+        }
+
         ActivityLog::logDelete($tagihan, "Menghapus tagihan: {$tagihan->nama}");
         $tagihan->delete();
 

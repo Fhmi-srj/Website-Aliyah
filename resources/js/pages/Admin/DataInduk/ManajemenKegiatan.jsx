@@ -254,49 +254,48 @@ function ManajemenKegiatan() {
         }
     };
 
-    const handleBulkDelete = async () => {
+    const handleBulkDelete = async (force = false) => {
         if (selectedItems.size === 0) return;
 
-        const result = await Swal.fire({
-            title: `Hapus ${selectedItems.size} agenda?`,
-            text: 'Data yang dihapus tidak dapat dikembalikan!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus Semua!',
-            cancelButtonText: 'Batal'
-        });
-
-        if (!result.isConfirmed) return;
+        if (!force) {
+            const result = await Swal.fire({
+                title: `Hapus ${selectedItems.size} agenda?`,
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus Semua!',
+                cancelButtonText: 'Batal'
+            });
+            if (!result.isConfirmed) return;
+        }
 
         try {
             const response = await authFetch(`${API_BASE}/kegiatan/bulk-delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ ids: Array.from(selectedItems) })
+                body: JSON.stringify({ ids: Array.from(selectedItems), force })
             });
 
             if (response.ok) {
                 setSelectedItems(new Set());
                 fetchData();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Terhapus!',
-                    text: `${selectedItems.size} agenda telah dibersihkan`,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'Terhapus!', text: `${selectedItems.size} agenda telah dibersihkan`, timer: 1500, showConfirmButton: false });
             } else {
                 const errData = await response.json().catch(() => null);
-                Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menghapus data' });
+                if (errData?.requires_force) {
+                    const forceResult = await Swal.fire({ title: 'Data Terkait Ditemukan!', html: `<p>${errData.message}</p>`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: '⚠️ Hapus Paksa', cancelButtonText: 'Batal' });
+                    if (forceResult.isConfirmed) handleBulkDelete(true);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menghapus data' });
+                }
             }
         } catch (error) {
             console.error('Error bulk delete:', error);
             Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan jaringan' });
         }
     };
-
     // Export PDF
     const [pdfLoading, setPdfLoading] = useState(false);
     const handleExportPdf = async () => {
@@ -362,32 +361,39 @@ function ManajemenKegiatan() {
         }
     };
 
-    const handleDelete = async (id) => {
-        const result = await Swal.fire({
-            title: 'Hapus Kegiatan?',
-            text: 'Data absensi terkait juga akan terhapus!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Ya, Hapus!',
-            cancelButtonText: 'Batal'
-        });
+    const handleDelete = async (id, force = false) => {
+        if (!force) {
+            const result = await Swal.fire({
+                title: 'Hapus Kegiatan?',
+                text: 'Data absensi terkait juga akan terhapus!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            });
+            if (!result.isConfirmed) return;
+        }
 
-        if (result.isConfirmed) {
-            try {
-                const res = await authFetch(`${API_BASE}/kegiatan/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
-                if (res.ok) {
-                    Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Kegiatan telah dihapus', timer: 1500, showConfirmButton: false });
-                    fetchData();
+        try {
+            const url = force ? `${API_BASE}/kegiatan/${id}?force=true` : `${API_BASE}/kegiatan/${id}`;
+            const res = await authFetch(url, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Kegiatan telah dihapus', timer: 1500, showConfirmButton: false });
+                fetchData();
+            } else {
+                const errData = await res.json().catch(() => null);
+                if (errData?.requires_force) {
+                    const forceResult = await Swal.fire({ title: 'Data Terkait Ditemukan!', html: `<p>${errData.message}</p>`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', confirmButtonText: '⚠️ Hapus Paksa', cancelButtonText: 'Batal' });
+                    if (forceResult.isConfirmed) handleDelete(id, true);
                 } else {
-                    const errData = await res.json().catch(() => null);
                     Swal.fire({ icon: 'error', title: 'Gagal', text: errData?.message || 'Gagal menghapus kegiatan' });
                 }
-            } catch (error) {
-                console.error('Error deleting data:', error);
-                Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data', 'error');
             }
+        } catch (error) {
+            console.error('Error deleting data:', error);
+            Swal.fire('Gagal', 'Terjadi kesalahan saat menghapus data', 'error');
         }
     };
 

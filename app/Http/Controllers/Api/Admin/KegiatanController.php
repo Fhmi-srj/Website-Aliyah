@@ -9,6 +9,7 @@ use App\Models\Guru;
 use App\Models\Kelas;
 use App\Models\TahunAjaran;
 use App\Models\ActivityLog;
+use App\Models\AbsensiKegiatan;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -262,12 +263,25 @@ class KegiatanController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Checks for related absensi records before deleting.
      */
-    public function destroy(Kegiatan $kegiatan): JsonResponse
+    public function destroy(Request $request, Kegiatan $kegiatan): JsonResponse
     {
         DB::beginTransaction();
         try {
-            // Delete linked kalender entry (cascade should handle this but let's be explicit)
+            $absensiCount = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->count();
+
+            if ($absensiCount > 0 && !$request->boolean('force')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Kegiatan ini memiliki {$absensiCount} data absensi yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                    'requires_force' => true,
+                    'related_counts' => ['absensi_kegiatan' => $absensiCount],
+                ], 409);
+            }
+
+            // Delete linked kalender entry
             Kalender::where('kegiatan_id', $kegiatan->id)->delete();
 
             // Log activity before delete
@@ -292,16 +306,30 @@ class KegiatanController extends Controller
 
     /**
      * Bulk delete kegiatan entries.
+     * Checks for related absensi records before deleting.
      */
     public function bulkDelete(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'exists:kegiatan,id'
+            'ids.*' => 'exists:kegiatan,id',
+            'force' => 'sometimes|boolean',
         ]);
 
         DB::beginTransaction();
         try {
+            $absensiCount = AbsensiKegiatan::whereIn('kegiatan_id', $validated['ids'])->count();
+
+            if ($absensiCount > 0 && !$request->boolean('force')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "Beberapa kegiatan memiliki {$absensiCount} data absensi yang akan ikut terhapus. Gunakan opsi \"Hapus Paksa\" untuk melanjutkan.",
+                    'requires_force' => true,
+                    'related_counts' => ['absensi_kegiatan' => $absensiCount],
+                ], 409);
+            }
+
             // Delete linked kalender entries
             Kalender::whereIn('kegiatan_id', $validated['ids'])->delete();
 

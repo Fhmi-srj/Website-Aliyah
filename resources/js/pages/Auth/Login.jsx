@@ -675,7 +675,7 @@ const cssStyles = `
         .login-container {
             flex-direction: column;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--login-gradient-start) 0%, var(--login-gradient-end) 100%);
+            background: #f8fafc;
         }
 
         .login-left {
@@ -684,22 +684,25 @@ const cssStyles = `
 
         .mobile-header {
             display: block;
+            border-radius: 0 0 32px 32px;
+            z-index: 2;
+            position: relative;
         }
 
         .login-right {
             flex: 1;
             padding: 0;
-            background: transparent;
+            background: #f8fafc;
             align-items: flex-start;
         }
 
         .login-form {
-            background: rgba(255, 255, 255, 0.97);
+            background: #f8fafc;
             backdrop-filter: blur(10px);
-            border-radius: 24px 24px 0 0;
+            border-radius: 0;
             padding: 28px 24px 36px;
-            margin-top: -20px;
-            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+            margin-top: -1px;
+            box-shadow: none;
             max-width: 100%;
             width: 100%;
             min-height: calc(100vh - 200px);
