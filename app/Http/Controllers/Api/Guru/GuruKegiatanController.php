@@ -10,6 +10,7 @@ use App\Models\Kelas;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\ActivityLog;
+use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
@@ -149,7 +150,8 @@ class GuruKegiatanController extends Controller
             return response()->json([
                 'success' => true,
                 'tanggal' => $tanggal,
-                'kegiatan' => $kegiatan
+                'kegiatan' => $kegiatan,
+                'unlocked' => AppSetting::isAttendanceUnlocked(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -265,7 +267,8 @@ class GuruKegiatanController extends Controller
 
             return response()->json([
                 'success' => true,
-                'kegiatan' => $kegiatanByDate
+                'kegiatan' => $kegiatanByDate,
+                'unlocked' => AppSetting::isAttendanceUnlocked(),
             ]);
         } catch (\Exception $e) {
             return response()->json([

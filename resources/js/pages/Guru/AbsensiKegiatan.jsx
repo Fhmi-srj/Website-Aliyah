@@ -10,6 +10,7 @@ function AbsensiKegiatan() {
     const [loading, setLoading] = useState(true);
     const [kegiatanByDate, setKegiatanByDate] = useState({});
     const [guruData, setGuruData] = useState({ name: '', nip: '' });
+    const [isUnlocked, setIsUnlocked] = useState(false);
 
     // Modal states
     const [selectedKegiatan, setSelectedKegiatan] = useState(null);
@@ -45,6 +46,7 @@ function AbsensiKegiatan() {
                 setLoading(true);
                 const response = await api.get('/guru-panel/kegiatan-seminggu');
                 setKegiatanByDate(response.data.kegiatan || {});
+                setIsUnlocked(response.data.unlocked || false);
             } catch (err) {
                 console.error('Error fetching kegiatan:', err);
                 setKegiatanByDate({});
@@ -104,6 +106,27 @@ function AbsensiKegiatan() {
 
         setSelectedKegiatan(item);
 
+        // If unlocked + sudah_absen + pendamping, allow re-attendance
+        if (isUnlocked && item.status_absensi === 'sudah_absen' && item.role === 'pendamping') {
+            setModalType('sedang_berlangsung');
+            return;
+        }
+
+        // If unlocked + sudah_absen + PJ, allow re-editing
+        if (isUnlocked && item.status_absensi === 'sudah_absen' && item.role === 'penanggung_jawab') {
+            setModalType('sedang_berlangsung');
+            try {
+                const response = await api.get(`/guru-panel/kegiatan/${item.id}/detail`);
+                setGuruPendamping(response.data.guru_pendamping || []);
+                setSiswaList(response.data.siswa || []);
+            } catch (err) {
+                console.error('Error fetching kegiatan detail:', err);
+                setGuruPendamping([]);
+                setSiswaList([]);
+            }
+            return;
+        }
+
         // Treat 'terlewat' same as 'sedang_berlangsung'
         const effectiveStatus = item.status_absensi === 'terlewat' ? 'sedang_berlangsung' : item.status_absensi;
         setModalType(effectiveStatus);
@@ -136,6 +159,7 @@ function AbsensiKegiatan() {
         try {
             const response = await api.get('/guru-panel/kegiatan-seminggu');
             setKegiatanByDate(response.data.kegiatan || {});
+            setIsUnlocked(response.data.unlocked || false);
         } catch (err) {
             console.error('Error refreshing kegiatan:', err);
         }
@@ -199,8 +223,8 @@ function AbsensiKegiatan() {
             <div className="p-4 space-y-3">
                 {allKegiatan.length > 0 ? (
                     allKegiatan.map((item, index) => {
-                        const colors = getStatusColor(item.status_absensi);
-                        const canInteract = item.isToday && item.status_absensi !== 'sudah_absen';
+                        const colors = getStatusColor(isUnlocked && item.status_absensi === 'sudah_absen' ? 'sedang_berlangsung' : item.status_absensi);
+                        const canInteract = item.isToday && (item.status_absensi !== 'sudah_absen' || isUnlocked);
                         const isPJ = item.role === 'penanggung_jawab';
 
                         return (
@@ -209,7 +233,7 @@ function AbsensiKegiatan() {
                                 onClick={() => handleKegiatanClick(item)}
                                 disabled={!item.isToday}
                                 className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-                                    } ${item.status_absensi === 'sudah_absen' ? 'opacity-60' : ''} ${!item.isToday ? 'opacity-70' : ''}`}
+                                    } ${item.status_absensi === 'sudah_absen' && !isUnlocked ? 'opacity-60' : ''} ${!item.isToday ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start gap-3">
                                     <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -289,6 +313,7 @@ function AbsensiKegiatan() {
                     onSuccess={handleAbsensiSuccess}
                     guruName={guruData.name}
                     guruNip={guruData.nip}
+                    isUnlocked={isUnlocked}
                 />
             )}
 
@@ -307,6 +332,7 @@ function AbsensiKegiatan() {
                     onSuccess={handleAbsensiSuccess}
                     guruName={guruData.name}
                     guruNip={guruData.nip}
+                    isUnlocked={isUnlocked}
                 />
             )}
         </div>
