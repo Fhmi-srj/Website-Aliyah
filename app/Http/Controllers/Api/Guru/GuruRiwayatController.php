@@ -423,32 +423,30 @@ class GuruRiwayatController extends Controller
             // Check if kegiatan has passed
             $isPast = $waktuSelesai->lt($now);
 
-            if ($isPast) {
-                // Get absensi record for this kegiatan
-                $absensiRecord = $kegiatan->absensiKegiatan->first();
+            // Get absensi record for this kegiatan (check regardless of past/future)
+            $absensiRecord = $kegiatan->absensiKegiatan->first();
 
-                if ($absensiRecord) {
-                    if ($isPJ) {
-                        // PJ status is in pj_status column
-                        $guruStatus = $absensiRecord->pj_status ?? 'A';
-                        $guruKeterangan = $absensiRecord->pj_keterangan;
-                    } else {
-                        // Pendamping status is in absensi_pendamping JSON
-                        $absensiPendamping = $absensiRecord->absensi_pendamping ?? [];
-                        $attendance = $findAttendance($absensiPendamping, $guru->id);
-                        if ($attendance) {
-                            $guruStatus = $attendance['status'] ?? 'H';
-                            $guruKeterangan = $attendance['keterangan'] ?? null;
-                        } else {
-                            $guruStatus = 'A';
-                            $guruKeterangan = 'Tidak tercatat dalam absensi';
-                        }
-                    }
+            if ($absensiRecord) {
+                if ($isPJ) {
+                    // PJ status is in pj_status column
+                    $guruStatus = $absensiRecord->pj_status ?? ($isPast ? 'A' : 'H');
+                    $guruKeterangan = $absensiRecord->pj_keterangan;
                 } else {
-                    // No absensi record = Alpha
-                    $guruStatus = 'A';
-                    $guruKeterangan = 'Tidak ada record absensi';
+                    // Pendamping status is in absensi_pendamping JSON
+                    $absensiPendamping = $absensiRecord->absensi_pendamping ?? [];
+                    $attendance = $findAttendance($absensiPendamping, $guru->id);
+                    if ($attendance) {
+                        $guruStatus = $attendance['status'] ?? 'H';
+                        $guruKeterangan = $attendance['keterangan'] ?? null;
+                    } else {
+                        $guruStatus = $isPast ? 'A' : 'H';
+                        $guruKeterangan = $isPast ? 'Tidak tercatat dalam absensi' : null;
+                    }
                 }
+            } else if ($isPast) {
+                // No absensi record AND past = Alpha
+                $guruStatus = 'A';
+                $guruKeterangan = 'Tidak ada record absensi';
             }
 
             // Get absensi_id for print functionality

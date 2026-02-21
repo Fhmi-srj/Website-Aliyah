@@ -61,16 +61,17 @@ class GuruKegiatanController extends Controller
                     // Check if already absen for this kegiatan (not per day - one attendance for entire multi-day activity)
                     $absensi = AbsensiKegiatan::where('kegiatan_id', $item->id)->first();
 
+                    // Default kehadiran_status
+                    $item->kehadiran_status = null;
+
                     // Determine status based on role and absensi record
                     if ($absensi) {
                         if ($item->is_pj) {
                             // For PJ: only 'submitted' counts as sudah_absen
-                            // 'draft' means pendamping started but PJ hasn't completed
                             if ($absensi->status === 'submitted') {
                                 $item->status_absensi = 'sudah_absen';
+                                $item->kehadiran_status = $absensi->pj_status; // H/S/I/A
                             } else {
-                                // Draft record exists (from pendamping self-attend)
-                                // PJ should still be able to fill absensi
                                 $now = Carbon::now();
                                 $mulai = Carbon::parse($item->waktu_mulai);
                                 $selesai = Carbon::parse($item->waktu_berakhir);
@@ -84,17 +85,19 @@ class GuruKegiatanController extends Controller
                                 }
                             }
                         } else {
-                            // For Pendamping: check if they already self-attended
+                            // For Pendamping: check if they have attendance record
+                            // (either self-attended or set by admin/PJ when absensi is submitted)
                             $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
-                            $selfAttended = false;
+                            $hasAttendance = false;
                             foreach ($pendampingAbsensi as $entry) {
-                                if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
-                                    $selfAttended = true;
+                                if ($entry['guru_id'] == $guru->id && (!empty($entry['self_attended']) || $absensi->status === 'submitted')) {
+                                    $hasAttendance = true;
+                                    $item->kehadiran_status = $entry['status'] ?? null; // H/S/I/A
                                     break;
                                 }
                             }
 
-                            if ($selfAttended) {
+                            if ($hasAttendance) {
                                 $item->status_absensi = 'sudah_absen';
                             } else {
                                 $now = Carbon::now();
@@ -238,6 +241,22 @@ class GuruKegiatanController extends Controller
                             ->get();
                     }
 
+                    // Determine kehadiran_status (H/S/I/A) for this guru
+                    $kehadiranStatus = null;
+                    if ($absensi && $statusAbsensi === 'sudah_absen') {
+                        if ($isPj) {
+                            $kehadiranStatus = $absensi->pj_status;
+                        } else {
+                            $pendampingData = $absensi->absensi_pendamping ?? [];
+                            foreach ($pendampingData as $entry) {
+                                if ($entry['guru_id'] == $guru->id) {
+                                    $kehadiranStatus = $entry['status'] ?? null;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     $kegiatanData = [
                         'id' => $item->id,
                         'nama_kegiatan' => $item->nama_kegiatan,
@@ -249,6 +268,7 @@ class GuruKegiatanController extends Controller
                         'is_pendamping' => $isPendamping,
                         'role' => $role,
                         'status_absensi' => $statusAbsensi,
+                        'kehadiran_status' => $kehadiranStatus,
                         'guru_pendamping_list' => $guruPendampingList,
                         'kelas_peserta_list' => $kelasPesertaList,
                     ];
@@ -295,7 +315,7 @@ class GuruKegiatanController extends Controller
             } else {
                 $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
                 foreach ($pendampingAbsensi as $entry) {
-                    if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                    if ($entry['guru_id'] == $guru->id && (!empty($entry['self_attended']) || $absensi->status === 'submitted')) {
                         return 'sudah_absen';
                     }
                 }
@@ -329,7 +349,7 @@ class GuruKegiatanController extends Controller
             } else {
                 $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
                 foreach ($pendampingAbsensi as $entry) {
-                    if ($entry['guru_id'] == $guru->id && !empty($entry['self_attended'])) {
+                    if ($entry['guru_id'] == $guru->id && (!empty($entry['self_attended']) || $absensi->status === 'submitted')) {
                         return 'sudah_absen';
                     }
                 }
@@ -447,15 +467,15 @@ class GuruKegiatanController extends Controller
 
         $validated = $request->validate([
             'kegiatan_id' => 'required|exists:kegiatan,id',
-            'pj_status' => 'required|in:H,I,A',
+            'pj_status' => 'required|in:H,S,I,A',
             'pj_keterangan' => 'nullable|string',
             'absensi_pendamping' => 'nullable|array',
             'absensi_pendamping.*.guru_id' => 'required|exists:guru,id',
-            'absensi_pendamping.*.status' => 'required|in:H,I,A',
+            'absensi_pendamping.*.status' => 'required|in:H,S,I,A',
             'absensi_pendamping.*.keterangan' => 'nullable|string',
             'absensi_siswa' => 'nullable|array',
             'absensi_siswa.*.siswa_id' => 'required|exists:siswa,id',
-            'absensi_siswa.*.status' => 'required|in:H,I,A',
+            'absensi_siswa.*.status' => 'required|in:H,S,I,A',
             'absensi_siswa.*.keterangan' => 'nullable|string',
             'berita_acara' => 'nullable|string',
             'foto_kegiatan' => 'required|array|min:2|max:4',
@@ -566,7 +586,7 @@ class GuruKegiatanController extends Controller
 
         $validated = $request->validate([
             'kegiatan_id' => 'required|exists:kegiatan,id',
-            'status' => 'required|in:H,I,A',
+            'status' => 'required|in:H,S,I,A',
             'keterangan' => 'nullable|string',
         ]);
 

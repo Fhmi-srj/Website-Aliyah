@@ -1061,6 +1061,8 @@ function ManajemenKegiatan() {
 
 function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuccess, guruList }) {
     const [formData, setFormData] = useState({
+        pj_status: initialData?.pj_status || 'H',
+        pj_keterangan: initialData?.pj_keterangan || '',
         absensi_pendamping: initialData?.absensi_pendamping || [],
         berita_acara: initialData?.berita_acara || '',
         foto_kegiatan: initialData?.foto_kegiatan || [],
@@ -1125,7 +1127,13 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
             const res = await authFetch(`${API_BASE}/kegiatan/${kegiatan.id}/absensi-admin`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    pj_status: formData.pj_status,
+                    pj_keterangan: formData.pj_keterangan,
+                    absensi_pendamping: formData.absensi_pendamping,
+                    berita_acara: formData.berita_acara,
+                    foto_kegiatan: formData.foto_kegiatan,
+                })
             });
             const data = await res.json();
             if (data.success) {
@@ -1158,29 +1166,54 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
                         {/* Summary Stats */}
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-emerald-600 mb-1">{formData.absensi_pendamping.filter(p => p.status === 'H').length}</div>
-                                <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Hadir</div>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-blue-600 mb-1">{formData.absensi_pendamping.filter(p => p.status === 'S').length}</div>
-                                <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Sakit</div>
-                            </div>
-                            <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-amber-600 mb-1">{formData.absensi_pendamping.filter(p => p.status === 'I').length}</div>
-                                <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Izin</div>
-                            </div>
-                            <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-rose-600 mb-1">{formData.absensi_pendamping.filter(p => p.status === 'A').length}</div>
-                                <div className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Alpha</div>
-                            </div>
-                        </div>
+                        {(() => {
+                            const allStatuses = [formData.pj_status, ...formData.absensi_pendamping.map(p => p.status)];
+                            return (
+                                <div className="grid grid-cols-4 gap-4">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl text-center">
+                                        <div className="text-xl font-black text-emerald-600 mb-1">{allStatuses.filter(s => s === 'H').length}</div>
+                                        <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Hadir</div>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl text-center">
+                                        <div className="text-xl font-black text-blue-600 mb-1">{allStatuses.filter(s => s === 'S').length}</div>
+                                        <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Sakit</div>
+                                    </div>
+                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl text-center">
+                                        <div className="text-xl font-black text-amber-600 mb-1">{allStatuses.filter(s => s === 'I').length}</div>
+                                        <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Izin</div>
+                                    </div>
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl text-center">
+                                        <div className="text-xl font-black text-rose-600 mb-1">{allStatuses.filter(s => s === 'A').length}</div>
+                                        <div className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Alpha</div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
-                        {/* PJ Status (Simplification for Admin, can be added if needed) */}
+                        {/* PJ Status */}
                         <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
                             <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">Penanggung Jawab</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-dark-text">{kegiatan?.penanggungjawab?.nama || '-'}</p>
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-bold text-gray-700 dark:text-dark-text">{kegiatan?.penanggungjawab?.nama || '-'}</p>
+                                <div className="flex gap-1.5">
+                                    {['H', 'S', 'I', 'A'].map(s => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, pj_status: s }))}
+                                            className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${formData.pj_status === s
+                                                ? s === 'H' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
+                                                    s === 'S' ? 'bg-blue-500 text-white shadow-lg shadow-blue-200' :
+                                                        s === 'I' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' :
+                                                            'bg-rose-500 text-white shadow-lg shadow-rose-200'
+                                                : 'bg-white dark:bg-dark-card text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Pendamping List */}

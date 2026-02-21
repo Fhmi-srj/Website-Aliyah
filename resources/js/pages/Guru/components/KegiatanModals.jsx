@@ -430,27 +430,28 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                     <p className="text-xs text-gray-400">{guruNip || 'Penanggung Jawab'}</p>
                                 </div>
                                 <div className="flex gap-1.5">
-                                    {['H', 'I', 'A'].map(status => (
+                                    {['H', 'S', 'I', 'A'].map(status => (
                                         <button
                                             key={status}
                                             onClick={() => setPjStatus(status)}
                                             className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${pjStatus === status
                                                 ? status === 'H' ? 'bg-green-500 text-white shadow-md'
-                                                    : status === 'I' ? 'bg-yellow-500 text-white shadow-md'
-                                                        : 'bg-red-500 text-white shadow-md'
+                                                    : status === 'S' ? 'bg-blue-500 text-white shadow-md'
+                                                        : status === 'I' ? 'bg-yellow-500 text-white shadow-md'
+                                                            : 'bg-red-500 text-white shadow-md'
                                                 : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                                 }`}
                                         >{status}</button>
                                     ))}
                                 </div>
                             </div>
-                            {pjStatus === 'I' && (
+                            {(pjStatus === 'S' || pjStatus === 'I') && (
                                 <input
                                     type="text"
                                     value={pjKeterangan}
                                     onChange={e => setPjKeterangan(e.target.value)}
-                                    placeholder="Keterangan izin..."
-                                    className="w-full mt-2 border border-yellow-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                    placeholder={pjStatus === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                    className={`w-full mt-2 border rounded-lg p-2 text-sm focus:ring-2 focus:border-transparent ${pjStatus === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
                                 />
                             )}
                         </div>
@@ -506,27 +507,28 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                                     <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-400">{guru.nip || 'Pendamping'}</p>
                                                 </div>
                                                 <div className="flex gap-0.5">
-                                                    {['H', 'I', 'A'].map(status => (
+                                                    {['H', 'S', 'I', 'A'].map(status => (
                                                         <button
                                                             key={status}
                                                             onClick={() => updatePendampingStatus(index, status)}
                                                             className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${guru.status === status
                                                                 ? status === 'H' ? 'bg-green-500 text-white'
-                                                                    : status === 'I' ? 'bg-yellow-500 text-white'
-                                                                        : 'bg-red-500 text-white'
+                                                                    : status === 'S' ? 'bg-blue-500 text-white'
+                                                                        : status === 'I' ? 'bg-yellow-500 text-white'
+                                                                            : 'bg-red-500 text-white'
                                                                 : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                                                 }`}
                                                         >{status}</button>
                                                     ))}
                                                 </div>
                                             </div>
-                                            {guru.status === 'I' && (
+                                            {(guru.status === 'S' || guru.status === 'I') && (
                                                 <input
                                                     type="text"
                                                     value={guru.keterangan}
                                                     onChange={e => updatePendampingKeterangan(index, e.target.value)}
-                                                    placeholder="Keterangan izin..."
-                                                    className="w-full mt-1.5 border border-yellow-200 rounded-lg p-1.5 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                                    placeholder={guru.status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                                    className={`w-full mt-1.5 border rounded-lg p-1.5 text-xs focus:ring-2 focus:border-transparent ${guru.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
                                                 />
                                             )}
                                         </div>
@@ -616,27 +618,28 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                                                             <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-400">{siswa.nis}</p>
                                                         </div>
                                                         <div className="flex gap-0.5">
-                                                            {['H', 'I', 'A'].map(status => (
+                                                            {['H', 'S', 'I', 'A'].map(status => (
                                                                 <button
                                                                     key={status}
                                                                     onClick={() => updateSiswaStatus(siswa.originalIndex, status)}
                                                                     className={`w-6 h-6 rounded text-[0.6rem] font-bold transition-all ${siswa.status === status
                                                                         ? status === 'H' ? 'bg-green-500 text-white'
-                                                                            : status === 'I' ? 'bg-yellow-500 text-white'
-                                                                                : 'bg-red-500 text-white'
+                                                                            : status === 'S' ? 'bg-blue-500 text-white'
+                                                                                : status === 'I' ? 'bg-yellow-500 text-white'
+                                                                                    : 'bg-red-500 text-white'
                                                                         : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                                                         }`}
                                                                 >{status}</button>
                                                             ))}
                                                         </div>
                                                     </div>
-                                                    {siswa.status === 'I' && (
+                                                    {(siswa.status === 'S' || siswa.status === 'I') && (
                                                         <input
                                                             type="text"
                                                             value={siswa.keterangan}
                                                             onChange={e => updateSiswaKeterangan(siswa.originalIndex, e.target.value)}
-                                                            placeholder="Keterangan izin..."
-                                                            className="w-full mt-1.5 border border-yellow-200 rounded-lg p-1.5 text-xs focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                                            placeholder={siswa.status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                                            className={`w-full mt-1.5 border rounded-lg p-1.5 text-xs focus:ring-2 focus:border-transparent ${siswa.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
                                                         />
                                                     )}
                                                 </div>
@@ -1094,15 +1097,16 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                                     {guruNip && <p className="text-xs text-gray-400">{guruNip}</p>}
                                 </div>
                                 <div className="flex gap-1.5">
-                                    {['H', 'I', 'A'].map(s => (
+                                    {['H', 'S', 'I', 'A'].map(s => (
                                         <button
                                             key={s}
                                             onClick={() => !readOnlyMode && setStatus(s)}
                                             disabled={readOnlyMode}
                                             className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${status === s
                                                 ? s === 'H' ? 'bg-green-500 text-white shadow-md'
-                                                    : s === 'I' ? 'bg-yellow-500 text-white shadow-md'
-                                                        : 'bg-red-500 text-white shadow-md'
+                                                    : s === 'S' ? 'bg-blue-500 text-white shadow-md'
+                                                        : s === 'I' ? 'bg-yellow-500 text-white shadow-md'
+                                                            : 'bg-red-500 text-white shadow-md'
                                                 : readOnlyMode ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                     : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                                 }`}
@@ -1110,13 +1114,13 @@ export function ModalAbsensiKegiatanPendamping({ kegiatan, tanggal, onClose, onS
                                     ))}
                                 </div>
                             </div>
-                            {status === 'I' && (
+                            {(status === 'S' || status === 'I') && (
                                 <input
                                     type="text"
                                     value={keterangan}
                                     onChange={e => setKeterangan(e.target.value)}
-                                    placeholder="Keterangan izin..."
-                                    className="w-full mt-2 border border-yellow-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-yellow-50"
+                                    placeholder={status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                    className={`w-full mt-2 border rounded-lg p-2 text-sm focus:ring-2 focus:border-transparent ${status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
                                 />
                             )}
                         </div>

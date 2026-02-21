@@ -328,6 +328,8 @@ class AdminAbsensiController extends Controller
         }
 
         $validated = $request->validate([
+            'pj_status' => 'nullable|in:H,S,I,A',
+            'pj_keterangan' => 'nullable|string',
             'absensi_pendamping' => 'nullable|array',
             'absensi_pendamping.*.guru_id' => 'required|integer',
             'absensi_pendamping.*.status' => 'required|in:H,S,I,A',
@@ -342,6 +344,8 @@ class AdminAbsensiController extends Controller
             // Update existing
             $oldValues = $absensi->getOriginal();
             $absensi->update([
+                'pj_status' => $validated['pj_status'] ?? $absensi->pj_status,
+                'pj_keterangan' => array_key_exists('pj_keterangan', $validated) ? $validated['pj_keterangan'] : $absensi->pj_keterangan,
                 'absensi_pendamping' => $validated['absensi_pendamping'] ?? $absensi->absensi_pendamping,
                 'berita_acara' => $validated['berita_acara'] ?? $absensi->berita_acara,
                 'foto_kegiatan' => array_key_exists('foto_kegiatan', $validated) ? $validated['foto_kegiatan'] : $absensi->foto_kegiatan,
@@ -354,7 +358,8 @@ class AdminAbsensiController extends Controller
                 'kegiatan_id' => $kegiatanId,
                 'tanggal' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('Y-m-d') : now()->format('Y-m-d'),
                 'penanggung_jawab_id' => $kegiatan->penanggung_jawab_id,
-                'pj_status' => 'H',
+                'pj_status' => $validated['pj_status'] ?? 'H',
+                'pj_keterangan' => $validated['pj_keterangan'] ?? null,
                 'absensi_pendamping' => $validated['absensi_pendamping'] ?? [],
                 'berita_acara' => $validated['berita_acara'] ?? null,
                 'foto_kegiatan' => $validated['foto_kegiatan'] ?? [],

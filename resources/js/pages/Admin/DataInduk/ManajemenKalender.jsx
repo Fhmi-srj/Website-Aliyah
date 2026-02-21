@@ -332,7 +332,7 @@ function ManajemenKalender() {
             input: 'select',
             inputOptions: {
                 'Aktif': 'Aktif',
-                'Tidak Aktif': 'Tidak Aktif'
+                'Libur': 'Libur / Tidak Aktif'
             },
             inputPlaceholder: 'Pilih Status',
             showCancelButton: true,
@@ -579,7 +579,7 @@ function ManajemenKalender() {
                                         filterOptions={[
                                             { label: 'Semua Status', value: '' },
                                             { label: 'Aktif', value: 'Aktif' },
-                                            { label: 'Tidak Aktif', value: 'Tidak Aktif' }
+                                            { label: 'Libur', value: 'Libur' }
                                         ]}
                                         filterValue={filterStatusKbm}
                                         setFilterValue={setFilterStatusKbm}
@@ -782,7 +782,7 @@ function ManajemenKalender() {
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Status KBM</label>
                             <select value={formData.status_kbm} onChange={(e) => setFormData({ ...formData, status_kbm: e.target.value })} className="input-standard outline-none">
                                 <option value="Aktif">Aktif (Tetap Belajar)</option>
-                                <option value="Tidak Aktif">Tidak Aktif (Libur/Khusus)</option>
+                                <option value="Libur">Libur / Tidak Aktif</option>
                             </select>
                         </div>
                         <div className="space-y-1.5 relative md:col-span-2" ref={guruDropdownRef}>

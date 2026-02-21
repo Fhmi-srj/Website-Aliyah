@@ -267,16 +267,16 @@ function Riwayat() {
                     border: 'border-green-500',
                     bg: 'bg-green-100',
                     icon: 'text-green-600',
-                    label: 'Sudah Absen',
+                    label: 'Hadir',
                     labelBg: 'bg-green-100 text-green-700',
                 };
             case 'S':
                 return {
-                    border: 'border-orange-500',
-                    bg: 'bg-orange-100',
-                    icon: 'text-orange-600',
+                    border: 'border-blue-500',
+                    bg: 'bg-blue-100',
+                    icon: 'text-blue-600',
                     label: 'Sakit',
-                    labelBg: 'bg-orange-100 text-orange-700',
+                    labelBg: 'bg-blue-100 text-blue-700',
                 };
             case 'I':
                 return {
@@ -565,6 +565,7 @@ function Riwayat() {
                                 {[
                                     { value: 'all', label: 'Semua', color: 'gray' },
                                     { value: 'H', label: 'Hadir', color: 'green' },
+                                    { value: 'S', label: 'Sakit', color: 'blue' },
                                     { value: 'I', label: 'Izin', color: 'yellow' },
                                     { value: 'A', label: 'Alpha', color: 'red' },
                                 ].map((opt) => (
@@ -574,8 +575,9 @@ function Riwayat() {
                                         className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${statusFilter === opt.value
                                             ? opt.color === 'gray' ? 'bg-gray-600 text-white'
                                                 : opt.color === 'green' ? 'bg-green-500 text-white'
-                                                    : opt.color === 'yellow' ? 'bg-yellow-500 text-white'
-                                                        : 'bg-red-500 text-white'
+                                                    : opt.color === 'blue' ? 'bg-blue-500 text-white'
+                                                        : opt.color === 'yellow' ? 'bg-yellow-500 text-white'
+                                                            : 'bg-red-500 text-white'
                                             : 'bg-white text-gray-600 border border-gray-200'
                                             }`}
                                     >

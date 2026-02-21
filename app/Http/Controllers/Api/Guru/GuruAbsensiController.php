@@ -56,8 +56,11 @@ class GuruAbsensiController extends Controller
 
             $status = 'belum_mulai'; // default: biru
 
+            $kehadiranStatus = null;
+
             if ($absensi) {
                 $status = 'sudah_absen'; // hijau
+                $kehadiranStatus = $absensi->guru_status ?? 'H';
             } elseif ($now->greaterThan($jamSelesai)) {
                 $status = 'terlewat'; // merah (alpha)
             } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
@@ -72,6 +75,7 @@ class GuruAbsensiController extends Controller
                 'jam_selesai' => $jadwal->jam_selesai,
                 'jam_ke' => $jadwal->jam_ke,
                 'status' => $status,
+                'kehadiran_status' => $kehadiranStatus,
                 'absensi_id' => $absensi?->id,
             ];
         }
@@ -121,6 +125,7 @@ class GuruAbsensiController extends Controller
             foreach ($jadwalList as $jadwal) {
                 // Only check absensi status for today
                 $status = 'belum_mulai';
+                $kehadiranStatus = null;
 
                 if ($day === $todayName) {
                     $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
@@ -132,6 +137,7 @@ class GuruAbsensiController extends Controller
 
                     if ($absensi) {
                         $status = 'sudah_absen';
+                        $kehadiranStatus = $absensi->guru_status ?? 'H';
                     } elseif ($now->greaterThan($jamSelesai)) {
                         $status = 'terlewat';
                     } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
@@ -147,6 +153,7 @@ class GuruAbsensiController extends Controller
                     'jam_selesai' => $jadwal->jam_selesai,
                     'jam_ke' => $jadwal->jam_ke,
                     'status' => $status,
+                    'kehadiran_status' => $kehadiranStatus,
                 ];
             }
 

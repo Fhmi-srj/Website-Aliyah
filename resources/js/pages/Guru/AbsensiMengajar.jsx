@@ -71,41 +71,28 @@ function AbsensiMengajar() {
     }, []);
 
     // Helper function untuk status color
-    const getStatusColor = (status) => {
+    const getStatusColor = (status, kehadiranStatus) => {
+        if (status === 'sudah_absen') {
+            switch (kehadiranStatus) {
+                case 'S':
+                    return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Sakit', labelBg: 'bg-blue-100 text-blue-700' };
+                case 'I':
+                    return { border: 'border-l-amber-500', bg: 'bg-amber-100', icon: 'text-amber-500', label: 'Izin', labelBg: 'bg-amber-100 text-amber-700' };
+                case 'A':
+                    return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Alpha', labelBg: 'bg-red-100 text-red-700' };
+                case 'H':
+                default:
+                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Hadir', labelBg: 'bg-green-100 text-green-700' };
+            }
+        }
         switch (status) {
-            case 'sudah_absen':
-                return {
-                    border: 'border-l-green-500',
-                    bg: 'bg-green-100',
-                    icon: 'text-green-500',
-                    label: 'Sudah Absen',
-                    labelBg: 'bg-green-100 text-green-700'
-                };
             case 'sedang_berlangsung':
-                return {
-                    border: 'border-l-red-500',
-                    bg: 'bg-red-100',
-                    icon: 'text-red-500',
-                    label: 'Belum Absen',
-                    labelBg: 'bg-red-100 text-red-700'
-                };
+                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Belum Absen', labelBg: 'bg-red-100 text-red-700' };
             case 'terlewat':
-                return {
-                    border: 'border-l-red-500',
-                    bg: 'bg-red-100',
-                    icon: 'text-red-500',
-                    label: 'Terlewat',
-                    labelBg: 'bg-red-100 text-red-700'
-                };
+                return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Terlewat', labelBg: 'bg-red-100 text-red-700' };
             case 'belum_mulai':
             default:
-                return {
-                    border: 'border-l-blue-500',
-                    bg: 'bg-blue-100',
-                    icon: 'text-blue-500',
-                    label: 'Akan Datang',
-                    labelBg: 'bg-blue-100 text-blue-700'
-                };
+                return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Akan Datang', labelBg: 'bg-blue-100 text-blue-700' };
         }
     };
 
@@ -202,13 +189,16 @@ function AbsensiMengajar() {
             {/* Legend */}
             <div className="px-4 pt-4 flex gap-2 flex-wrap">
                 <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Sudah Absen
-                </span>
-                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Belum Absen
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Hadir
                 </span>
                 <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Akan Datang
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Sakit
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Izin
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Alpha
                 </span>
             </div>
 
@@ -230,7 +220,7 @@ function AbsensiMengajar() {
                 <div className="p-4 space-y-3">
                     {currentSchedule.length > 0 ? (
                         currentSchedule.map(jadwal => {
-                            const colors = getStatusColor(jadwal.status);
+                            const colors = getStatusColor(jadwal.status, jadwal.kehadiran_status);
                             const canInteract = isToday && jadwal.status !== 'sudah_absen';
 
                             return (

@@ -85,10 +85,21 @@ function AbsensiKegiatan() {
     };
 
     // Helper function untuk menentukan status
-    const getStatusColor = (status) => {
+    const getStatusColor = (status, kehadiranStatus) => {
+        if (status === 'sudah_absen') {
+            switch (kehadiranStatus) {
+                case 'S':
+                    return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Sakit', labelBg: 'bg-blue-100 text-blue-700' };
+                case 'I':
+                    return { border: 'border-l-amber-500', bg: 'bg-amber-100', icon: 'text-amber-500', label: 'Izin', labelBg: 'bg-amber-100 text-amber-700' };
+                case 'A':
+                    return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Alpha', labelBg: 'bg-red-100 text-red-700' };
+                case 'H':
+                default:
+                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Hadir', labelBg: 'bg-green-100 text-green-700' };
+            }
+        }
         switch (status) {
-            case 'sudah_absen':
-                return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700' };
             case 'sedang_berlangsung':
                 return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Belum Absen', labelBg: 'bg-red-100 text-red-700' };
             case 'terlewat':
@@ -209,13 +220,19 @@ function AbsensiKegiatan() {
             {/* Legend */}
             <div className="px-4 pt-4 flex gap-2 flex-wrap">
                 <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Sudah Absen
-                </span>
-                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Belum Absen
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Hadir
                 </span>
                 <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Akan Datang
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Sakit
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Izin
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Alpha / Belum Absen
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-blue-400 rounded-full"></span> Akan Datang
                 </span>
             </div>
 
@@ -223,7 +240,7 @@ function AbsensiKegiatan() {
             <div className="p-4 space-y-3">
                 {allKegiatan.length > 0 ? (
                     allKegiatan.map((item, index) => {
-                        const colors = getStatusColor(isUnlocked && item.status_absensi === 'sudah_absen' ? 'sedang_berlangsung' : item.status_absensi);
+                        const colors = getStatusColor(isUnlocked && item.status_absensi === 'sudah_absen' ? 'sedang_berlangsung' : item.status_absensi, item.kehadiran_status);
                         const canInteract = item.isToday && (item.status_absensi !== 'sudah_absen' || isUnlocked);
                         const isPJ = item.role === 'penanggung_jawab';
 
@@ -277,6 +294,7 @@ function AbsensiKegiatan() {
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>
                                                 {colors.label}
                                             </span>
+
                                         </div>
                                     </div>
                                 </div>

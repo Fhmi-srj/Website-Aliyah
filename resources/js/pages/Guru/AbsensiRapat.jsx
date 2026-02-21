@@ -58,14 +58,15 @@ function AbsensiRapat() {
         // If sudah_absen, show based on actual attendance status
         if (statusAbsensi === 'sudah_absen') {
             switch (guruStatus) {
-                case 'H':
-                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Hadir', labelBg: 'bg-green-100 text-green-700' };
+                case 'S':
+                    return { border: 'border-l-blue-500', bg: 'bg-blue-100', icon: 'text-blue-500', label: 'Sakit', labelBg: 'bg-blue-100 text-blue-700' };
                 case 'I':
-                    return { border: 'border-l-yellow-500', bg: 'bg-yellow-100', icon: 'text-yellow-500', label: 'Izin', labelBg: 'bg-yellow-100 text-yellow-700' };
+                    return { border: 'border-l-amber-500', bg: 'bg-amber-100', icon: 'text-amber-500', label: 'Izin', labelBg: 'bg-amber-100 text-amber-700' };
                 case 'A':
                     return { border: 'border-l-red-500', bg: 'bg-red-100', icon: 'text-red-500', label: 'Alpha', labelBg: 'bg-red-100 text-red-700' };
+                case 'H':
                 default:
-                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Sudah Absen', labelBg: 'bg-green-100 text-green-700' };
+                    return { border: 'border-l-green-500', bg: 'bg-green-100', icon: 'text-green-500', label: 'Hadir', labelBg: 'bg-green-100 text-green-700' };
             }
         }
 
@@ -196,13 +197,16 @@ function AbsensiRapat() {
             {/* Legend */}
             <div className="px-4 pt-4 flex gap-2 flex-wrap">
                 <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Sudah Absen
-                </span>
-                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Belum Absen
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Hadir
                 </span>
                 <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Akan Datang
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Sakit
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Izin
+                </span>
+                <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span> Alpha
                 </span>
             </div>
 

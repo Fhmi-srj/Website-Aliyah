@@ -293,7 +293,7 @@ class KalenderController extends Controller
         $validator = Validator::make($request->all(), [
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:kalender,id',
-            'status_kbm' => 'required|in:Aktif,Tidak Aktif'
+            'status_kbm' => 'required|in:Aktif,Libur'
         ]);
 
         if ($validator->fails()) {
