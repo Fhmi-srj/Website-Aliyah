@@ -1,9 +1,9 @@
 -- ============================================
--- Import Pemasukan & Pengeluaran Data
--- Generated: 2026-02-21 21:26:04
+-- Import Pemasukan & Pengeluaran Data (v2)
+-- Generated: 2026-02-22 01:27:09
 -- ============================================
 
--- === TRANSAKSI KATEGORI (Sumber & Kategori baru) ===
+-- === TRANSAKSI KATEGORI ===
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (1, 'PPDB 2025', 'sumber_pemasukan', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'PPDB 2025', `tipe` = 'sumber_pemasukan';
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (2, 'PPDB', 'kategori_pengeluaran', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'PPDB', `tipe` = 'kategori_pengeluaran';
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (3, 'INFAQ', 'sumber_pengeluaran', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'INFAQ', `tipe` = 'sumber_pengeluaran';
@@ -32,7 +32,11 @@ INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_a
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (26, 'BOS REG OKT 2025', 'sumber_pemasukan', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'BOS REG OKT 2025', `tipe` = 'sumber_pemasukan';
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (27, 'DEBI', 'sumber_pemasukan', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'DEBI', `tipe` = 'sumber_pemasukan';
 
--- === PENGELUARAN (116 rows) ===
+-- === CLEAR OLD DATA ===
+TRUNCATE TABLE `pemasukan`;
+TRUNCATE TABLE `pengeluaran`;
+
+-- === PENGELUARAN ===
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 5, 200000.00, 2, '', '2026-02-15', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 3, 30000.00, 8, 'Akrom Adabi | Stempel MA', '2025-08-27', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 3, 40000.00, 9, 'Akrom Adabi | Website', '2025-08-27', 18, NOW(), NOW());
@@ -151,15 +155,15 @@ INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `k
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 5, 7360000.00, 12, 'Akrom Adabi | Bisyaroh Desember', '2026-02-01', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 3, 450000.00, 14, 'Arief Arfan | Penyusunan dan pelaporan kurikulum', '2025-08-20', 18, NOW(), NOW());
 
--- === PEMASUKAN (11 rows) ===
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 21, 6850000.00, 'PPDB 2025', '2024-01-09', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 22, 32040000.00, 'BOS APBN TRIWULAN 2', '2024-01-09', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 23, 9000000.00, 'BOS DA 2025', '2024-07-31', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 24, 7470000.00, 'Pembayaran siswa', '2025-09-15', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 24, 3600000.00, 'Pembayaran siswa', '2025-09-22', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 25, 100000.00, 'Pembelian kaos olahraga', '2025-09-22', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 24, 4000000.00, 'Pembayaran siswa', '2025-10-28', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 26, 50920000.00, 'BOS APBN TRIWULAN 3', '2025-10-21', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 24, 4890000.00, 'Pembayaran siswa', '2025-10-11', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 24, 3670000.00, 'Pembayaran siswa', '2025-11-12', 18, NOW(), NOW());
-INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 27, 3000000.00, 'Pinjam uang', '2026-02-21', 18, NOW(), NOW());
+-- === PEMASUKAN ===
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 21, 6850000.00, 'PPDB 2025', '2024-01-09', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 22, 32040000.00, 'BOS APBN TRIWULAN 2', '2024-01-09', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 23, 9000000.00, 'BOS DA 2025', '2024-07-31', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 24, 7470000.00, 'Pembayaran siswa', '2025-09-15', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 24, 3600000.00, 'Pembayaran siswa', '2025-09-22', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 25, 100000.00, 'Pembelian kaos olahraga', '2025-09-22', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 24, 4000000.00, 'Pembayaran siswa', '2025-10-28', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 26, 50920000.00, 'BOS APBN TRIWULAN 3', '2025-10-21', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 24, 4890000.00, 'Pembayaran siswa', '2025-10-11', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 24, 3670000.00, 'Pembayaran siswa', '2025-11-12', 18, NOW(), NOW());
+INSERT INTO `pemasukan` (`admin_id`, `sumber_id`, `nominal`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (36, 27, 3000000.00, 'Pinjam uang', '2026-02-21', 18, NOW(), NOW());
