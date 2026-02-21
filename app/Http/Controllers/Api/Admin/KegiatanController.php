@@ -109,7 +109,7 @@ class KegiatanController extends Controller
                 'kelas_peserta.*' => 'integer',
                 'peserta' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
-                'status' => 'required|in:Aktif,Selesai,Dibatalkan',
+                'status' => 'required|in:Aktif,Libur',
                 'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
                 'kalender_id' => 'nullable|exists:kalender,id',
             ]);
@@ -135,6 +135,10 @@ class KegiatanController extends Controller
                 $validated['peserta'] = implode(', ', $kelasNames);
             }
 
+            // Extract KBM status for kalender (not for kegiatan table)
+            $kbmStatus = $validated['status'];
+            $validated['status'] = 'Aktif'; // kegiatan.status is always 'Aktif' (ENUM: Aktif/Selesai/Dibatalkan)
+
             $kegiatan = Kegiatan::create($validated);
 
             // Link to existing or create new calendar entry
@@ -148,7 +152,7 @@ class KegiatanController extends Controller
                         'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
                         'tempat' => $validated['tempat'] ?? null,
                         'guru_id' => $validated['penanggung_jawab_id'] ?? null,
-                        'status_kbm' => $validated['status'],
+                        'status_kbm' => $kbmStatus,
                     ]);
                 }
             } else {
@@ -156,7 +160,7 @@ class KegiatanController extends Controller
                     'tanggal_mulai' => date('Y-m-d H:i:s', strtotime($validated['waktu_mulai'])),
                     'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
                     'kegiatan' => $validated['nama_kegiatan'],
-                    'status_kbm' => $validated['status'],
+                    'status_kbm' => $kbmStatus,
                     'tempat' => $validated['tempat'] ?? null,
                     'guru_id' => $validated['penanggung_jawab_id'] ?? null,
                     'kegiatan_id' => $kegiatan->id,
@@ -257,6 +261,10 @@ class KegiatanController extends Controller
                 $validated['peserta'] = implode(', ', $kelasNames);
             }
 
+            // Extract KBM status for kalender (not for kegiatan table)
+            $kbmStatus = $validated['status'];
+            $validated['status'] = 'Aktif'; // kegiatan.status is always 'Aktif' (ENUM: Aktif/Selesai/Dibatalkan)
+
             $kegiatan->update($validated);
 
             // Update linked kalender entry if exists
@@ -269,7 +277,7 @@ class KegiatanController extends Controller
                     'kegiatan' => $validated['nama_kegiatan'],
                     'tempat' => $validated['tempat'] ?? null,
                     'guru_id' => $validated['penanggung_jawab_id'] ?? null,
-                    'status_kbm' => $validated['status'],
+                    'status_kbm' => $kbmStatus,
                 ]);
 
                 // If we found it via kalender_id but it wasn't linked via kegiatan_id, link it now
