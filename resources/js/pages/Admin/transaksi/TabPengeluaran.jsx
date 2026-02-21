@@ -129,6 +129,7 @@ export default function TabPengeluaran({ isMobile }) {
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Sumber</th>
                             {!isMobile && <th className="select-none py-2 text-xs font-black text-gray-400 uppercase tracking-widest">Kategori</th>}
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Nominal</th>
+                            {!isMobile && <th className="select-none py-2 text-xs font-black text-gray-400 uppercase tracking-widest">User</th>}
                             {!isMobile && <th className="select-none py-2 text-xs font-black text-gray-400 uppercase tracking-widest">Keterangan</th>}
                             <th className={`select-none py-2 text-center ${isMobile ? 'px-1 text-[8px]' : 'px-6 text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Aksi</th>
                         </tr></thead>
@@ -140,6 +141,7 @@ export default function TabPengeluaran({ isMobile }) {
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`px-2 py-0.5 bg-rose-50 text-rose-700 rounded-lg font-bold ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>{item.sumber?.nama || '-'}</span></td>
                                     {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold">{item.kategori?.nama || '-'}</span></td>}
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`font-bold text-rose-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>Rp {fmt(item.nominal)}</span></td>
+                                    {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold">{item.admin?.name || '-'}</span></td>}
                                     {!isMobile && <td className="py-2 align-middle text-[11px] text-gray-500 max-w-[200px] truncate">{item.keterangan || '-'}</td>}
                                     <td className={`py-2 ${isMobile ? 'px-1' : 'px-6'} align-middle text-center`}>
                                         <div className="flex items-center justify-center gap-1">
@@ -150,7 +152,7 @@ export default function TabPengeluaran({ isMobile }) {
                                 </tr>
                             ))}
                             {filtered.length === 0 && (
-                                <tr><td colSpan={isMobile ? 5 : 7} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
+                                <tr><td colSpan={isMobile ? 5 : 8} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
                                     <div className="flex flex-col items-center justify-center gap-2">
                                         <div className={`bg-gray-50 rounded-2xl flex items-center justify-center ${isMobile ? 'w-12 h-12' : 'w-16 h-16'}`}><i className={`fas fa-arrow-up text-gray-300 ${isMobile ? 'text-xl' : 'text-2xl'}`}></i></div>
                                         <p className={`font-bold text-gray-400 ${isMobile ? 'text-[10px]' : 'text-sm'}`}>Belum Ada Pengeluaran</p>

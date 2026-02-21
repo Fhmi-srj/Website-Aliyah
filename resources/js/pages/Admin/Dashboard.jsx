@@ -25,12 +25,14 @@ function Dashboard() {
     const [stats, setStats] = useState(null);
     const [charts, setCharts] = useState(null);
     const [activity, setActivity] = useState(null);
+    const [financial, setFinancial] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const { tahunAjaran: authTahunAjaran, activeRole, user } = useAuth();
     const { activeTahunAjaran } = useTahunAjaran();
     const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
     const isSuperadmin = activeRole === 'superadmin';
+    const canSeeFinancial = canAccessAdminPage(activeRole, '/transaksi');
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     useEffect(() => {
@@ -64,17 +66,25 @@ function Dashboard() {
             if (!tahunAjaranId) return;
             try {
                 const taParam = `?tahun_ajaran_id=${tahunAjaranId}`;
-                const [statsRes, chartsRes, activityRes] = await Promise.all([
+                const fetches = [
                     authFetch(`${API_BASE}/dashboard/statistics${taParam}`),
                     authFetch(`${API_BASE}/dashboard/charts${taParam}`),
-                    authFetch(`${API_BASE}/dashboard/recent-activity${taParam}`)
-                ]);
-                const statsData = await statsRes.json();
-                const chartsData = await chartsRes.json();
-                const activityData = await activityRes.json();
+                    authFetch(`${API_BASE}/dashboard/recent-activity${taParam}`),
+                ];
+                if (canSeeFinancial) {
+                    fetches.push(authFetch(`${API_BASE}/dashboard/financial-summary${taParam}`));
+                }
+                const results = await Promise.all(fetches);
+                const statsData = await results[0].json();
+                const chartsData = await results[1].json();
+                const activityData = await results[2].json();
                 if (statsData.success) setStats(statsData.data);
                 if (chartsData.success) setCharts(chartsData.data);
                 if (activityData.success) setActivity(activityData.data);
+                if (canSeeFinancial && results[3]) {
+                    const finData = await results[3].json();
+                    if (finData.success) setFinancial(finData.data);
+                }
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {
@@ -82,9 +92,10 @@ function Dashboard() {
             }
         };
         fetchData();
-    }, [tahunAjaranId]);
+    }, [tahunAjaranId, canSeeFinancial]);
 
     // Helpers
+    const fmtRp = (n) => new Intl.NumberFormat('id-ID').format(Math.abs(n || 0));
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
         return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -404,6 +415,97 @@ function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Row 3.5: Financial Summary - only for users with /transaksi access */}
+            {canSeeFinancial && financial && (
+                <div className={`${isMobile ? 'mb-3' : 'mb-6'}`}>
+                    {/* Financial Stats Cards */}
+                    <div className={`grid ${isMobile ? 'grid-cols-3 gap-2 mb-3' : 'grid-cols-3 gap-4 mb-6'}`}>
+                        {/* Pemasukan */}
+                        <div className={`bg-white ${isMobile ? 'rounded-xl p-3' : 'rounded-2xl p-5'} shadow-soft border border-gray-50 relative overflow-hidden`}>
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-full -translate-y-1/3 translate-x-1/3"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className={`${isMobile ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl'} bg-emerald-50 flex items-center justify-center`}>
+                                        <i className={`fas fa-arrow-down text-emerald-500 ${isMobile ? 'text-[10px]' : 'text-xs'}`}></i>
+                                    </div>
+                                    <span className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} font-black text-gray-400 uppercase tracking-widest`}>Pemasukan</span>
+                                </div>
+                                <p className={`${isMobile ? 'text-sm' : 'text-xl'} font-bold text-emerald-600 leading-none`}>Rp {fmtRp(financial.total_pemasukan)}</p>
+                            </div>
+                        </div>
+                        {/* Pengeluaran */}
+                        <div className={`bg-white ${isMobile ? 'rounded-xl p-3' : 'rounded-2xl p-5'} shadow-soft border border-gray-50 relative overflow-hidden`}>
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-rose-50 rounded-full -translate-y-1/3 translate-x-1/3"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className={`${isMobile ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl'} bg-rose-50 flex items-center justify-center`}>
+                                        <i className={`fas fa-arrow-up text-rose-500 ${isMobile ? 'text-[10px]' : 'text-xs'}`}></i>
+                                    </div>
+                                    <span className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} font-black text-gray-400 uppercase tracking-widest`}>Pengeluaran</span>
+                                </div>
+                                <p className={`${isMobile ? 'text-sm' : 'text-xl'} font-bold text-rose-600 leading-none`}>Rp {fmtRp(financial.total_pengeluaran)}</p>
+                            </div>
+                        </div>
+                        {/* Sisa Kas */}
+                        <div className={`bg-white ${isMobile ? 'rounded-xl p-3' : 'rounded-2xl p-5'} shadow-soft border border-gray-50 relative overflow-hidden`}>
+                            <div className={`absolute top-0 right-0 w-16 h-16 ${financial.sisa_kas >= 0 ? 'bg-blue-50' : 'bg-amber-50'} rounded-full -translate-y-1/3 translate-x-1/3`}></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className={`${isMobile ? 'w-7 h-7 rounded-lg' : 'w-9 h-9 rounded-xl'} ${financial.sisa_kas >= 0 ? 'bg-blue-50' : 'bg-amber-50'} flex items-center justify-center`}>
+                                        <i className={`fas fa-wallet ${financial.sisa_kas >= 0 ? 'text-blue-500' : 'text-amber-500'} ${isMobile ? 'text-[10px]' : 'text-xs'}`}></i>
+                                    </div>
+                                    <span className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} font-black text-gray-400 uppercase tracking-widest`}>Sisa Kas</span>
+                                </div>
+                                <p className={`${isMobile ? 'text-sm' : 'text-xl'} font-bold ${financial.sisa_kas >= 0 ? 'text-blue-600' : 'text-amber-600'} leading-none`}>
+                                    {financial.sisa_kas < 0 && '-'}Rp {fmtRp(financial.sisa_kas)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Per-User Breakdown */}
+                    {financial.per_user?.length > 0 && (
+                        <div className={`bg-white ${isMobile ? 'rounded-2xl p-3' : 'rounded-3xl p-6'} shadow-soft border border-gray-50`}>
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 className={`${isMobile ? 'text-sm' : 'text-base'} font-bold text-gray-800`}>Rekap Transaksi per User</h2>
+                                    <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-0.5`}>Ringkasan pemasukan & pengeluaran tiap operator</p>
+                                </div>
+                                <div className={`${isMobile ? 'w-7 h-7' : 'w-8 h-8'} rounded-lg bg-indigo-50 flex items-center justify-center`}>
+                                    <i className="fas fa-users-cog text-indigo-500 text-xs"></i>
+                                </div>
+                            </div>
+                            <div className={`grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-2 lg:grid-cols-3 gap-3'}`}>
+                                {financial.per_user.map((u, idx) => (
+                                    <div key={idx} className={`${isMobile ? 'p-2.5' : 'p-4'} rounded-xl bg-gray-50/60 border border-gray-100 hover:bg-gray-50 transition-colors`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-lg bg-indigo-100 flex items-center justify-center`}>
+                                                <i className={`fas fa-user text-indigo-500 ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
+                                            </div>
+                                            <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-bold text-gray-700 truncate`}>{u.name}</span>
+                                        </div>
+                                        <div className={`grid grid-cols-3 ${isMobile ? 'gap-1' : 'gap-2'}`}>
+                                            <div>
+                                                <p className={`${isMobile ? 'text-[8px]' : 'text-[9px]'} font-bold text-gray-400 uppercase tracking-wider`}>Masuk</p>
+                                                <p className={`${isMobile ? 'text-[9px]' : 'text-[11px]'} font-bold text-emerald-600`}>Rp {fmtRp(u.pemasukan)}</p>
+                                            </div>
+                                            <div>
+                                                <p className={`${isMobile ? 'text-[8px]' : 'text-[9px]'} font-bold text-gray-400 uppercase tracking-wider`}>Keluar</p>
+                                                <p className={`${isMobile ? 'text-[9px]' : 'text-[11px]'} font-bold text-rose-600`}>Rp {fmtRp(u.pengeluaran)}</p>
+                                            </div>
+                                            <div>
+                                                <p className={`${isMobile ? 'text-[8px]' : 'text-[9px]'} font-bold text-gray-400 uppercase tracking-wider`}>Sisa</p>
+                                                <p className={`${isMobile ? 'text-[9px]' : 'text-[11px]'} font-bold ${u.sisa >= 0 ? 'text-blue-600' : 'text-amber-600'}`}>{u.sisa < 0 && '-'}Rp {fmtRp(u.sisa)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Row 4: Quick Navigation + Recent Activity */}
             <div className={`grid grid-cols-1 lg:grid-cols-2 ${isMobile ? 'gap-3' : 'gap-6'}`}>

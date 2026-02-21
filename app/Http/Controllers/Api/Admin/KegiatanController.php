@@ -36,7 +36,7 @@ class KegiatanController extends Controller
     {
         $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $this->getActiveTahunAjaranId($request);
 
-        $query = Kegiatan::with(['penanggungjawab:id,nama', 'tahunAjaran:id,nama', 'absensiKegiatan:id,kegiatan_id'])
+        $query = Kegiatan::with(['penanggungjawab:id,nama', 'tahunAjaran:id,nama', 'absensiKegiatan:id,kegiatan_id', 'kalender:id,kegiatan_id,status_kbm'])
             ->withCount('absensiKegiatan');
 
         if ($tahunAjaranId) {
@@ -84,6 +84,18 @@ class KegiatanController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+            // Cast array values to integers and filter out invalid values before validation
+            if ($request->has('guru_pendamping') && is_array($request->guru_pendamping)) {
+                $gpIds = array_filter(array_map('intval', $request->guru_pendamping), fn($v) => $v > 0);
+                $validGpIds = Guru::whereIn('id', $gpIds)->pluck('id')->toArray();
+                $request->merge(['guru_pendamping' => array_values($validGpIds)]);
+            }
+            if ($request->has('kelas_peserta') && is_array($request->kelas_peserta)) {
+                $kpIds = array_filter(array_map('intval', $request->kelas_peserta), fn($v) => $v > 0);
+                $validKpIds = Kelas::whereIn('id', $kpIds)->pluck('id')->toArray();
+                $request->merge(['kelas_peserta' => array_values($validKpIds)]);
+            }
+
             $validated = $request->validate([
                 'nama_kegiatan' => 'required|string|max:200',
                 'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental,Reguler',
@@ -92,9 +104,9 @@ class KegiatanController extends Controller
                 'tempat' => 'nullable|string|max:100',
                 'penanggung_jawab_id' => 'nullable|exists:guru,id',
                 'guru_pendamping' => 'nullable|array',
-                'guru_pendamping.*' => 'exists:guru,id',
+                'guru_pendamping.*' => 'integer',
                 'kelas_peserta' => 'nullable|array',
-                'kelas_peserta.*' => 'exists:kelas,id',
+                'kelas_peserta.*' => 'integer',
                 'peserta' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Selesai,Dibatalkan',
@@ -136,6 +148,7 @@ class KegiatanController extends Controller
                         'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
                         'tempat' => $validated['tempat'] ?? null,
                         'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                        'status_kbm' => $validated['status'],
                     ]);
                 }
             } else {
@@ -143,7 +156,7 @@ class KegiatanController extends Controller
                     'tanggal_mulai' => date('Y-m-d H:i:s', strtotime($validated['waktu_mulai'])),
                     'tanggal_berakhir' => date('Y-m-d H:i:s', strtotime($validated['waktu_berakhir'])),
                     'kegiatan' => $validated['nama_kegiatan'],
-                    'status_kbm' => 'Aktif',
+                    'status_kbm' => $validated['status'],
                     'tempat' => $validated['tempat'] ?? null,
                     'guru_id' => $validated['penanggung_jawab_id'] ?? null,
                     'kegiatan_id' => $kegiatan->id,
@@ -161,6 +174,13 @@ class KegiatanController extends Controller
                 'message' => 'Kegiatan berhasil ditambahkan',
                 'data' => $kegiatan
             ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            $firstError = collect($e->errors())->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'message' => $firstError ?? 'Validasi gagal'
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -188,6 +208,20 @@ class KegiatanController extends Controller
     public function update(Request $request, Kegiatan $kegiatan): JsonResponse
     {
         try {
+            // Cast array values to integers and filter out invalid (0, null) values before validation
+            if ($request->has('guru_pendamping') && is_array($request->guru_pendamping)) {
+                $gpIds = array_filter(array_map('intval', $request->guru_pendamping), fn($v) => $v > 0);
+                // Only keep IDs that actually exist in guru table
+                $validGpIds = Guru::whereIn('id', $gpIds)->pluck('id')->toArray();
+                $request->merge(['guru_pendamping' => array_values($validGpIds)]);
+            }
+            if ($request->has('kelas_peserta') && is_array($request->kelas_peserta)) {
+                $kpIds = array_filter(array_map('intval', $request->kelas_peserta), fn($v) => $v > 0);
+                // Only keep IDs that actually exist in kelas table
+                $validKpIds = Kelas::whereIn('id', $kpIds)->pluck('id')->toArray();
+                $request->merge(['kelas_peserta' => array_values($validKpIds)]);
+            }
+
             $validated = $request->validate([
                 'nama_kegiatan' => 'required|string|max:200',
                 'jenis_kegiatan' => 'required|in:Rutin,Tahunan,Insidental,Reguler',
@@ -196,12 +230,12 @@ class KegiatanController extends Controller
                 'tempat' => 'nullable|string|max:100',
                 'penanggung_jawab_id' => 'nullable|exists:guru,id',
                 'guru_pendamping' => 'nullable|array',
-                'guru_pendamping.*' => 'exists:guru,id',
+                'guru_pendamping.*' => 'integer',
                 'kelas_peserta' => 'nullable|array',
-                'kelas_peserta.*' => 'exists:kelas,id',
+                'kelas_peserta.*' => 'integer',
                 'peserta' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
-                'status' => 'required|in:Aktif,Selesai,Dibatalkan',
+                'status' => 'required|in:Aktif,Libur',
             ]);
 
             DB::beginTransaction();
@@ -235,6 +269,7 @@ class KegiatanController extends Controller
                     'kegiatan' => $validated['nama_kegiatan'],
                     'tempat' => $validated['tempat'] ?? null,
                     'guru_id' => $validated['penanggung_jawab_id'] ?? null,
+                    'status_kbm' => $validated['status'],
                 ]);
 
                 // If we found it via kalender_id but it wasn't linked via kegiatan_id, link it now
@@ -252,6 +287,13 @@ class KegiatanController extends Controller
                 'message' => 'Kegiatan berhasil diperbarui',
                 'data' => $kegiatan
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            $firstError = collect($e->errors())->flatten()->first();
+            return response()->json([
+                'success' => false,
+                'message' => $firstError ?? 'Validasi gagal'
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([

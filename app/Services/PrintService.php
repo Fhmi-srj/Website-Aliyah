@@ -12,7 +12,18 @@ class PrintService
     public static function getKopUrl()
     {
         $kopPath = AppSetting::getValue('kop_image');
-        return $kopPath ? asset('storage/' . $kopPath) : null;
+        if (!$kopPath)
+            return null;
+
+        // Convert to base64 data URI for DomPDF compatibility (enable_remote is off)
+        $fullPath = storage_path('app/public/' . $kopPath);
+        if (file_exists($fullPath)) {
+            $mime = mime_content_type($fullPath);
+            $data = base64_encode(file_get_contents($fullPath));
+            return 'data:' . $mime . ';base64,' . $data;
+        }
+
+        return null;
     }
 
     /**

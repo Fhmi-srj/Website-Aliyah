@@ -40,6 +40,11 @@
             </div>
         </div>
 
+        <h3 class="section-title">Berita Acara</h3>
+        <div class="content-box">
+            {!! nl2br(e($item['beritaAcara'] ?? 'Tidak ada berita acara')) !!}
+        </div>
+
         <h3 class="section-title">Absensi Koordinator & Pendamping</h3>
         <table>
             <thead>
@@ -107,11 +112,6 @@
                 </p>
             </div>
         @endif
-
-        <h3 class="section-title">Berita Acara</h3>
-        <div class="content-box">
-            {!! nl2br(e($item['beritaAcara'] ?? 'Tidak ada berita acara')) !!}
-        </div>
 
         <div class="signature-section">
             <div class="signature-row">

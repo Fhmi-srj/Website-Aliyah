@@ -123,6 +123,7 @@ export default function TabPemasukan({ isMobile }) {
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Tanggal</th>
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Sumber</th>
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Nominal</th>
+                            {!isMobile && <th className="select-none py-2 text-xs font-black text-gray-400 uppercase tracking-widest">User</th>}
                             {!isMobile && <th className="select-none py-2 text-xs font-black text-gray-400 uppercase tracking-widest">Keterangan</th>}
                             <th className={`select-none py-2 text-center ${isMobile ? 'px-1 text-[8px]' : 'px-6 text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Aksi</th>
                         </tr></thead>
@@ -133,6 +134,7 @@ export default function TabPemasukan({ isMobile }) {
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`text-gray-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>{formatTanggal(item.tanggal)}</span></td>
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>{item.sumber?.nama || '-'}</span></td>
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`font-bold text-emerald-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>Rp {fmt(item.nominal)}</span></td>
+                                    {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold">{item.admin?.name || '-'}</span></td>}
                                     {!isMobile && <td className="py-2 align-middle text-[11px] text-gray-500 max-w-[200px] truncate">{item.keterangan || '-'}</td>}
                                     <td className={`py-2 ${isMobile ? 'px-1' : 'px-6'} align-middle text-center`}>
                                         <div className="flex items-center justify-center gap-1">
@@ -143,7 +145,7 @@ export default function TabPemasukan({ isMobile }) {
                                 </tr>
                             ))}
                             {filtered.length === 0 && (
-                                <tr><td colSpan={isMobile ? 4 : 6} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
+                                <tr><td colSpan={isMobile ? 4 : 7} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
                                     <div className="flex flex-col items-center justify-center gap-2">
                                         <div className={`bg-gray-50 rounded-2xl flex items-center justify-center ${isMobile ? 'w-12 h-12' : 'w-16 h-16'}`}><i className={`fas fa-arrow-down text-gray-300 ${isMobile ? 'text-xl' : 'text-2xl'}`}></i></div>
                                         <p className={`font-bold text-gray-400 ${isMobile ? 'text-[10px]' : 'text-sm'}`}>Belum Ada Pemasukan</p>

@@ -627,6 +627,7 @@ class GuruPrintController extends Controller
         $pendampingRaw = $absensi->absensi_pendamping ?? [];
         $pendamping = [];
         $rekapPendamping = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpha' => 0];
+        $addedGuruIds = [];
 
         // Map for status conversion
         $statusMap = [
@@ -640,35 +641,61 @@ class GuruPrintController extends Controller
             'ALPHA' => 'alpha',
         ];
 
+        // Helper to get jabatan from User role
+        $getJabatan = function ($guru) {
+            if (!$guru)
+                return '-';
+            $user = \App\Models\User::where('guru_id', $guru->id)->with('roles')->first();
+            if ($user && $user->roles->count() > 0) {
+                return ucwords(str_replace('_', ' ', $user->roles->first()->name ?? ''));
+            }
+            return $guru->jabatan ?? 'Guru';
+        };
+
+        // Auto-include PJ/Koordinator as first in the attendance list
+        if ($kegiatan->penanggungJawab) {
+            $pj = $kegiatan->penanggungJawab;
+            $pjStatusRaw = strtoupper(trim($absensi->pj_status ?? 'H'));
+            $pjStatusKey = $statusMap[$pjStatusRaw] ?? 'hadir';
+            $pendamping[] = [
+                'nama' => $pj->nama,
+                'jabatan' => $getJabatan($pj) . ' (Koordinator)',
+                'status' => strtoupper($pjStatusRaw),
+                'status_class' => PrintService::getStatusClass($pjStatusKey),
+                'keterangan' => $absensi->pj_keterangan ?? null,
+            ];
+            $addedGuruIds[] = $pj->id;
+            $rekapPendamping[$pjStatusKey]++;
+        }
+
         foreach ($pendampingRaw as $p) {
+            $guruId = $p['guru_id'] ?? null;
+
+            // Skip if already added as PJ
+            if ($guruId && in_array($guruId, $addedGuruIds)) {
+                continue;
+            }
+
             $statusRaw = strtoupper(trim($p['status'] ?? 'A'));
             $statusKey = $statusMap[$statusRaw] ?? 'alpha';
-            $guru = Guru::find($p['guru_id'] ?? null);
+            $guru = Guru::find($guruId);
 
             // Skip "Semua Guru" entries
             if ($guru && str_contains(strtolower($guru->nama), 'semua guru')) {
                 continue;
             }
 
-            // Get jabatan from User role
-            $jabatan = '-';
-            if ($guru) {
-                $user = \App\Models\User::where('guru_id', $guru->id)->with('roles')->first();
-                if ($user && $user->roles->count() > 0) {
-                    // Get role name and format it nicely
-                    $roleName = $user->roles->first()->name ?? '';
-                    $jabatan = ucwords(str_replace('_', ' ', $roleName));
-                }
-            }
-
             $pendamping[] = [
                 'nama' => $guru?->nama ?? ($p['nama'] ?? '-'),
-                'jabatan' => $jabatan,
+                'jabatan' => $getJabatan($guru),
                 'status' => strtoupper($statusRaw),
                 'status_class' => PrintService::getStatusClass($statusKey),
                 'keterangan' => $p['keterangan'] ?? null,
             ];
 
+            if ($guruId) {
+                $addedGuruIds[] = $guruId;
+            }
             $rekapPendamping[$statusKey]++;
         }
 
@@ -802,35 +829,63 @@ class GuruPrintController extends Controller
             $pendampingRaw = $absensi->absensi_pendamping ?? [];
             $pendamping = [];
             $rekapPendamping = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpha' => 0];
+            $addedGuruIds = [];
+
+            // Helper to get jabatan from User role
+            $getJabatan = function ($guru) {
+                if (!$guru)
+                    return '-';
+                $user = \App\Models\User::where('guru_id', $guru->id)->with('roles')->first();
+                if ($user && $user->roles->count() > 0) {
+                    return ucwords(str_replace('_', ' ', $user->roles->first()->name ?? ''));
+                }
+                return $guru->jabatan ?? 'Guru';
+            };
+
+            // Auto-include PJ/Koordinator as first in the attendance list
+            if ($kegiatan->penanggungJawab) {
+                $pj = $kegiatan->penanggungJawab;
+                $pjStatusRaw = strtoupper(trim($absensi->pj_status ?? 'H'));
+                $pjStatusKey = $statusMap[$pjStatusRaw] ?? 'hadir';
+                $pendamping[] = [
+                    'nama' => $pj->nama,
+                    'jabatan' => $getJabatan($pj) . ' (Koordinator)',
+                    'status' => strtoupper($pjStatusRaw),
+                    'status_class' => PrintService::getStatusClass($pjStatusKey),
+                    'keterangan' => $absensi->pj_keterangan ?? null,
+                ];
+                $addedGuruIds[] = $pj->id;
+                $rekapPendamping[$pjStatusKey]++;
+            }
 
             foreach ($pendampingRaw as $p) {
+                $guruId = $p['guru_id'] ?? null;
+
+                // Skip if already added as PJ
+                if ($guruId && in_array($guruId, $addedGuruIds)) {
+                    continue;
+                }
+
                 $statusRaw = strtoupper(trim($p['status'] ?? 'A'));
                 $statusKey = $statusMap[$statusRaw] ?? 'alpha';
-                $guru = Guru::find($p['guru_id'] ?? null);
+                $guru = Guru::find($guruId);
 
                 // Skip "Semua Guru" entries
                 if ($guru && str_contains(strtolower($guru->nama), 'semua guru')) {
                     continue;
                 }
 
-                // Get jabatan from User role
-                $jabatan = '-';
-                if ($guru) {
-                    $user = \App\Models\User::where('guru_id', $guru->id)->with('roles')->first();
-                    if ($user && $user->roles->count() > 0) {
-                        $roleName = $user->roles->first()->name ?? '';
-                        $jabatan = ucwords(str_replace('_', ' ', $roleName));
-                    }
-                }
-
                 $pendamping[] = [
                     'nama' => $guru?->nama ?? ($p['nama'] ?? '-'),
-                    'jabatan' => $jabatan,
+                    'jabatan' => $getJabatan($guru),
                     'status' => strtoupper($statusRaw),
                     'status_class' => PrintService::getStatusClass($statusKey),
                     'keterangan' => $p['keterangan'] ?? null,
                 ];
 
+                if ($guruId) {
+                    $addedGuruIds[] = $guruId;
+                }
                 $rekapPendamping[$statusKey]++;
             }
 
@@ -1492,13 +1547,31 @@ class GuruPrintController extends Controller
             // guruObligation[guru_id][day] = true (guru HAS an obligation that day)
             $guruObligation = [];
 
+            // ═══ Pre-step: Collect Libur KBM days from Kalender ═══
+            $liburDays = [];
+            $kalenderLibur = \App\Models\Kalender::where('tahun_ajaran_id', $tahunAjaranId)
+                ->where('status_kbm', 'Libur')
+                ->get();
+            foreach ($kalenderLibur as $kl) {
+                $klStart = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+                $klEnd = Carbon::parse($kl->tanggal_berakhir)->startOfDay()->min($endDate);
+                while ($klStart->lte($klEnd)) {
+                    $liburDays[] = $klStart->day;
+                    $klStart->addDay();
+                }
+            }
+            $liburDays = array_unique($liburDays);
+
             // ═══ Step 1: Detect obligations from jadwal (day-of-week schedule) ═══
             for ($d = 1; $d <= $daysInMonth; $d++) {
                 $date = Carbon::create($tahun, $bulan, $d);
                 $hariName = $dayOfWeekMap[$date->dayOfWeek] ?? '';
                 foreach ($guruList as $guru) {
                     if (isset($jadwalByGuru[$guru->id]) && in_array($hariName, $jadwalByGuru[$guru->id])) {
-                        $guruObligation[$guru->id][$d] = true;
+                        // Skip jadwal obligation on Libur KBM days
+                        if (!in_array($d, $liburDays)) {
+                            $guruObligation[$guru->id][$d] = true;
+                        }
                     }
                 }
             }
@@ -1573,6 +1646,9 @@ class GuruPrintController extends Controller
                 if (!$guruId)
                     continue;
                 $day = Carbon::parse($record->tanggal)->day;
+                // Skip mengajar records on Libur KBM days
+                if (in_array($day, $liburDays))
+                    continue;
                 $guruObligation[$guruId][$day] = true; // also mark as obligation
                 $status = strtoupper($record->guru_status ?? 'H');
                 if (!in_array($status, ['H', 'S', 'I', 'A']))

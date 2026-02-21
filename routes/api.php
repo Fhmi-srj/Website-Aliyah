@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/statistics', [DashboardController::class, 'statistics']);
     Route::get('dashboard/charts', [DashboardController::class, 'charts']);
     Route::get('dashboard/recent-activity', [DashboardController::class, 'recentActivity']);
+    Route::get('dashboard/financial-summary', [DashboardController::class, 'financialSummary']);
 
     // Data Induk Routes (Operator only for now)
     Route::apiResource('kelas', KelasController::class)->parameters(['kelas' => 'kelas']);

@@ -67,7 +67,7 @@ function ManajemenKegiatan() {
     const pjDropdownRef = useRef(null);
 
     const jenisKegiatanList = ['Rutin', 'Tahunan', 'Insidental'];
-    const statusList = ['Aktif', 'Selesai', 'Dibatalkan'];
+    const statusList = ['Aktif', 'Libur'];
 
     const fetchData = async (tahunId = tahunAjaranId) => {
         if (!tahunId) return;
@@ -146,6 +146,10 @@ function ManajemenKegiatan() {
                 aVal = a.penanggungjawab?.nama || '';
                 bVal = b.penanggungjawab?.nama || '';
             }
+            if (column === 'status_kbm') {
+                aVal = a.kalender?.status_kbm || 'Aktif';
+                bVal = b.kalender?.status_kbm || 'Aktif';
+            }
             if (typeof aVal === 'string') aVal = aVal.toLowerCase();
             if (typeof bVal === 'string') bVal = bVal.toLowerCase();
             if (aVal < bVal) return -dir;
@@ -166,7 +170,7 @@ function ManajemenKegiatan() {
     const filteredData = (() => {
         let result = data.filter(item => {
             if (filterJenis && item.jenis_kegiatan !== filterJenis) return false;
-            if (filterStatus && item.status !== filterStatus) return false;
+            if (filterStatus && (item.kalender?.status_kbm || 'Aktif') !== filterStatus) return false;
             if (!search) return true;
             const s = search.toLowerCase();
             return (
@@ -225,10 +229,10 @@ function ManajemenKegiatan() {
             waktu_berakhir: toDatetimeLocal(item.waktu_berakhir),
             tempat: item.tempat || '',
             penanggung_jawab_id: item.penanggung_jawab_id || '',
-            guru_pendamping: (item.guru_pendamping || []).map(g => typeof g === 'object' ? g.id : g),
-            kelas_peserta: (item.kelas_peserta || []).map(k => typeof k === 'object' ? k.id : k),
+            guru_pendamping: (item.guru_pendamping || []).map(g => parseInt(typeof g === 'object' ? g.id : g)),
+            kelas_peserta: (item.kelas_peserta || []).map(k => parseInt(typeof k === 'object' ? k.id : k)),
             deskripsi: item.deskripsi || '',
-            status: item.status || 'Aktif',
+            status: item.kalender?.status_kbm || item.status || 'Aktif',
             kalender_id: item.kalender_id || (item.kalender?.id || '')
         });
         setPjSearch(item.penanggungjawab?.nama || '');
@@ -403,8 +407,7 @@ function ManajemenKegiatan() {
             Swal.fire('Info', 'Absensi belum diisi', 'info');
             return;
         }
-        const url = `${API_BASE}/guru-panel/print/hasil-kegiatan/${item.absensi_id}?token=${token}`;
-        window.open(url, '_blank');
+        window.open(`/print/hasil-kegiatan/${item.absensi_id}?token=${token}`, '_blank');
     };
 
     const openAbsensiModal = async (item) => {
@@ -456,6 +459,7 @@ function ManajemenKegiatan() {
                 tempat: kal.tempat || prev.tempat,
                 penanggung_jawab_id: kal.guru_id || prev.penanggung_jawab_id,
                 kalender_id: kal.id,
+                status: kal.status_kbm || prev.status,
             }));
             if (kal.guru?.nama) {
                 setPjSearch(kal.guru.nama);
@@ -617,8 +621,8 @@ function ManajemenKegiatan() {
                                 {!isMobile && <SortableHeader label="Penanggung Jawab" column="pj" />}
                                 {!isMobile && (
                                     <SortableHeader
-                                        label="Status"
-                                        column="status"
+                                        label="Status KBM"
+                                        column="status_kbm"
                                         filterable
                                         filterOptions={[
                                             { label: 'Semua Status', value: '' },
@@ -702,13 +706,18 @@ function ManajemenKegiatan() {
                                         )}
                                         {!isMobile && (
                                             <td className="py-2.5 px-2 align-middle">
-                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'Aktif' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
-                                                    item.status === 'Selesai' ? 'bg-gray-50 text-gray-500 dark:bg-dark-bg/50 dark:text-gray-400' :
-                                                        'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
-                                                    }`}>
-                                                    {item.status === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-                                                    {item.status}
-                                                </span>
+                                                {(() => {
+                                                    const kbm = item.kalender?.status_kbm || 'Aktif';
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${kbm === 'Aktif' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                                                            'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                                            }`}>
+                                                            {kbm === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                                                            {kbm === 'Libur' && <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
+                                                            {kbm}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </td>
                                         )}
                                         <td className={`${isMobile ? 'py-1 px-2' : 'py-2.5 px-6'} align-middle text-center`}>
@@ -738,7 +747,7 @@ function ManajemenKegiatan() {
                                                     <div className="expand-item"><span className="expand-label">Selesai</span><span className="expand-value">{item.waktu_berakhir ? formatDateTime(item.waktu_berakhir) : '-'}</span></div>
                                                     <div className="expand-item"><span className="expand-label">Tempat</span><span className="expand-value">{item.tempat}</span></div>
                                                     <div className="expand-item"><span className="expand-label">PJ</span><span className="expand-value">{item.penanggungjawab?.nama || '-'}</span></div>
-                                                    <div className="expand-item"><span className="expand-label">Status</span><span className="expand-value">{item.status}</span></div>
+                                                    <div className="expand-item"><span className="expand-label">Status KBM</span><span className="expand-value">{item.kalender?.status_kbm || 'Aktif'}</span></div>
                                                     <div className="expand-item">
                                                         <span className="expand-label">Pendamping</span>
                                                         <span className="expand-value">
@@ -813,7 +822,7 @@ function ManajemenKegiatan() {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status Saat Ini</label>
+                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status KBM</label>
                             <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-standard outline-none">
                                 {statusList.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>

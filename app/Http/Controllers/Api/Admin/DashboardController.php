@@ -13,6 +13,8 @@ use App\Models\Jadwal;
 use App\Models\Kegiatan;
 use App\Models\Ekskul;
 use App\Models\Rapat;
+use App\Models\Pemasukan;
+use App\Models\Pengeluaran;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -213,6 +215,74 @@ class DashboardController extends Controller
                     'upcoming_rapat' => $upcomingRapat,
                     'recent_kegiatan' => $recentKegiatan,
                     'recent_logs' => $recentLogs,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get financial summary (pemasukan, pengeluaran, sisa kas, per-user breakdown)
+     */
+    public function financialSummary(Request $request): JsonResponse
+    {
+        try {
+            $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $request->user()->tahun_ajaran_id;
+
+            // Total pemasukan
+            $totalPemasukan = Pemasukan::where('tahun_ajaran_id', $tahunAjaranId)->sum('nominal');
+
+            // Total pengeluaran
+            $totalPengeluaran = Pengeluaran::where('tahun_ajaran_id', $tahunAjaranId)->sum('nominal');
+
+            // Sisa kas
+            $sisaKas = $totalPemasukan - $totalPengeluaran;
+
+            // Per-user breakdown
+            $pemasukanPerUser = Pemasukan::where('tahun_ajaran_id', $tahunAjaranId)
+                ->selectRaw('admin_id, SUM(nominal) as total')
+                ->groupBy('admin_id')
+                ->with('admin:id,name')
+                ->get()
+                ->keyBy('admin_id');
+
+            $pengeluaranPerUser = Pengeluaran::where('tahun_ajaran_id', $tahunAjaranId)
+                ->selectRaw('admin_id, SUM(nominal) as total')
+                ->groupBy('admin_id')
+                ->with('admin:id,name')
+                ->get()
+                ->keyBy('admin_id');
+
+            // Merge all admin IDs
+            $allAdminIds = $pemasukanPerUser->keys()->merge($pengeluaranPerUser->keys())->unique();
+
+            $perUser = $allAdminIds->map(function ($adminId) use ($pemasukanPerUser, $pengeluaranPerUser) {
+                $masuk = $pemasukanPerUser->get($adminId);
+                $keluar = $pengeluaranPerUser->get($adminId);
+                $totalMasuk = $masuk ? floatval($masuk->total) : 0;
+                $totalKeluar = $keluar ? floatval($keluar->total) : 0;
+                $name = $masuk->admin->name ?? $keluar->admin->name ?? 'Unknown';
+
+                return [
+                    'admin_id' => $adminId,
+                    'name' => $name,
+                    'pemasukan' => $totalMasuk,
+                    'pengeluaran' => $totalKeluar,
+                    'sisa' => $totalMasuk - $totalKeluar,
+                ];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_pemasukan' => floatval($totalPemasukan),
+                    'total_pengeluaran' => floatval($totalPengeluaran),
+                    'sisa_kas' => floatval($sisaKas),
+                    'per_user' => $perUser,
                 ]
             ]);
         } catch (\Exception $e) {

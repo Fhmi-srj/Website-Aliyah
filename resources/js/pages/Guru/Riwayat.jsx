@@ -56,7 +56,6 @@ function Riwayat() {
 
     // Print selection states
     const [selectedRapatIds, setSelectedRapatIds] = useState([]);
-    const [selectedKegiatanIds, setSelectedKegiatanIds] = useState([]);
 
     const tabs = [
         { id: 'mengajar', label: 'Mengajar' },
@@ -459,10 +458,7 @@ function Riwayat() {
         window.open(`/print/hasil-rapat/${absensiId}?token=${token}`, '_blank');
     };
 
-    const handlePrintHasilKegiatan = (absensiId) => {
-        const token = localStorage.getItem('auth_token');
-        window.open(`/print/hasil-kegiatan/${absensiId}?token=${token}`, '_blank');
-    };
+
 
     const handleBulkPrintRapat = () => {
         const token = localStorage.getItem('auth_token');
@@ -474,36 +470,11 @@ function Riwayat() {
         });
     };
 
-    const handleBulkPrintKegiatan = () => {
-        if (selectedKegiatanIds.length === 0) return;
-
-        const token = localStorage.getItem('auth_token');
-        const idsParam = selectedKegiatanIds.map(id => `ids[]=${id}`).join('&');
-        window.open(`/print/hasil-kegiatan-bulk?${idsParam}&token=${token}`, '_blank');
-    };
-
     const toggleRapatSelection = (e, id) => {
         e.stopPropagation();
         setSelectedRapatIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
-    };
-
-    const toggleKegiatanSelection = (e, id) => {
-        e.stopPropagation();
-        setSelectedKegiatanIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
-    };
-
-    const selectAllKegiatan = (filteredData) => {
-        const allIds = filteredData.filter(item => item.absensi_id).map(item => item.absensi_id);
-        const allSelected = allIds.every(id => selectedKegiatanIds.includes(id));
-        if (allSelected) {
-            setSelectedKegiatanIds([]);
-        } else {
-            setSelectedKegiatanIds(allIds);
-        }
     };
 
     // Show skeleton on initial load
@@ -786,70 +757,25 @@ function Riwayat() {
                     const filteredData = getFilteredData('kegiatan');
                     return (
                         <>
-                            {/* Bulk action bar - only show when items selected */}
-                            {selectedKegiatanIds.length > 0 && (
-                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3 flex items-center justify-between animate-fadeIn">
-                                    <div className="flex items-center gap-3">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={filteredData.filter(item => item.absensi_id).every(item => selectedKegiatanIds.includes(item.absensi_id)) && filteredData.filter(item => item.absensi_id).length > 0}
-                                                onChange={() => selectAllKegiatan(filteredData)}
-                                                className="w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-400"
-                                            />
-                                            <span className="text-sm text-gray-700">Pilih Semua</span>
-                                        </label>
-                                        <span className="text-sm text-blue-700">
-                                            <i className="fas fa-check-circle mr-1"></i>
-                                            {selectedKegiatanIds.length} dipilih
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setSelectedKegiatanIds([])}
-                                            className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button
-                                            onClick={handleBulkPrintKegiatan}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors"
-                                        >
-                                            <i className="fas fa-print"></i>
-                                            Cetak Terpilih
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+
 
                             {filteredData.length > 0 ? (
                                 <div className="space-y-3">
                                     {filteredData.map((item) => {
                                         const colors = getStatusConfig(item.guru_status);
-                                        const isSelected = selectedKegiatanIds.includes(item.absensi_id);
                                         return (
                                             <div
                                                 key={item.id || `kegiatan-${item.tanggal_raw}-${item.nama}`}
-                                                className={`relative bg-white rounded-xl shadow-sm transition-all border-l-4 ${colors.border} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
+                                                className={`relative bg-white rounded-xl shadow-sm transition-all border-l-4 ${colors.border}`}
                                             >
-                                                {/* Checkbox */}
-                                                {item.absensi_id && (
-                                                    <div className="absolute top-3 left-3 z-10">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={(e) => toggleKegiatanSelection(e, item.absensi_id)}
-                                                            className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400"
-                                                        />
-                                                    </div>
-                                                )}
+
 
                                                 <button
                                                     onClick={() => handleCardClick(item, 'kegiatan')}
                                                     className="w-full p-4 cursor-pointer hover:shadow-md text-left"
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={`flex-1 min-w-0 ${item.absensi_id ? 'pl-6' : ''}`}>
+                                                        <div className="flex-1 min-w-0">
                                                             <p className="font-semibold text-gray-800 truncate">{item.nama}</p>
                                                             <p className="text-xs text-gray-500 truncate">
                                                                 <i className="fas fa-map-marker-alt mr-1"></i>{item.lokasi || '-'}
@@ -869,16 +795,7 @@ function Riwayat() {
                                                     </div>
                                                 </button>
 
-                                                {/* Print button */}
-                                                {item.absensi_id && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handlePrintHasilKegiatan(item.absensi_id); }}
-                                                        className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 text-gray-500 hover:text-green-600 rounded-full transition-colors"
-                                                        title="Cetak Laporan"
-                                                    >
-                                                        <i className="fas fa-print text-sm"></i>
-                                                    </button>
-                                                )}
+
                                             </div>
                                         );
                                     })}

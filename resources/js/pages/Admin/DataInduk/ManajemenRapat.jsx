@@ -621,7 +621,7 @@ function ManajemenRapat() {
                                         <td className={`${isMobile ? 'py-1 px-1' : 'py-2.5 px-2'} align-middle`}>
                                             <div className="flex flex-col">
                                                 <span className={`${isMobile ? 'text-[8px] leading-tight' : 'text-xs'} font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight ${isMobile ? 'whitespace-normal break-words' : ''}`}>{item.agenda_rapat}</span>
-                                                <span className={`${isMobile ? 'text-[7px]' : 'text-[8px]'} text-gray-400 font-medium italic`}>Sekr: {item.sekretaris || '-'}</span>
+                                                <span className={`${isMobile ? 'text-[7px]' : 'text-[8px]'} text-gray-400 font-medium italic`}>Pimpinan: {item.pimpinan || '-'}</span>
                                             </div>
                                         </td>
                                         {!isMobile && (
