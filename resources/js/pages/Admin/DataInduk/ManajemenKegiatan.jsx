@@ -1115,6 +1115,7 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
             setLoading(true);
             const res = await authFetch(`${API_BASE}/kegiatan/${kegiatan.id}/absensi-admin`, {
                 method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
             const data = await res.json();

@@ -1149,6 +1149,7 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
             setLoading(true);
             const res = await authFetch(`${API_BASE}/rapat/${rapat.id}/absensi-admin`, {
                 method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
             const data = await res.json();

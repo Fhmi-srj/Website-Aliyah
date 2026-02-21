@@ -67,11 +67,14 @@ class GuruRiwayatController extends Controller
 
         $jadwalList = $jadwalQuery->get();
 
-        // Get all existing absensi for this guru (last 30 days)
-        $thirtyDaysAgo = Carbon::now()->subDays(30)->startOfDay();
+        // Get tahun ajaran date range for scoping data
+        $tahunAjaran = TahunAjaran::find($tahunAjaranId);
+        $startDate = $tahunAjaran ? Carbon::parse($tahunAjaran->tanggal_mulai)->startOfDay() : Carbon::now()->subMonths(6)->startOfDay();
+
+        // Get all existing absensi for this guru within tahun ajaran
         $existingAbsensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas'])
             ->where('guru_id', $guru->id)
-            ->where('tanggal', '>=', $thirtyDaysAgo)
+            ->where('tanggal', '>=', $startDate)
             ->get()
             ->keyBy(function ($item) {
                 return $item->jadwal_id . '-' . $item->tanggal->format('Y-m-d');
@@ -85,8 +88,8 @@ class GuruRiwayatController extends Controller
             if ($dayNumber === null)
                 continue;
 
-            // Find all occurrences of this day in the last 30 days
-            $checkDate = $thirtyDaysAgo->copy();
+            // Find all occurrences of this day within tahun ajaran
+            $checkDate = $startDate->copy();
             while ($checkDate->dayOfWeek !== $dayNumber) {
                 $checkDate->addDay();
             }
@@ -174,7 +177,7 @@ class GuruRiwayatController extends Controller
         // These use snapshot data instead of jadwal references
         $historicalAbsensi = AbsensiMengajar::where('guru_id', $guru->id)
             ->whereNull('jadwal_id')
-            ->where('tanggal', '>=', $thirtyDaysAgo)
+            ->where('tanggal', '>=', $startDate)
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sq) use ($search) {
                     $sq->where('snapshot_mapel', 'like', "%{$search}%")
@@ -230,8 +233,7 @@ class GuruRiwayatController extends Controller
             return strcmp($b['tanggal_raw'], $a['tanggal_raw']);
         });
 
-        // Limit to 50 results
-        $result = array_slice($result, 0, 50);
+
 
         return response()->json([
             'success' => true,
@@ -385,7 +387,7 @@ class GuruRiwayatController extends Controller
             $kegiatanQuery->where('nama_kegiatan', 'like', "%{$search}%");
         }
 
-        $kegiatanList = $kegiatanQuery->take(50)->get();
+        $kegiatanList = $kegiatanQuery->get();
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id) {
@@ -514,7 +516,7 @@ class GuruRiwayatController extends Controller
             $rapatQuery->where('agenda_rapat', 'like', "%{$search}%");
         }
 
-        $rapatList = $rapatQuery->take(50)->get();
+        $rapatList = $rapatQuery->get();
 
         // Helper function to find attendance in JSON array
         $findAttendance = function ($array, $id) {
