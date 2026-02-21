@@ -1,6 +1,6 @@
 -- ============================================
--- Import Pemasukan & Pengeluaran Data (v2)
--- Generated: 2026-02-22 01:27:09
+-- Import Pemasukan & Pengeluaran Data (v3)
+-- Generated: 2026-02-22 01:35:06
 -- ============================================
 
 -- === TRANSAKSI KATEGORI ===
@@ -32,12 +32,10 @@ INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_a
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (26, 'BOS REG OKT 2025', 'sumber_pemasukan', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'BOS REG OKT 2025', `tipe` = 'sumber_pemasukan';
 INSERT INTO `transaksi_kategori` (`id`, `nama`, `tipe`, `created_at`, `updated_at`) VALUES (27, 'DEBI', 'sumber_pemasukan', NOW(), NOW()) ON DUPLICATE KEY UPDATE `nama` = 'DEBI', `tipe` = 'sumber_pemasukan';
 
--- === CLEAR OLD DATA ===
 TRUNCATE TABLE `pemasukan`;
 TRUNCATE TABLE `pengeluaran`;
 
 -- === PENGELUARAN ===
-INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (1, 5, 200000.00, 2, '', '2026-02-15', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 3, 30000.00, 8, 'Akrom Adabi | Stempel MA', '2025-08-27', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 3, 40000.00, 9, 'Akrom Adabi | Website', '2025-08-27', 18, NOW(), NOW());
 INSERT INTO `pengeluaran` (`admin_id`, `sumber_id`, `nominal`, `kategori_id`, `keterangan`, `tanggal`, `tahun_ajaran_id`, `created_at`, `updated_at`) VALUES (27, 3, 100000.00, 10, 'Akrom Adabi | Bensin Arisan Woker Tayo', '2025-07-19', 18, NOW(), NOW());
