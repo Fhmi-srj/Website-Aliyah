@@ -775,10 +775,31 @@ class GuruPrintController extends Controller
             $qrPJ = $qrPJData['qrCode'];
         }
 
+        // Build tanggal kegiatan from waktu_mulai & waktu_berakhir (full range)
+        $tanggalKegiatan = '-';
+        if ($kegiatan->waktu_mulai) {
+            $mulai = \Carbon\Carbon::parse($kegiatan->waktu_mulai);
+            if ($kegiatan->waktu_berakhir) {
+                $selesai = \Carbon\Carbon::parse($kegiatan->waktu_berakhir);
+                if ($mulai->isSameDay($selesai)) {
+                    // Same day: "15 Juli 2025"
+                    $tanggalKegiatan = PrintService::formatDate($mulai);
+                } elseif ($mulai->month === $selesai->month && $mulai->year === $selesai->year) {
+                    // Same month: "15 - 20 Juli 2025"
+                    $tanggalKegiatan = $mulai->day . ' - ' . PrintService::formatDate($selesai);
+                } else {
+                    // Different month: "28 Juni - 5 Juli 2025"
+                    $tanggalKegiatan = PrintService::formatDate($mulai) . ' - ' . PrintService::formatDate($selesai);
+                }
+            } else {
+                $tanggalKegiatan = PrintService::formatDate($mulai);
+            }
+        }
+
         return view('print.hasil-kegiatan', [
             'kopUrl' => PrintService::getKopUrl(),
             'kegiatan' => $kegiatan,
-            'tanggalKegiatan' => PrintService::formatDate($absensi->tanggal),
+            'tanggalKegiatan' => $tanggalKegiatan,
             'waktuMulai' => $waktuMulai,
             'waktuSelesai' => $waktuSelesai,
             'pendamping' => $pendamping,
