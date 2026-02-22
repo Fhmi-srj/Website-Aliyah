@@ -120,7 +120,7 @@ function AdminLayout({ children }) {
     // All menu items for dropup
     const allMenuItems = [
         { id: 'siswa', label: 'Manajemen Siswa', path: '/data-induk/siswa', icon: 'fa-user-graduate' },
-        { id: 'absensi-siswa', label: 'Absensi Siswa', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
+        { id: 'absensi-siswa', label: 'Absen dan Jurnal', path: '/data-induk/absensi-siswa', icon: 'fa-clipboard-list' },
         { id: 'alumni', label: 'Data Alumni', path: '/data-induk/alumni', icon: 'fa-graduation-cap' },
         { id: 'guru', label: 'Manajemen Guru', path: '/data-induk/guru', icon: 'fa-chalkboard-teacher' },
         { id: 'kelas', label: 'Manajemen Kelas', path: '/data-induk/kelas', icon: 'fa-door-open' },

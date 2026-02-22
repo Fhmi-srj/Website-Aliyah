@@ -18,6 +18,48 @@
             page-break-before: always;
         }
 
+        /* Compact institutional header */
+        .institution-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #8B0000;
+        }
+
+        .institution-logo {
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .institution-info {
+            flex: 1;
+        }
+
+        .institution-name {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #8B0000;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .institution-motto {
+            font-size: 7.5pt;
+            color: #555;
+            font-style: italic;
+            margin: 0;
+        }
+
+        .institution-address {
+            font-size: 7pt;
+            color: #777;
+            margin: 0;
+        }
+
         .doc-title {
             font-size: 13pt;
             margin-bottom: 5px;
@@ -115,6 +157,28 @@
             font-weight: bold;
         }
 
+        .col-holiday {
+            background-color: #e8e8e8 !important;
+        }
+
+        .col-holiday-header {
+            background-color: #d4d4d4 !important;
+            color: #888 !important;
+        }
+
+        .col-holiday-merged {
+            background-color: #e8e8e8 !important;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 6pt;
+            color: #999;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+            padding: 3px 0;
+            letter-spacing: 0.5px;
+        }
+
         .signature-section {
             margin-top: 20px;
             page-break-inside: avoid;
@@ -163,8 +227,31 @@
 @endsection
 
 @section('content')
+    @php
+        $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
+        $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga') ?? 'Madrasah Aliyah';
+        $motoLembaga = \App\Models\AppSetting::getValue('moto_lembaga');
+        $alamatLembaga = \App\Models\AppSetting::getValue('alamat_lembaga');
+        $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : null;
+    @endphp
+
     @foreach($sections as $idx => $section)
         <div class="{{ $idx > 0 ? 'section-break' : '' }}">
+            <div class="institution-header">
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="Logo" class="institution-logo">
+                @endif
+                <div class="institution-info">
+                    <p class="institution-name">{{ strtoupper($namaLembaga) }}</p>
+                    @if($motoLembaga)
+                        <p class="institution-motto">"{{ $motoLembaga }}"</p>
+                    @endif
+                    @if($alamatLembaga)
+                        <p class="institution-address">{{ $alamatLembaga }}</p>
+                    @endif
+                </div>
+            </div>
+
             <h1 class="doc-title">DAFTAR HADIR PESERTA DIDIK</h1>
             <p class="doc-subtitle">TAHUN PELAJARAN {{ $section['tahunAjaran'] }}</p>
 
@@ -197,7 +284,7 @@
                     </tr>
                     <tr>
                         @for($d = 1; $d <= $section['daysInMonth']; $d++)
-                            <th class="col-day">{{ $d }}</th>
+                            <th class="col-day {{ isset($section['holidayInfo'][$d]) ? 'col-holiday-header' : '' }}">{{ $d }}</th>
                         @endfor
                         <th rowspan="2" class="col-total">H</th>
                         <th rowspan="2" class="col-total">S</th>
@@ -207,23 +294,68 @@
                     <tr>
                         @for($d = 1; $d <= $section['daysInMonth']; $d++)
                             @php $dow = \Carbon\Carbon::create($section['tahun'], array_search($section['bulanNama'], ['Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4, 'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8, 'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12]) ?: 1, $d)->dayOfWeek; @endphp
-                            <th class="col-day"
+                            <th class="col-day {{ isset($section['holidayInfo'][$d]) ? 'col-holiday-header' : '' }}"
                                 style="font-size: 5.5pt; color: {{ $dow == 5 ? '#dc2626' : '#666' }};">
-                                {{ $dayInitials[$dow] }}</th>
+                                {{ $dayInitials[$dow] }}
+                            </th>
                         @endfor
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($section['rows'] as $row)
+                    @php
+                        $sHolidayInfo = $section['holidayInfo'] ?? [];
+                        $holidayGroups = [];
+                        $curGroup = null;
+                        for ($d = 1; $d <= $section['daysInMonth']; $d++) {
+                            if (isset($sHolidayInfo[$d])) {
+                                if ($curGroup && $curGroup['reason'] === $sHolidayInfo[$d] && $curGroup['end'] === $d - 1) {
+                                    $curGroup['end'] = $d;
+                                } else {
+                                    if ($curGroup)
+                                        $holidayGroups[] = $curGroup;
+                                    $curGroup = ['start' => $d, 'end' => $d, 'reason' => $sHolidayInfo[$d]];
+                                }
+                            } else {
+                                if ($curGroup) {
+                                    $holidayGroups[] = $curGroup;
+                                    $curGroup = null;
+                                }
+                            }
+                        }
+                        if ($curGroup)
+                            $holidayGroups[] = $curGroup;
+                        $hgLookup = [];
+                        foreach ($holidayGroups as $g) {
+                            for ($d = $g['start']; $d <= $g['end']; $d++) {
+                                $hgLookup[$d] = [
+                                    'isStart' => ($d === $g['start']),
+                                    'colspan' => $g['end'] - $g['start'] + 1,
+                                    'reason' => $g['reason'],
+                                ];
+                            }
+                        }
+                        $totalRows = count($section['rows']);
+                    @endphp
+
+                    @forelse($section['rows'] as $rowIdx => $row)
                         <tr>
                             <td class="col-no">{{ $row['no'] }}</td>
                             <td class="col-nis">{{ $row['nis'] }}</td>
                             <td class="col-nama" title="{{ $row['nama'] }}">{{ $row['nama'] }}</td>
                             @for($d = 1; $d <= $section['daysInMonth']; $d++)
-                                @php $status = $row['days'][$d] ?? ''; @endphp
-                                <td class="col-day {{ $status ? 'status-' . strtolower($status) : '' }}">
-                                    {{ $status }}
-                                </td>
+                                @if(isset($hgLookup[$d]))
+                                    @if($hgLookup[$d]['isStart'] && $rowIdx === 0)
+                                        <td rowspan="{{ $totalRows }}" colspan="{{ $hgLookup[$d]['colspan'] }}"
+                                            class="col-day col-holiday-merged" title="{{ $hgLookup[$d]['reason'] }}">
+                                            {{ $hgLookup[$d]['reason'] }}
+                                        </td>
+                                    @endif
+                                @else
+                                    @php $status = $row['days'][$d] ?? ''; @endphp
+                                    <td class="col-day {{ $status ? 'status-' . strtolower($status) : '' }}">
+                                        {{ $status }}
+                                    </td>
+                                @endif
                             @endfor
                             <td class="col-total">{{ $row['total_h'] }}</td>
                             <td class="col-total">{{ $row['total_s'] }}</td>
@@ -233,7 +365,7 @@
                     @empty
                         <tr>
                             <td colspan="{{ $section['daysInMonth'] + 7 }}" style="text-align: center; padding: 20px;">
-                                Belum ada data siswa untuk kelas ini
+                                Belum ada data siswa
                             </td>
                         </tr>
                     @endforelse
@@ -246,6 +378,7 @@
                 <span class="status-s">S = Sakit</span>
                 <span class="status-i">I = Izin</span>
                 <span class="status-a">A = Alpha</span>
+                <span style="color: #888;">- = Libur / Tidak Ada KBM</span>
             </div>
 
             <div class="signature-section">

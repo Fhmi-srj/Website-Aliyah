@@ -3,8 +3,33 @@
 @section('title', 'Jurnal Mengajar Guru')
 
 @section('content')
+    @php
+        $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
+        $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga') ?? 'Madrasah Aliyah';
+        $motoLembaga = \App\Models\AppSetting::getValue('moto_lembaga');
+        $alamatLembaga = \App\Models\AppSetting::getValue('alamat_lembaga');
+        $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : null;
+    @endphp
+
     @foreach($sections as $idx => $section)
         <div class="{{ $idx > 0 ? 'section-break' : '' }}">
+            <div
+                style="display:flex;align-items:center;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid #8B0000;">
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="Logo" style="width:45px;height:45px;object-fit:contain;">
+                @endif
+                <div>
+                    <p style="font-size:12pt;font-weight:bold;color:#8B0000;margin:0;line-height:1.2;">
+                        {{ strtoupper($namaLembaga) }}</p>
+                    @if($motoLembaga)
+                        <p style="font-size:7.5pt;color:#555;font-style:italic;margin:0;">"{{ $motoLembaga }}"</p>
+                    @endif
+                    @if($alamatLembaga)
+                        <p style="font-size:7pt;color:#777;margin:0;">{{ $alamatLembaga }}</p>
+                    @endif
+                </div>
+            </div>
+
             <h1 class="doc-title">Jurnal Mengajar Guru</h1>
 
             <div class="info-section">

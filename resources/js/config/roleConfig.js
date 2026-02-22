@@ -261,7 +261,7 @@ export const getDynamicRolePages = () => _dynamicRolePages;
 export const allAdminPages = [
     { path: '/dashboard', label: 'Dashboard', icon: 'fa-home', group: 'Umum' },
     { path: '/data-induk/siswa', label: 'Manajemen Siswa', icon: 'fa-user-graduate', group: 'Data Induk' },
-    { path: '/data-induk/absensi-siswa', label: 'Absensi Siswa', icon: 'fa-clipboard-list', group: 'Data Induk' },
+    { path: '/data-induk/absensi-siswa', label: 'Absen dan Jurnal', icon: 'fa-clipboard-list', group: 'Data Induk' },
     { path: '/data-induk/alumni', label: 'Data Alumni', icon: 'fa-graduation-cap', group: 'Data Induk' },
     { path: '/data-induk/guru', label: 'Manajemen Guru', icon: 'fa-chalkboard-teacher', group: 'Data Induk' },
     { path: '/data-induk/kelas', label: 'Manajemen Kelas', icon: 'fa-door-open', group: 'Data Induk' },

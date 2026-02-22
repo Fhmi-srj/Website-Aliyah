@@ -1082,19 +1082,69 @@ class GuruPrintController extends Controller
 
         $siswaList = $siswaKelas->map(fn($sk) => $sk->siswa)->filter()->sortBy('nama')->values();
 
-        // Get all jadwal IDs for this class
-        $jadwalIds = Jadwal::where('kelas_id', $kelasId)
+        // Get scheduled days-of-week for this class from jadwal
+        $dayOfWeekMap = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+        $scheduledDays = Jadwal::where('kelas_id', $kelasId)
             ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->pluck('id');
-
-        // Get distinct school days for this class in the month (from absensi_mengajar)
-        $schoolDays = AbsensiMengajar::whereIn('jadwal_id', $jadwalIds)
-            ->whereBetween('tanggal', [$startDate, $endDate])
-            ->distinct()
-            ->pluck('tanggal')
-            ->map(fn($d) => Carbon::parse($d)->day)
+            ->where('status', 'Aktif')
+            ->pluck('hari')
             ->unique()
             ->toArray();
+
+        // Get holiday dates from Kalender (include global holidays with NULL tahun_ajaran_id)
+        $liburDays = [];
+        $kalenderLibur = \App\Models\Kalender::where(function ($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+                ->orWhereNull('tahun_ajaran_id');
+        })
+            ->where('status_kbm', 'Libur')
+            ->get();
+        foreach ($kalenderLibur as $kl) {
+            $klStart = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+            $klEndRaw = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+            $klEnd = Carbon::parse($klEndRaw)->startOfDay()->min($endDate);
+            $cursor = $klStart->copy();
+            while ($cursor->lte($klEnd)) {
+                $liburDays[] = $cursor->day;
+                $cursor->addDay();
+            }
+        }
+        $liburDays = array_unique($liburDays);
+
+        // Determine school days: jadwal schedule day-of-week matches, minus holidays
+        $schoolDays = [];
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date = Carbon::create($tahun, $bulan, $d);
+            $hariName = $dayOfWeekMap[$date->dayOfWeek] ?? '';
+            if (in_array($hariName, $scheduledDays) && !in_array($d, $liburDays)) {
+                $schoolDays[] = $d;
+            }
+        }
+
+        // Build holiday info map: day => reason
+        $kalenderHolidayNames = [];
+        foreach ($kalenderLibur as $kl) {
+            $klStart2 = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+            $klEndRaw2 = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+            $klEnd2 = Carbon::parse($klEndRaw2)->startOfDay()->min($endDate);
+            $cursor = $klStart2->copy();
+            while ($cursor->lte($klEnd2)) {
+                $kalenderHolidayNames[$cursor->day] = $kl->kegiatan ?? 'Libur';
+                $cursor->addDay();
+            }
+        }
+
+        $holidayInfo = []; // day => reason string
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            if (!in_array($d, $schoolDays)) {
+                if (isset($kalenderHolidayNames[$d])) {
+                    $holidayInfo[$d] = $kalenderHolidayNames[$d];
+                } else {
+                    $date = Carbon::create($tahun, $bulan, $d);
+                    $holidayInfo[$d] = $dayOfWeekMap[$date->dayOfWeek] ?? '';
+                }
+            }
+        }
 
         // Get all AbsensiSiswa for this kelas in the month (per-day system)
         $absensiSiswaData = AbsensiSiswa::where('kelas_id', $kelasId)
@@ -1203,6 +1253,7 @@ class GuruPrintController extends Controller
             'kepalaSekolah' => PrintService::getKepalaSekolah(),
             'qrCode' => $qrData['qrCode'],
             'qrWaliKelas' => $qrWaliKelas['qrCode'],
+            'holidayInfo' => $holidayInfo,
         ]);
     }
 
@@ -1255,14 +1306,68 @@ class GuruPrintController extends Controller
                     ->get();
                 $siswaList = $siswaKelas->map(fn($sk) => $sk->siswa)->filter()->sortBy('nama')->values();
 
-                $jadwalIds = Jadwal::where('kelas_id', $kelasId)
+                // Get scheduled days-of-week for this class from jadwal
+                $dayOfWeekMapB = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+                $scheduledDays = Jadwal::where('kelas_id', $kelasId)
                     ->where('tahun_ajaran_id', $tahunAjaranId)
-                    ->pluck('id');
+                    ->where('status', 'Aktif')
+                    ->pluck('hari')
+                    ->unique()
+                    ->toArray();
 
-                $schoolDays = AbsensiMengajar::whereIn('jadwal_id', $jadwalIds)
-                    ->whereBetween('tanggal', [$startDate, $endDate])
-                    ->distinct()->pluck('tanggal')
-                    ->map(fn($d) => Carbon::parse($d)->day)->unique()->toArray();
+                // Get holiday dates from Kalender (include global holidays with NULL tahun_ajaran_id)
+                $liburDays = [];
+                $kalenderLibur = \App\Models\Kalender::where(function ($q) use ($tahunAjaranId) {
+                    $q->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->orWhereNull('tahun_ajaran_id');
+                })
+                    ->where('status_kbm', 'Libur')
+                    ->get();
+                foreach ($kalenderLibur as $kl) {
+                    $klStart = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+                    $klEndRaw = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+                    $klEnd = Carbon::parse($klEndRaw)->startOfDay()->min($endDate);
+                    $cursor = $klStart->copy();
+                    while ($cursor->lte($klEnd)) {
+                        $liburDays[] = $cursor->day;
+                        $cursor->addDay();
+                    }
+                }
+                $liburDays = array_unique($liburDays);
+
+                // Determine school days: jadwal schedule day-of-week matches, minus holidays
+                $schoolDays = [];
+                for ($d = 1; $d <= $daysInMonth; $d++) {
+                    $date = Carbon::create($tahun, $bulan, $d);
+                    $hariName = $dayOfWeekMapB[$date->dayOfWeek] ?? '';
+                    if (in_array($hariName, $scheduledDays) && !in_array($d, $liburDays)) {
+                        $schoolDays[] = $d;
+                    }
+                }
+
+                // Build holiday info map for this section
+                $kalenderHolidayNames = [];
+                foreach ($kalenderLibur as $kl) {
+                    $klStart2 = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+                    $klEndRaw2 = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+                    $klEnd2 = Carbon::parse($klEndRaw2)->startOfDay()->min($endDate);
+                    $cursor = $klStart2->copy();
+                    while ($cursor->lte($klEnd2)) {
+                        $kalenderHolidayNames[$cursor->day] = $kl->kegiatan ?? 'Libur';
+                        $cursor->addDay();
+                    }
+                }
+                $holidayInfo = [];
+                for ($d = 1; $d <= $daysInMonth; $d++) {
+                    if (!in_array($d, $schoolDays)) {
+                        if (isset($kalenderHolidayNames[$d])) {
+                            $holidayInfo[$d] = $kalenderHolidayNames[$d];
+                        } else {
+                            $date = Carbon::create($tahun, $bulan, $d);
+                            $holidayInfo[$d] = $dayOfWeekMapB[$date->dayOfWeek] ?? '';
+                        }
+                    }
+                }
 
                 $absensiSiswaData = AbsensiSiswa::where('kelas_id', $kelasId)
                     ->whereBetween('tanggal', [$startDate, $endDate])->get();
@@ -1330,6 +1435,7 @@ class GuruPrintController extends Controller
                     'tahunAjaran' => $tahunAjaran ? $tahunAjaran->nama : '-',
                     'qrCode' => $qrData['qrCode'],
                     'qrWaliKelas' => $qrWaliKelas['qrCode'],
+                    'holidayInfo' => $holidayInfo,
                 ];
             }
         }
@@ -1547,20 +1653,59 @@ class GuruPrintController extends Controller
             // guruObligation[guru_id][day] = true (guru HAS an obligation that day)
             $guruObligation = [];
 
-            // ═══ Pre-step: Collect Libur KBM days from Kalender ═══
+            // ═══ Pre-step: Collect Libur KBM days from Kalender (include global holidays) ═══
             $liburDays = [];
-            $kalenderLibur = \App\Models\Kalender::where('tahun_ajaran_id', $tahunAjaranId)
+            $kalenderLibur = \App\Models\Kalender::where(function ($q) use ($tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->orWhereNull('tahun_ajaran_id');
+            })
                 ->where('status_kbm', 'Libur')
                 ->get();
             foreach ($kalenderLibur as $kl) {
                 $klStart = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
-                $klEnd = Carbon::parse($kl->tanggal_berakhir)->startOfDay()->min($endDate);
-                while ($klStart->lte($klEnd)) {
-                    $liburDays[] = $klStart->day;
-                    $klStart->addDay();
+                $klEndRaw = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+                $klEnd = Carbon::parse($klEndRaw)->startOfDay()->min($endDate);
+                $cursor = $klStart->copy();
+                while ($cursor->lte($klEnd)) {
+                    $liburDays[] = $cursor->day;
+                    $cursor->addDay();
                 }
             }
             $liburDays = array_unique($liburDays);
+
+            // Build holiday info map for this month
+            $kalenderHolidayNames = [];
+            foreach ($kalenderLibur as $kl) {
+                $klStart2 = Carbon::parse($kl->tanggal_mulai)->startOfDay()->max($startDate);
+                $klEndRaw2 = $kl->tanggal_berakhir ?? $kl->tanggal_mulai;
+                $klEnd2 = Carbon::parse($klEndRaw2)->startOfDay()->min($endDate);
+                $cursor = $klStart2->copy();
+                while ($cursor->lte($klEnd2)) {
+                    $kalenderHolidayNames[$cursor->day] = $kl->kegiatan ?? 'Libur';
+                    $cursor->addDay();
+                }
+            }
+            $holidayInfo = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                if (in_array($d, $liburDays)) {
+                    $holidayInfo[$d] = $kalenderHolidayNames[$d] ?? 'Libur';
+                } else {
+                    // Check if it's a weekend (no guru scheduled at all)
+                    $date = Carbon::create($tahun, $bulan, $d);
+                    $hariName = $dayOfWeekMap[$date->dayOfWeek] ?? '';
+                    // Mark Jumat as holiday if no guru has jadwal on Jumat
+                    $anyGuruHasJadwal = false;
+                    foreach ($jadwalByGuru as $gId => $days) {
+                        if (in_array($hariName, $days)) {
+                            $anyGuruHasJadwal = true;
+                            break;
+                        }
+                    }
+                    if (!$anyGuruHasJadwal && $date->dayOfWeek == 5) {
+                        $holidayInfo[$d] = "Jum'at";
+                    }
+                }
+            }
 
             // ═══ Step 1: Detect obligations from jadwal (day-of-week schedule) ═══
             for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -1785,6 +1930,7 @@ class GuruPrintController extends Controller
                 'bulanNama' => $bulanNama,
                 'tahun' => $tahun,
                 'tahunAjaran' => $tahunAjaranObj ? $tahunAjaranObj->nama : '-',
+                'holidayInfo' => $holidayInfo,
             ];
         }
 
