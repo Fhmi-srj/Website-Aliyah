@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import CrudModal from '../../../components/CrudModal';
+import DateRangePicker from '../../../components/DateRangePicker';
 import { API_BASE, APP_BASE, authFetch } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
@@ -830,19 +831,16 @@ function ManajemenKegiatan() {
                     </div>
                 </div>
 
-                {/* Section 2: Time and Place */}
+                <DateRangePicker
+                    startDate={formData.waktu_mulai}
+                    endDate={formData.waktu_berakhir}
+                    onStartChange={(val) => setFormData(prev => ({ ...prev, waktu_mulai: val }))}
+                    onEndChange={(val) => setFormData(prev => ({ ...prev, waktu_berakhir: val }))}
+                    label="Waktu & Lokasi"
+                />
                 <div>
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Waktu & Lokasi</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <div className="space-y-1.5">
-                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Mulai Pelaksanaan *</label>
-                            <input required type="datetime-local" value={formData.waktu_mulai} onChange={(e) => setFormData({ ...formData, waktu_mulai: e.target.value })} className="input-standard" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Selesai (Estimasi)</label>
-                            <input type="datetime-local" value={formData.waktu_berakhir} onChange={(e) => setFormData({ ...formData, waktu_berakhir: e.target.value })} className="input-standard" />
-                        </div>
-                        <div className="space-y-1.5 relative">
+                        <div className="space-y-1.5 relative md:col-span-3">
                             <label className="block text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tempat / Lokasi *</label>
                             <input required type="text" value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Gedung Olahraga, Aula..." />
                         </div>

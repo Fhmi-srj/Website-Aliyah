@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CrudModal from '../../../components/CrudModal';
+import DateRangePicker from '../../../components/DateRangePicker';
 import { API_BASE, authFetch } from '../../../config/api';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
@@ -746,17 +747,15 @@ function ManajemenKalender() {
                         </div>
                     </div>
                 )}
+                <DateRangePicker
+                    startDate={formData.tanggal_mulai}
+                    endDate={formData.tanggal_berakhir}
+                    onStartChange={(val) => setFormData(prev => ({ ...prev, tanggal_mulai: val }))}
+                    onEndChange={(val) => setFormData(prev => ({ ...prev, tanggal_berakhir: val }))}
+                    label="Penjadwalan"
+                />
                 <div>
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Penjadwalan</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Waktu Mulai *</label>
-                            <input type="datetime-local" required value={formData.tanggal_mulai} onChange={(e) => setFormData({ ...formData, tanggal_mulai: e.target.value })} className="input-standard" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Waktu Berakhir (Sama Jika 1 Hari)</label>
-                            <input type="datetime-local" value={formData.tanggal_berakhir} onChange={(e) => setFormData({ ...formData, tanggal_berakhir: e.target.value })} className="input-standard" />
-                        </div>
                         <div className="space-y-1.5 md:col-span-2">
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Nama Kegiatan / Agenda *</label>
                             <input type="text" required value={formData.kegiatan} onChange={(e) => setFormData({ ...formData, kegiatan: e.target.value })} className="input-standard" placeholder="Contoh: Rapat Wali Murid, Libur Semester..." />
