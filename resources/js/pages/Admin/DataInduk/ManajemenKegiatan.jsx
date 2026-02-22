@@ -726,11 +726,9 @@ function ManajemenKegiatan() {
                                                 <button onClick={() => openAbsensiModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center justify-center dark:bg-primary/20 hover:scale-110 active:scale-95`} title="Absensi">
                                                     <i className={`fas fa-clipboard-check ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
-                                                {item.has_absensi && (
-                                                    <button onClick={() => handlePrint(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all flex items-center justify-center dark:bg-emerald-900/20 dark:text-emerald-400 hover:scale-110 active:scale-95`} title="Print Hasil Kegiatan">
-                                                        <i className={`fas fa-print ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
-                                                    </button>
-                                                )}
+                                                <button onClick={() => handlePrint(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl ${item.has_absensi ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500'} transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Print Hasil Kegiatan">
+                                                    <i className={`fas fa-print ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
+                                                </button>
                                                 <button onClick={() => openEditModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center dark:bg-orange-900/20 dark:text-orange-400 hover:scale-110 active:scale-95`} title="Edit">
                                                     <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
