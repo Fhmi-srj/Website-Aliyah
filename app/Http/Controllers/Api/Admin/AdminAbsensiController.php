@@ -7,6 +7,8 @@ use App\Models\AbsensiRapat;
 use App\Models\AbsensiKegiatan;
 use App\Models\Rapat;
 use App\Models\Kegiatan;
+use App\Models\Siswa;
+use App\Models\Kelas;
 use App\Models\Guru;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
@@ -259,6 +261,25 @@ class AdminAbsensiController extends Controller
             ->where('nama', '!=', 'Semua Guru')
             ->get(['id', 'nama']);
 
+        // Build siswa list from kelas_peserta
+        $siswaList = [];
+        $kelasPeserta = $kegiatan->kelas_peserta ?? [];
+        if (!empty($kelasPeserta)) {
+            $siswaList = Siswa::whereIn('kelas_id', $kelasPeserta)
+                ->select('id', 'nama', 'nis', 'kelas_id')
+                ->orderBy('nama')
+                ->get()
+                ->map(function ($s) {
+                    $kelas = Kelas::find($s->kelas_id);
+                    return [
+                        'siswa_id' => $s->id,
+                        'nama' => $s->nama,
+                        'nis' => $s->nis,
+                        'kelas' => $kelas ? $kelas->nama_kelas : '-',
+                    ];
+                })->toArray();
+        }
+
         $absensi = AbsensiKegiatan::where('kegiatan_id', $kegiatanId)->first();
 
         if (!$absensi) {
@@ -269,16 +290,24 @@ class AdminAbsensiController extends Controller
                 'keterangan' => '',
             ])->values()->toArray();
 
+            // Default siswa absensi: all hadir
+            $defaultSiswa = collect($siswaList)->map(fn($s) => [
+                'siswa_id' => $s['siswa_id'],
+                'status' => 'H',
+                'keterangan' => '',
+            ])->toArray();
+
             return response()->json([
                 'success' => true,
                 'has_absensi' => false,
+                'siswa_list' => $siswaList,
                 'data' => [
                     'id' => null,
                     'tanggal' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('Y-m-d') : now()->format('Y-m-d'),
                     'pj_status' => 'H',
                     'pj_keterangan' => '',
                     'absensi_pendamping' => $defaultPendamping,
-                    'absensi_siswa' => [],
+                    'absensi_siswa' => $defaultSiswa,
                     'berita_acara' => '',
                     'foto_kegiatan' => [],
                     'status' => 'draft',
@@ -303,6 +332,7 @@ class AdminAbsensiController extends Controller
         return response()->json([
             'success' => true,
             'has_absensi' => true,
+            'siswa_list' => $siswaList,
             'data' => [
                 'id' => $absensi->id,
                 'tanggal' => $absensi->tanggal,
@@ -334,6 +364,10 @@ class AdminAbsensiController extends Controller
             'absensi_pendamping.*.guru_id' => 'required|integer',
             'absensi_pendamping.*.status' => 'required|in:H,S,I,A',
             'absensi_pendamping.*.keterangan' => 'nullable|string',
+            'absensi_siswa' => 'nullable|array',
+            'absensi_siswa.*.siswa_id' => 'required|integer',
+            'absensi_siswa.*.status' => 'required|in:H,S,I,A',
+            'absensi_siswa.*.keterangan' => 'nullable|string',
             'berita_acara' => 'nullable|string',
             'foto_kegiatan' => 'nullable|array',
         ]);
@@ -347,6 +381,7 @@ class AdminAbsensiController extends Controller
                 'pj_status' => $validated['pj_status'] ?? $absensi->pj_status,
                 'pj_keterangan' => array_key_exists('pj_keterangan', $validated) ? $validated['pj_keterangan'] : $absensi->pj_keterangan,
                 'absensi_pendamping' => $validated['absensi_pendamping'] ?? $absensi->absensi_pendamping,
+                'absensi_siswa' => array_key_exists('absensi_siswa', $validated) ? $validated['absensi_siswa'] : $absensi->absensi_siswa,
                 'berita_acara' => $validated['berita_acara'] ?? $absensi->berita_acara,
                 'foto_kegiatan' => array_key_exists('foto_kegiatan', $validated) ? $validated['foto_kegiatan'] : $absensi->foto_kegiatan,
                 'status' => 'submitted',
@@ -361,6 +396,7 @@ class AdminAbsensiController extends Controller
                 'pj_status' => $validated['pj_status'] ?? 'H',
                 'pj_keterangan' => $validated['pj_keterangan'] ?? null,
                 'absensi_pendamping' => $validated['absensi_pendamping'] ?? [],
+                'absensi_siswa' => $validated['absensi_siswa'] ?? [],
                 'berita_acara' => $validated['berita_acara'] ?? null,
                 'foto_kegiatan' => $validated['foto_kegiatan'] ?? [],
                 'status' => 'submitted',

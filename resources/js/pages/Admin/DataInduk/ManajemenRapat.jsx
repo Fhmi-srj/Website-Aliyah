@@ -1037,12 +1037,13 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     const [uploading, setUploading] = useState(false);
     const [activeSignatureIndex, setActiveSignatureIndex] = useState(null);
     const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
+    const [pesertaExpanded, setPesertaExpanded] = useState(true);
+    const [tamuExpanded, setTamuExpanded] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Sync formData when initialData changes (e.g. when API returns peserta_eksternal)
+    // Sync formData when initialData changes
     useEffect(() => {
         if (initialData) {
-            // Normalize peserta_eksternal: ensure 'ttd' key is used (API may return 'tanda_tangan' or 'ttd')
             const rawPE = initialData.peserta_eksternal || rapat?.peserta_eksternal || [];
             const normalizedPE = rawPE.map(g => ({
                 ...g,
@@ -1134,6 +1135,7 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     const updateStatus = (index, status) => {
         const updated = [...formData.absensi_peserta];
         updated[index].status = status;
+        if (status !== 'I' && status !== 'S') updated[index].keterangan = '';
         setFormData({ ...formData, absensi_peserta: updated });
     };
 
@@ -1144,7 +1146,7 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e?.preventDefault();
         try {
             setLoading(true);
             const res = await authFetch(`${API_BASE}/rapat/${rapat.id}/absensi-admin`, {
@@ -1167,235 +1169,176 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
         }
     };
 
+    const formatTime = (time) => time ? time.substring(0, 5) : '-';
+
+    const pesertaCounts = {
+        hadir: formData.absensi_peserta.filter(p => p.status === 'H').length,
+        sakit: formData.absensi_peserta.filter(p => p.status === 'S').length,
+        izin: formData.absensi_peserta.filter(p => p.status === 'I').length,
+        alpha: formData.absensi_peserta.filter(p => p.status === 'A').length,
+    };
+
+    const getRoleBorder = (role) => {
+        if (role === 'Pimpinan') return 'border-2 border-purple-200';
+        if (role === 'Sekretaris') return 'border-2 border-indigo-200';
+        return 'border border-gray-100';
+    };
+
+    const getRoleBadge = (role) => {
+        if (role === 'Pimpinan') return 'bg-purple-100 text-purple-700';
+        if (role === 'Sekretaris') return 'bg-indigo-100 text-indigo-700';
+        return '';
+    };
+
     return ReactDOM.createPortal(
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300 ${show ? 'opacity-100 visible bg-black/50' : 'opacity-0 invisible'}`}>
-            <div className={`bg-white dark:bg-dark-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${show ? 'scale-100' : 'scale-95'}`}>
-                <div className="bg-primary p-6 text-white flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-black uppercase tracking-widest">Manajemen Absensi</h3>
-                        <p className="text-xs text-primary-light font-medium mt-1">{rapat?.agenda_rapat}</p>
-                    </div>
-                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 transition-colors">
-                        <i className="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="p-6">
-                    <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-                        {/* Summary Stats */}
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-emerald-600 mb-1">{formData.absensi_peserta.filter(p => p.status === 'H').length}</div>
-                                <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Hadir</div>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-blue-600 mb-1">{formData.absensi_peserta.filter(p => p.status === 'S').length}</div>
-                                <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Sakit</div>
-                            </div>
-                            <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-amber-600 mb-1">{formData.absensi_peserta.filter(p => p.status === 'I').length}</div>
-                                <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Izin</div>
-                            </div>
-                            <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl text-center">
-                                <div className="text-xl font-black text-rose-600 mb-1">{formData.absensi_peserta.filter(p => p.status === 'A').length}</div>
-                                <div className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Alpha</div>
-                            </div>
-                        </div>
-
-                        {/* Attendance List */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-2">Daftar Kehadiran</label>
-                            {formData.absensi_peserta.map((peserta, idx) => (
-                                <div key={idx} className="bg-gray-50 dark:bg-dark-bg p-4 rounded-2xl border border-gray-100 dark:border-dark-border flex items-center justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-700 dark:text-dark-text truncate">{peserta.nama}</p>
-                                        <p className="text-[10px] text-gray-400 font-medium uppercase">{peserta.role || 'Peserta'}</p>
-                                    </div>
-                                    <div className="flex gap-1.5">
-                                        {['H', 'S', 'I', 'A'].map(s => (
-                                            <button
-                                                key={s}
-                                                type="button"
-                                                onClick={() => updateStatus(idx, s)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${peserta.status === s
-                                                    ? s === 'H' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
-                                                        s === 'S' ? 'bg-blue-500 text-white shadow-lg shadow-blue-200' :
-                                                            s === 'I' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' :
-                                                                'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                                                    : 'bg-white dark:bg-dark-card text-gray-400 hover:bg-gray-100'
-                                                    }`}
-                                            >
-                                                {s}
-                                            </button>
-                                        ))}
-                                    </div>
+        <>
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+                <div className="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+                    {/* Gradient Header */}
+                    <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><i className="fas fa-gavel"></i></div>
+                                <div>
+                                    <h2 className="font-bold text-sm">{rapat?.agenda_rapat || 'Absensi Rapat'}</h2>
+                                    <p className="text-green-100 text-xs"><i className="fas fa-map-marker-alt mr-1"></i>{rapat?.tempat || '-'} • {rapat?.waktu_mulai ? `${formatTime(rapat.waktu_mulai)} - ${formatTime(rapat.waktu_selesai)}` : '-'}</p>
                                 </div>
-                            ))}
+                            </div>
+                            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg"><i className="fas fa-times text-xl"></i></button>
                         </div>
+                        <div className="flex gap-4 mt-4 text-center">
+                            <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.hadir}</p><p className="text-xs text-green-100">Hadir</p></div>
+                            <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.sakit}</p><p className="text-xs text-green-100">Sakit</p></div>
+                            <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.izin}</p><p className="text-xs text-green-100">Izin</p></div>
+                            <div className="flex-1"><p className="text-2xl font-bold">{pesertaCounts.alpha}</p><p className="text-xs text-green-100">Alpha</p></div>
+                        </div>
+                    </div>
 
-                        {/* External Participants Section */}
-                        <div className="space-y-4">
-                            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2">Peserta Eksternal (Tamu/Wali)</label>
-
-                            <div className="space-y-3">
-                                {formData.peserta_eksternal.map((guest, idx) => (
-                                    <div key={idx} className="bg-gray-50 dark:bg-dark-bg/40 p-4 rounded-2xl border border-gray-100 dark:border-dark-border animate-slideDown">
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                                            <div className="md:col-span-4">
-                                                <input
-                                                    type="text"
-                                                    value={guest.nama}
-                                                    onChange={(e) => updateGuest(idx, 'nama', e.target.value)}
-                                                    placeholder="Nama Tamu"
-                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-4">
-                                                <input
-                                                    type="text"
-                                                    value={guest.jabatan}
-                                                    onChange={(e) => updateGuest(idx, 'jabatan', e.target.value)}
-                                                    placeholder="Jabatan"
-                                                    className="w-full bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 transition-all dark:text-dark-text"
-                                                />
-                                            </div>
-                                            <div className="md:col-span-4 flex items-center justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openSignatureModal(idx)}
-                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${guest.ttd ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-white dark:bg-dark-card text-gray-400 border border-gray-100 dark:border-dark-border hover:bg-gray-50'}`}
-                                                    title="Tanda Tangan"
-                                                >
-                                                    {guest.ttd ? (
-                                                        <img src={guest.ttd} className="w-6 h-6 object-contain" alt="TTD" />
-                                                    ) : (
-                                                        <i className="fas fa-signature text-xs"></i>
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {/* Kehadiran Peserta Section */}
+                        <div>
+                            <button type="button" onClick={() => setPesertaExpanded(!pesertaExpanded)} className="w-full flex items-center justify-between py-2 cursor-pointer">
+                                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 cursor-pointer">
+                                    <i className="fas fa-users text-green-600"></i> Kehadiran Peserta
+                                    <span className="ml-1 text-xs font-normal text-gray-400">{formData.absensi_peserta.length} peserta</span>
+                                </label>
+                                <i className={`fas fa-chevron-${pesertaExpanded ? 'up' : 'down'} text-gray-400 text-xs`}></i>
+                            </button>
+                            {pesertaExpanded && (
+                                <div className="space-y-1.5 mt-1">
+                                    {formData.absensi_peserta.map((peserta, idx) => (
+                                        <div key={idx} className={`bg-white rounded-lg px-2.5 py-2 ${getRoleBorder(peserta.role)}`}>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-gray-800 text-xs truncate">{peserta.nama}</p>
+                                                    {peserta.role && peserta.role !== 'Peserta' && (
+                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${getRoleBadge(peserta.role)} mt-0.5`}>{peserta.role}</span>
                                                     )}
-                                                </button>
-                                                <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/20">
-                                                    Hadir
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeGuest(idx)}
-                                                    className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center dark:bg-rose-900/20 dark:text-rose-400"
-                                                >
-                                                    <i className="fas fa-trash-alt text-xs"></i>
-                                                </button>
+                                                <div className="flex gap-0.5">
+                                                    {['H', 'S', 'I', 'A'].map(s => (
+                                                        <button key={s} type="button" onClick={() => updateStatus(idx, s)} className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${peserta.status === s ? s === 'H' ? 'bg-green-500 text-white' : s === 'S' ? 'bg-orange-500 text-white' : s === 'I' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>{s}</button>
+                                                    ))}
+                                                </div>
                                             </div>
+                                            {(peserta.status === 'I' || peserta.status === 'S') && (
+                                                <input type="text" value={peserta.keterangan || ''} onChange={e => updateKeterangan(idx, e.target.value)} placeholder={`Keterangan ${peserta.status === 'I' ? 'izin' : 'sakit'}...`} className="w-full mt-1 border border-yellow-200 rounded-md p-1.5 text-xs focus:ring-2 focus:ring-yellow-400 bg-yellow-50" />
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
-                                {formData.peserta_eksternal.length === 0 && (
-                                    <div className="py-8 text-center bg-gray-50/50 dark:bg-dark-bg/20 rounded-2xl border-2 border-dashed border-gray-100 dark:border-dark-border">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Belum ada tamu yang ditambahkan</p>
-                                    </div>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={addGuest}
-                                    className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-border text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-                                >
-                                    <i className="fas fa-plus"></i> Tambah Tamu
-                                </button>
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Foto Dokumentasi */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2 flex items-center gap-2">
-                                <i className="fas fa-camera text-primary"></i>
-                                Dokumentasi Rapat
-                            </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                {formData.foto_rapat.map((foto, idx) => (
-                                    <div key={idx} className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-bg shadow-sm">
-                                        <img
-                                            src={foto.startsWith('data:image') ? foto : foto.startsWith('http') ? foto : (APP_BASE ? `${APP_BASE}/storage/${foto}` : `/storage/${foto}`)}
-                                            alt={`Dokumentasi ${idx + 1}`}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <i className="fas fa-search-plus text-white text-xl"></i>
+                        {/* Tamu Undangan Section */}
+                        <div>
+                            <button type="button" onClick={() => setTamuExpanded(!tamuExpanded)} className="w-full flex items-center justify-between py-2 cursor-pointer">
+                                <label className="text-xs font-semibold text-gray-500 flex items-center gap-1 cursor-pointer">
+                                    <i className="fas fa-user-tie text-blue-500"></i> Tamu Undangan ({formData.peserta_eksternal.length})
+                                </label>
+                                <i className={`fas fa-chevron-${tamuExpanded ? 'up' : 'down'} text-gray-400 text-xs`}></i>
+                            </button>
+                            {tamuExpanded && (
+                                <div className="space-y-1 mt-1">
+                                    {formData.peserta_eksternal.map((pe, idx) => (
+                                        <div key={idx} className="bg-blue-50 rounded-lg px-2.5 py-1.5 border border-blue-100">
+                                            <div className="flex items-center gap-1.5">
+                                                <input type="text" value={pe.nama} onChange={(e) => updateGuest(idx, 'nama', e.target.value)} placeholder="Nama" className="flex-1 border border-blue-200 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400" />
+                                                <input type="text" value={pe.jabatan || ''} onChange={(e) => updateGuest(idx, 'jabatan', e.target.value)} placeholder="Jabatan" className="flex-1 border border-blue-200 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-400" />
+                                                <button type="button" onClick={() => openSignatureModal(idx)} className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 cursor-pointer ${pe.ttd ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-indigo-100 hover:text-indigo-600'}`} title="Tanda tangan"><i className="fas fa-pen-fancy text-[10px]"></i></button>
+                                                <span className="text-[10px] font-bold bg-green-500 text-white w-6 h-6 rounded flex items-center justify-center flex-shrink-0">H</span>
+                                                <button type="button" onClick={() => removeGuest(idx)} className="text-red-400 hover:text-red-600 cursor-pointer flex-shrink-0"><i className="fas fa-times text-xs"></i></button>
+                                            </div>
+                                            {pe.ttd && <div className="mt-1 bg-white rounded p-1 border border-blue-100"><img src={pe.ttd} alt="TTD" className="h-8 object-contain" /></div>}
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => removePhoto(idx)}
-                                            className="absolute top-2 right-2 w-7 h-7 bg-rose-500 text-white rounded-lg flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
-                                        >
-                                            <i className="fas fa-trash-alt text-[10px]"></i>
-                                        </button>
-                                    </div>
-                                ))}
-
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploading}
-                                    className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/20 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all group disabled:opacity-50"
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-dark-border shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        {uploading ? (
-                                            <i className="fas fa-spinner fa-spin text-primary"></i>
-                                        ) : (
-                                            <i className="fas fa-plus text-gray-400 group-hover:text-primary transition-colors"></i>
-                                        )}
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-primary transition-colors">
-                                        {uploading ? 'Uploading...' : 'Tambah Foto'}
-                                    </span>
-                                </button>
-
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handlePhotoUpload}
-                                    className="hidden"
-                                    accept="image/*"
-                                />
-                            </div>
+                                    ))}
+                                    <button type="button" onClick={addGuest} className="mt-1.5 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer">
+                                        <i className="fas fa-plus-circle"></i> Tambah Tamu Undangan
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Notulensi */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-2">Notulensi Rapat</label>
-                            <textarea
-                                value={formData.notulensi}
-                                onChange={(e) => setFormData({ ...formData, notulensi: e.target.value })}
-                                className="w-full h-32 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all dark:text-dark-text"
-                                placeholder="Masukkan hasil rapat di sini..."
-                            />
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat</label>
+                            <textarea value={formData.notulensi} onChange={e => setFormData({ ...formData, notulensi: e.target.value })} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 min-h-[80px] resize-y" />
+                        </div>
+
+                        {/* Dokumentasi Rapat */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Dokumentasi Rapat <span className="font-normal text-gray-400 ml-1">({formData.foto_rapat.length} foto)</span></label>
+                            {formData.foto_rapat.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                    {formData.foto_rapat.map((photo, index) => (
+                                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+                                            <img src={photo.startsWith('data:image') ? photo : photo.startsWith('http') ? photo : (APP_BASE ? `${APP_BASE}/storage/${photo}` : `/storage/${photo}`)} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removePhoto(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"><i className="fas fa-times"></i></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                {uploading ? (
+                                    <div className="flex items-center justify-center gap-2 text-gray-500 py-4">
+                                        <i className="fas fa-spinner fa-spin"></i>
+                                        <span className="text-sm">Memproses foto...</span>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-green-300 rounded-xl p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all bg-green-50/30">
+                                            <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" disabled={uploading} />
+                                            <i className="fas fa-camera text-green-500 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-green-600">Ambil Foto</span>
+                                        </label>
+                                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                                            <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" disabled={uploading} ref={fileInputRef} />
+                                            <i className="fas fa-images text-gray-400 text-2xl mb-2"></i>
+                                            <span className="text-xs font-medium text-gray-500">Pilih File</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-8 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-2.5 rounded-2xl bg-gray-100 dark:bg-dark-bg text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-200 dark:hover:bg-dark-border transition-all"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-[2] py-2.5 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {loading && <i className="fas fa-spinner fa-spin"></i>}
-                            Simpan Perubahan
+                    {/* Fixed Footer */}
+                    <div className="flex-shrink-0 p-4 border-t border-gray-100 flex gap-3 bg-white">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 font-medium hover:bg-gray-50">Batal</button>
+                        <button type="button" onClick={handleSubmit} disabled={loading} className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg disabled:opacity-50`}>
+                            {loading ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-save"></i>Simpan Absensi</>}
                         </button>
                     </div>
-                    <SignatureCanvas
-                        isOpen={showSignatureCanvas}
-                        onClose={() => setShowSignatureCanvas(false)}
-                        onSave={handleSaveSignature}
-                        title="Tanda Tangan Tamu"
-                    />
-                </form>
+                </div>
             </div>
-        </div>,
+            <SignatureCanvas
+                isOpen={showSignatureCanvas}
+                onClose={() => setShowSignatureCanvas(false)}
+                onSave={handleSaveSignature}
+                title="Tanda Tangan Tamu"
+            />
+        </>,
         document.body
     );
 }

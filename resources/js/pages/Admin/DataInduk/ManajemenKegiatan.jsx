@@ -60,6 +60,7 @@ function ManajemenKegiatan() {
     const [currentPage, setCurrentPage] = useState(1);
     const [showAbsensiModal, setShowAbsensiModal] = useState(false);
     const [absensiData, setAbsensiData] = useState(null);
+    const [siswaListKegiatan, setSiswaListKegiatan] = useState([]);
     const [loadingAbsensi, setLoadingAbsensi] = useState(false);
 
     const fileInputRef = useRef(null);
@@ -419,6 +420,7 @@ function ManajemenKegiatan() {
             const result = await res.json();
             if (result.success) {
                 setAbsensiData(result.data);
+                setSiswaListKegiatan(result.siswa_list || []);
                 setShowAbsensiModal(true);
             } else {
                 Swal.fire('Error', result.error || 'Gagal memuat data absensi', 'error');
@@ -606,33 +608,21 @@ function ManajemenKegiatan() {
                                 {isMobile && <th className="select-none py-2.5 text-center"></th>}
                                 <SortableHeader label="Kegiatan" column="nama_kegiatan" />
                                 <SortableHeader
-                                    label="Jenis"
-                                    column="jenis_kegiatan"
+                                    label="KBM"
+                                    column="status_kbm"
                                     filterable
                                     filterOptions={[
-                                        { label: 'Semua Jenis', value: '' },
-                                        ...jenisKegiatanList.map(j => ({ label: j, value: j }))
+                                        { label: 'Semua Status', value: '' },
+                                        ...statusList.map(s => ({ label: s, value: s }))
                                     ]}
-                                    filterValue={filterJenis}
-                                    setFilterValue={setFilterJenis}
+                                    filterValue={filterStatus}
+                                    setFilterValue={setFilterStatus}
                                 />
                                 {!isMobile && <SortableHeader label="Mulai" column="waktu_mulai" />}
                                 {!isMobile && <SortableHeader label="Selesai" column="waktu_berakhir" />}
                                 {!isMobile && <SortableHeader label="Tempat" column="tempat" />}
                                 {!isMobile && <SortableHeader label="Penanggung Jawab" column="pj" />}
-                                {!isMobile && (
-                                    <SortableHeader
-                                        label="Status KBM"
-                                        column="status_kbm"
-                                        filterable
-                                        filterOptions={[
-                                            { label: 'Semua Status', value: '' },
-                                            ...statusList.map(s => ({ label: s, value: s }))
-                                        ]}
-                                        filterValue={filterStatus}
-                                        setFilterValue={setFilterStatus}
-                                    />
-                                )}
+
                                 <th className="select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest px-6">Aksi</th>
                             </tr>
                         </thead>
@@ -662,19 +652,25 @@ function ManajemenKegiatan() {
                                                 </div>
                                             </td>
                                         )}
-                                        <td className="py-2.5 px-2 align-middle">
+                                        <td className={`${isMobile ? 'py-1 px-1' : 'py-2.5 px-2'} align-middle`}>
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight">{item.nama_kegiatan}</span>
-                                                <span className="text-[9px] text-gray-400 dark:text-gray-500 font-medium truncate max-w-[200px]">{item.deskripsi || '-'}</span>
+                                                <span className={`${isMobile ? 'text-[8px] leading-tight' : 'text-xs'} font-black text-gray-700 dark:text-dark-text group-hover:text-primary transition-colors uppercase tracking-tight ${isMobile ? 'whitespace-normal break-words' : ''}`}>{item.nama_kegiatan}</span>
+                                                <span className={`${isMobile ? 'text-[7px]' : 'text-[8px]'} text-gray-400 font-medium italic`}>PJ: {item.penanggungjawab?.nama || '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="py-2.5 px-2 align-middle">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.jenis_kegiatan === 'Tahunan' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
-                                                item.jenis_kegiatan === 'Insidental' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' :
-                                                    'bg-primary/5 text-primary dark:bg-primary/20'
-                                                }`}>
-                                                {item.jenis_kegiatan}
-                                            </span>
+                                        <td className={`${isMobile ? 'py-1 px-1' : 'py-2.5 px-2'} align-middle`}>
+                                            {(() => {
+                                                const kbm = item.kalender?.status_kbm || 'Aktif';
+                                                return (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${isMobile ? 'text-[8px]' : 'text-[10px]'} font-black uppercase tracking-widest ${kbm === 'Aktif' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                                                        'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                                        }`}>
+                                                        {kbm === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                                                        {kbm === 'Libur' && <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
+                                                        {kbm}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                         {!isMobile && (
                                             <td className="py-2.5 px-2 align-middle whitespace-nowrap">
@@ -705,22 +701,7 @@ function ManajemenKegiatan() {
                                                 <span className="text-xs font-bold text-gray-600 dark:text-dark-text uppercase">{item.penanggungjawab?.nama || '-'}</span>
                                             </td>
                                         )}
-                                        {!isMobile && (
-                                            <td className="py-2.5 px-2 align-middle">
-                                                {(() => {
-                                                    const kbm = item.kalender?.status_kbm || 'Aktif';
-                                                    return (
-                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${kbm === 'Aktif' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' :
-                                                            'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                                                            }`}>
-                                                            {kbm === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-                                                            {kbm === 'Libur' && <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
-                                                            {kbm}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </td>
-                                        )}
+
                                         <td className={`${isMobile ? 'py-1 px-2' : 'py-2.5 px-6'} align-middle text-center`}>
                                             <div className="flex items-center justify-center gap-2">
                                                 <button onClick={() => openAbsensiModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center justify-center dark:bg-primary/20 hover:scale-110 active:scale-95`} title="Absensi">
@@ -1045,6 +1026,7 @@ function ManajemenKegiatan() {
                     kegiatan={currentItem}
                     initialData={absensiData}
                     guruList={guruList}
+                    siswaList={siswaListKegiatan}
                     onSuccess={() => {
                         setShowAbsensiModal(false);
                         fetchData();
@@ -1055,25 +1037,46 @@ function ManajemenKegiatan() {
     );
 }
 
-function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuccess, guruList }) {
+function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuccess, guruList, siswaList = [] }) {
     const [formData, setFormData] = useState({
         pj_status: initialData?.pj_status || 'H',
         pj_keterangan: initialData?.pj_keterangan || '',
         absensi_pendamping: initialData?.absensi_pendamping || [],
+        absensi_siswa: initialData?.absensi_siswa || [],
         berita_acara: initialData?.berita_acara || '',
         foto_kegiatan: initialData?.foto_kegiatan || [],
     });
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [pendampingExpanded, setPendampingExpanded] = useState(true);
+    const [siswaExpanded, setSiswaExpanded] = useState(false);
+    const [activeKelas, setActiveKelas] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Build unique kelas list from siswaList
+    const kelasList = [...new Set(siswaList.map(s => s.kelas))].filter(Boolean).sort();
+
+    // Merge siswaList info with absensi_siswa statuses
+    const mergedSiswa = siswaList.map(s => {
+        const existing = formData.absensi_siswa.find(a => a.siswa_id === s.siswa_id);
+        return {
+            ...s,
+            status: existing?.status || 'H',
+            keterangan: existing?.keterangan || '',
+        };
+    });
+
+    const formatTime = (datetime) => {
+        if (!datetime) return '-';
+        const d = new Date(datetime);
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    };
 
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const formDataUpload = new FormData();
         formDataUpload.append('foto', file);
-
         try {
             setUploading(true);
             const res = await authFetch(`${API_BASE}/kegiatan/absensi/upload-foto`, {
@@ -1099,21 +1102,50 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
     };
 
     const removePhoto = (index) => {
-        const updated = [...formData.foto_kegiatan];
-        updated.splice(index, 1);
-        setFormData({ ...formData, foto_kegiatan: updated });
+        setFormData(prev => ({
+            ...prev,
+            foto_kegiatan: prev.foto_kegiatan.filter((_, i) => i !== index)
+        }));
     };
 
-    const updateStatus = (index, status) => {
+    const updatePendampingStatus = (index, status) => {
         const updated = [...formData.absensi_pendamping];
         updated[index].status = status;
+        if (status !== 'S' && status !== 'I') updated[index].keterangan = '';
         setFormData({ ...formData, absensi_pendamping: updated });
     };
 
-    const updateKeterangan = (index, keterangan) => {
+    const updatePendampingKeterangan = (index, keterangan) => {
         const updated = [...formData.absensi_pendamping];
         updated[index].keterangan = keterangan;
         setFormData({ ...formData, absensi_pendamping: updated });
+    };
+
+    const updateSiswaStatus = (siswaId, status) => {
+        setFormData(prev => {
+            const updated = [...prev.absensi_siswa];
+            const idx = updated.findIndex(a => a.siswa_id === siswaId);
+            if (idx >= 0) {
+                updated[idx].status = status;
+                if (status !== 'S' && status !== 'I') updated[idx].keterangan = '';
+            } else {
+                updated.push({ siswa_id: siswaId, status, keterangan: '' });
+            }
+            return { ...prev, absensi_siswa: updated };
+        });
+    };
+
+    const updateSiswaKeterangan = (siswaId, keterangan) => {
+        setFormData(prev => {
+            const updated = [...prev.absensi_siswa];
+            const idx = updated.findIndex(a => a.siswa_id === siswaId);
+            if (idx >= 0) {
+                updated[idx].keterangan = keterangan;
+            } else {
+                updated.push({ siswa_id: siswaId, status: 'H', keterangan });
+            }
+            return { ...prev, absensi_siswa: updated };
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -1127,6 +1159,7 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
                     pj_status: formData.pj_status,
                     pj_keterangan: formData.pj_keterangan,
                     absensi_pendamping: formData.absensi_pendamping,
+                    absensi_siswa: formData.absensi_siswa,
                     berita_acara: formData.berita_acara,
                     foto_kegiatan: formData.foto_kegiatan,
                 })
@@ -1146,193 +1179,367 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
         }
     };
 
+    // Stats counts
+    const guruStatuses = [formData.pj_status, ...formData.absensi_pendamping.map(p => p.status)];
+    const siswaCounts = {
+        hadir: mergedSiswa.filter(s => s.status === 'H').length,
+        sakit: mergedSiswa.filter(s => s.status === 'S').length,
+        izin: mergedSiswa.filter(s => s.status === 'I').length,
+        alpha: mergedSiswa.filter(s => s.status === 'A').length,
+    };
+
     return ReactDOM.createPortal(
-        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300 ${show ? 'opacity-100 visible bg-black/50' : 'opacity-0 invisible'}`}>
-            <div className={`bg-white dark:bg-dark-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${show ? 'scale-100' : 'scale-95'}`}>
-                <div className="bg-primary p-6 text-white flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-black uppercase tracking-widest">Absensi Kegiatan</h3>
-                        <p className="text-xs text-primary-light font-medium mt-1">{kegiatan?.nama_kegiatan}</p>
+        <div
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300 ${show ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onClick={onClose}
+        >
+            <div
+                className={`bg-white dark:bg-dark-card w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${show ? 'scale-100' : 'scale-95'}`}
+                style={{ maxHeight: '90vh' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Gradient Header */}
+                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                <i className="fas fa-calendar-check"></i>
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-sm">{kegiatan?.nama_kegiatan || 'Absensi Kegiatan'}</h2>
+                                <p className="text-green-100 text-xs">
+                                    <i className="fas fa-map-marker-alt mr-1"></i>
+                                    {kegiatan?.tempat || '-'} • {formatTime(kegiatan?.waktu_mulai)} - {formatTime(kegiatan?.waktu_berakhir)}
+                                </p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
                     </div>
-                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 transition-colors">
-                        <i className="fas fa-times"></i>
-                    </button>
+
+                    {/* Counter Stats */}
+                    <div className="flex gap-3 mt-3">
+                        <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
+                            <p className="text-lg font-bold">{siswaCounts.hadir}</p>
+                            <p className="text-[10px] text-green-200 uppercase tracking-wider">Hadir</p>
+                        </div>
+                        <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
+                            <p className="text-lg font-bold">{siswaCounts.sakit}</p>
+                            <p className="text-[10px] text-green-200 uppercase tracking-wider">Sakit</p>
+                        </div>
+                        <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
+                            <p className="text-lg font-bold">{siswaCounts.izin}</p>
+                            <p className="text-[10px] text-green-200 uppercase tracking-wider">Izin</p>
+                        </div>
+                        <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
+                            <p className="text-lg font-bold">{siswaCounts.alpha}</p>
+                            <p className="text-[10px] text-green-200 uppercase tracking-wider">Alpha</p>
+                        </div>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6">
-                    <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-                        {/* Summary Stats */}
-                        {(() => {
-                            const allStatuses = [formData.pj_status, ...formData.absensi_pendamping.map(p => p.status)];
-                            return (
-                                <div className="grid grid-cols-4 gap-4">
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl text-center">
-                                        <div className="text-xl font-black text-emerald-600 mb-1">{allStatuses.filter(s => s === 'H').length}</div>
-                                        <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Hadir</div>
-                                    </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl text-center">
-                                        <div className="text-xl font-black text-blue-600 mb-1">{allStatuses.filter(s => s === 'S').length}</div>
-                                        <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Sakit</div>
-                                    </div>
-                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl text-center">
-                                        <div className="text-xl font-black text-amber-600 mb-1">{allStatuses.filter(s => s === 'I').length}</div>
-                                        <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Izin</div>
-                                    </div>
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl text-center">
-                                        <div className="text-xl font-black text-rose-600 mb-1">{allStatuses.filter(s => s === 'A').length}</div>
-                                        <div className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Alpha</div>
-                                    </div>
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* PJ Card */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-dark-text mb-2">Penanggung Jawab</label>
+                        <div className="bg-green-50 dark:bg-green-900/10 border-2 border-green-200 dark:border-green-800 rounded-2xl p-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    {(kegiatan?.penanggungjawab?.nama || '-').charAt(0).toUpperCase()}
                                 </div>
-                            );
-                        })()}
-
-                        {/* PJ Status */}
-                        <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                            <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">Penanggung Jawab</p>
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm font-bold text-gray-700 dark:text-dark-text">{kegiatan?.penanggungjawab?.nama || '-'}</p>
-                                <div className="flex gap-1.5">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-gray-800 dark:text-dark-text text-sm truncate">{kegiatan?.penanggungjawab?.nama || '-'}</p>
+                                    <p className="text-xs text-gray-400">Penanggung Jawab</p>
+                                </div>
+                                <div className="flex gap-1">
                                     {['H', 'S', 'I', 'A'].map(s => (
                                         <button
                                             key={s}
                                             type="button"
                                             onClick={() => setFormData(prev => ({ ...prev, pj_status: s }))}
-                                            className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${formData.pj_status === s
-                                                ? s === 'H' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
-                                                    s === 'S' ? 'bg-blue-500 text-white shadow-lg shadow-blue-200' :
-                                                        s === 'I' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' :
-                                                            'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                                                : 'bg-white dark:bg-dark-card text-gray-400 hover:bg-gray-100'
+                                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${formData.pj_status === s
+                                                ? s === 'H' ? 'bg-green-500 text-white shadow-md'
+                                                    : s === 'S' ? 'bg-blue-500 text-white shadow-md'
+                                                        : s === 'I' ? 'bg-yellow-500 text-white shadow-md'
+                                                            : 'bg-red-500 text-white shadow-md'
+                                                : 'bg-white dark:bg-dark-card text-gray-400 hover:bg-gray-200'
                                                 }`}
-                                        >
-                                            {s}
-                                        </button>
+                                        >{s}</button>
                                     ))}
                                 </div>
                             </div>
+                            {(formData.pj_status === 'S' || formData.pj_status === 'I') && (
+                                <input
+                                    type="text"
+                                    value={formData.pj_keterangan}
+                                    onChange={e => setFormData(prev => ({ ...prev, pj_keterangan: e.target.value }))}
+                                    placeholder={formData.pj_status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                    className={`w-full mt-2 border rounded-lg p-2 text-sm focus:ring-2 focus:border-transparent ${formData.pj_status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
+                                />
+                            )}
                         </div>
+                    </div>
 
-                        {/* Pendamping List */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-2">Guru Pendamping</label>
-                            {formData.absensi_pendamping.length === 0 ? (
-                                <p className="text-center py-2.5 text-xs text-gray-400 italic bg-gray-50 rounded-xl">Tidak ada guru pendamping</p>
-                            ) : formData.absensi_pendamping.map((p, idx) => {
-                                const guru = guruList.find(g => g.id === p.guru_id);
-                                return (
-                                    <div key={idx} className="bg-gray-50 dark:bg-dark-bg p-4 rounded-2xl border border-gray-100 dark:border-dark-border flex items-center justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-700 dark:text-dark-text truncate">{guru?.nama || p.nama || `Guru #${p.guru_id}`}</p>
-                                        </div>
-                                        <div className="flex gap-1.5">
-                                            {['H', 'S', 'I', 'A'].map(s => (
-                                                <button
-                                                    key={s}
-                                                    type="button"
-                                                    onClick={() => updateStatus(idx, s)}
-                                                    className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${p.status === s
-                                                        ? s === 'H' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' :
-                                                            s === 'S' ? 'bg-blue-500 text-white shadow-lg shadow-blue-200' :
-                                                                s === 'I' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' :
-                                                                    'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                                                        : 'bg-white dark:bg-dark-card text-gray-400 hover:bg-gray-100'
-                                                        }`}
-                                                >
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
+                    {/* Collapsible Guru Pendamping */}
+                    {formData.absensi_pendamping.length > 0 && (
+                        <div className="border border-gray-200 dark:border-dark-border rounded-xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setPendampingExpanded(!pendampingExpanded)}
+                                className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-pink-50 dark:from-green-900/10 dark:to-pink-900/10 hover:from-green-100 hover:to-pink-100 transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 bg-green-500 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-chalkboard-teacher text-white text-sm"></i>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <div className="text-left">
+                                        <p className="font-semibold text-gray-800 dark:text-dark-text text-sm">Guru Pendamping</p>
+                                        <p className="text-xs text-gray-500">
+                                            {formData.absensi_pendamping.length} guru
+                                            <span className="mx-1">•</span>
+                                            <span className="text-green-600">{formData.absensi_pendamping.filter(g => g.status === 'H').length} hadir</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={`w-7 h-7 rounded-full bg-white dark:bg-dark-card shadow-sm flex items-center justify-center transition-transform duration-300 ${pendampingExpanded ? 'rotate-180' : ''}`}>
+                                    <i className="fas fa-chevron-down text-gray-500 text-xs"></i>
+                                </div>
+                            </button>
 
-                        {/* Foto Dokumentasi */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2 flex items-center gap-2">
-                                <i className="fas fa-camera text-primary"></i>
-                                Dokumentasi Kegiatan
-                            </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${pendampingExpanded ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
+                                    {formData.absensi_pendamping.map((p, idx) => {
+                                        const guru = guruList.find(g => g.id === p.guru_id);
+                                        return (
+                                            <div key={idx} className="bg-white dark:bg-dark-bg rounded-lg p-2 border border-gray-100 dark:border-dark-border">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-gray-800 dark:text-dark-text text-[0.75rem] truncate">{guru?.nama || p.nama || `Guru #${p.guru_id}`}</p>
+                                                    </div>
+                                                    <div className="flex gap-0.5">
+                                                        {['H', 'S', 'I', 'A'].map(s => (
+                                                            <button
+                                                                key={s}
+                                                                type="button"
+                                                                onClick={() => updatePendampingStatus(idx, s)}
+                                                                className={`w-7 h-7 rounded text-[0.6rem] font-bold transition-all ${p.status === s
+                                                                    ? s === 'H' ? 'bg-green-500 text-white'
+                                                                        : s === 'S' ? 'bg-blue-500 text-white'
+                                                                            : s === 'I' ? 'bg-yellow-500 text-white'
+                                                                                : 'bg-red-500 text-white'
+                                                                    : 'bg-gray-200 dark:bg-dark-card text-gray-500 hover:bg-gray-300'
+                                                                    }`}
+                                                            >{s}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                {(p.status === 'S' || p.status === 'I') && (
+                                                    <input
+                                                        type="text"
+                                                        value={p.keterangan || ''}
+                                                        onChange={e => updatePendampingKeterangan(idx, e.target.value)}
+                                                        placeholder={p.status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                                        className={`w-full mt-1.5 border rounded-lg p-1.5 text-xs focus:ring-2 focus:border-transparent ${p.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Collapsible Siswa Section */}
+                    {mergedSiswa.length > 0 && (
+                        <div className="border border-gray-200 dark:border-dark-border rounded-xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setSiswaExpanded(!siswaExpanded)}
+                                className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-cyan-50 dark:from-green-900/10 dark:to-cyan-900/10 hover:from-green-100 hover:to-cyan-100 transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 bg-green-500 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-user-graduate text-white text-sm"></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-semibold text-gray-800 dark:text-dark-text text-sm">
+                                            {kelasList.length === 1 ? `Siswa ${kelasList[0]}` : 'Siswa Peserta'}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            <span className="text-green-600">{siswaCounts.hadir} hadir</span>
+                                            <span className="mx-1">•</span>
+                                            <span className="text-yellow-600">{siswaCounts.izin} izin</span>
+                                            <span className="mx-1">•</span>
+                                            <span className="text-red-600">{siswaCounts.alpha} alpha</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={`w-7 h-7 rounded-full bg-white dark:bg-dark-card shadow-sm flex items-center justify-center transition-transform duration-300 ${siswaExpanded ? 'rotate-180' : ''}`}>
+                                    <i className="fas fa-chevron-down text-gray-500 text-xs"></i>
+                                </div>
+                            </button>
+
+                            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${siswaExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-3">
+                                    {/* Pill-style kelas selector */}
+                                    {kelasList.length > 1 && (
+                                        <div className="bg-gray-100 dark:bg-dark-bg rounded-full p-1 mb-3 relative">
+                                            <div
+                                                className="absolute top-1 bottom-1 bg-green-500 rounded-full shadow-md transition-all duration-300 ease-in-out"
+                                                style={{
+                                                    width: `calc(${100 / kelasList.length}% - 4px)`,
+                                                    left: `calc(${((activeKelas ? kelasList.indexOf(activeKelas) : 0) * (100 / kelasList.length))}% + 2px)`,
+                                                }}
+                                            />
+                                            <div className="relative flex gap-1">
+                                                {kelasList.map(kelas => (
+                                                    <button
+                                                        key={kelas}
+                                                        type="button"
+                                                        onClick={() => setActiveKelas(activeKelas === kelas ? null : kelas)}
+                                                        className={`flex-1 py-2 rounded-full text-xs font-semibold text-center transition-colors duration-200 z-10 ${(activeKelas === kelas || (activeKelas === null && kelasList.indexOf(kelas) === 0))
+                                                            ? 'text-white'
+                                                            : 'text-gray-600 hover:text-gray-800'
+                                                            }`}
+                                                    >
+                                                        {kelas}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Student List */}
+                                    <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                                        {mergedSiswa
+                                            .filter(siswa => {
+                                                if (kelasList.length <= 1) return true;
+                                                const selectedKelas = activeKelas || kelasList[0];
+                                                return siswa.kelas === selectedKelas;
+                                            })
+                                            .map((siswa) => (
+                                                <div key={siswa.siswa_id} className="bg-white dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-lg p-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-semibold text-gray-800 dark:text-dark-text text-[0.75rem] truncate">{siswa.nama}</p>
+                                                            <p className="text-[0.6rem] text-gray-400">{siswa.nis}</p>
+                                                        </div>
+                                                        <div className="flex gap-0.5">
+                                                            {['H', 'S', 'I', 'A'].map(status => (
+                                                                <button
+                                                                    key={status}
+                                                                    type="button"
+                                                                    onClick={() => updateSiswaStatus(siswa.siswa_id, status)}
+                                                                    className={`w-7 h-7 rounded text-[0.6rem] font-bold transition-all ${siswa.status === status
+                                                                        ? status === 'H' ? 'bg-green-500 text-white'
+                                                                            : status === 'S' ? 'bg-blue-500 text-white'
+                                                                                : status === 'I' ? 'bg-yellow-500 text-white'
+                                                                                    : 'bg-red-500 text-white'
+                                                                        : 'bg-gray-200 dark:bg-dark-card text-gray-500 hover:bg-gray-300'
+                                                                        }`}
+                                                                >{status}</button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    {(siswa.status === 'S' || siswa.status === 'I') && (
+                                                        <input
+                                                            type="text"
+                                                            value={siswa.keterangan || ''}
+                                                            onChange={e => updateSiswaKeterangan(siswa.siswa_id, e.target.value)}
+                                                            placeholder={siswa.status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...'}
+                                                            className={`w-full mt-1.5 border rounded-lg p-1.5 text-xs focus:ring-2 focus:border-transparent ${siswa.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Berita Acara */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-dark-text mb-2">Berita Acara</label>
+                        <textarea
+                            value={formData.berita_acara}
+                            onChange={(e) => setFormData({ ...formData, berita_acara: e.target.value })}
+                            className="w-full border border-gray-200 dark:border-dark-border rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y dark:bg-dark-bg dark:text-dark-text"
+                            placeholder="Isi berita acara kegiatan..."
+                        />
+                    </div>
+
+                    {/* Foto Dokumentasi */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-dark-text mb-2">
+                            <i className="fas fa-camera text-green-500 mr-1"></i>
+                            Dokumentasi Kegiatan
+                        </label>
+
+                        {formData.foto_kegiatan.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2 mb-2">
                                 {formData.foto_kegiatan.map((foto, idx) => (
-                                    <div key={idx} className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-dark-bg shadow-sm">
+                                    <div key={idx} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100 dark:bg-dark-bg group">
                                         <img
                                             src={foto.startsWith('data:image') ? foto : foto.startsWith('http') ? foto : (APP_BASE ? `${APP_BASE}/storage/${foto}` : `/storage/${foto}`)}
-                                            alt={`Dokumentasi ${idx + 1}`}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                            alt={`Foto ${idx + 1}`}
+                                            className="w-full h-full object-cover"
                                             onError={(e) => { e.target.style.display = 'none'; }}
                                         />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <i className="fas fa-search-plus text-white text-xl"></i>
-                                        </div>
                                         <button
                                             type="button"
                                             onClick={() => removePhoto(idx)}
-                                            className="absolute top-2 right-2 w-7 h-7 bg-rose-500 text-white rounded-lg flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100"
+                                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
-                                            <i className="fas fa-trash-alt text-[10px]"></i>
+                                            <i className="fas fa-times"></i>
                                         </button>
                                     </div>
                                 ))}
-
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploading}
-                                    className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/20 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all group disabled:opacity-50"
-                                >
-                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-dark-border shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        {uploading ? (
-                                            <i className="fas fa-spinner fa-spin text-primary"></i>
-                                        ) : (
-                                            <i className="fas fa-plus text-gray-400 group-hover:text-primary transition-colors"></i>
-                                        )}
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-primary transition-colors">
-                                        {uploading ? 'Uploading...' : 'Tambah Foto'}
-                                    </span>
-                                </button>
-
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handlePhotoUpload}
-                                    className="hidden"
-                                    accept="image/*"
-                                />
                             </div>
-                        </div>
+                        )}
 
-                        {/* Berita Acara */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-2">Berita Acara</label>
-                            <textarea
-                                value={formData.berita_acara}
-                                onChange={(e) => setFormData({ ...formData, berita_acara: e.target.value })}
-                                className="w-full h-32 bg-gray-50 dark:bg-dark-bg border border-gray-100 dark:border-dark-border rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all dark:text-dark-text text-gray-700"
-                                placeholder="Masukkan berita acara/laporan kegiatan..."
-                            />
-                        </div>
-                    </div>
-
-                    <div className="mt-8 flex gap-3">
                         <button
                             type="button"
-                            onClick={onClose}
-                            className="flex-1 py-2.5 rounded-2xl bg-gray-100 dark:bg-dark-bg text-gray-600 dark:text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-200 dark:hover:bg-dark-border transition-all"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 dark:border-dark-border rounded-xl p-3 hover:border-green-400 hover:bg-green-50 transition-all disabled:opacity-50"
                         >
-                            Batal
+                            {uploading ? (
+                                <><i className="fas fa-spinner fa-spin text-green-500"></i><span className="text-sm text-gray-500">Uploading...</span></>
+                            ) : (
+                                <><i className="fas fa-plus text-gray-400"></i><span className="text-sm text-gray-500">Tambah Foto</span></>
+                            )}
                         </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-[2] py-2.5 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {loading && <i className="fas fa-spinner fa-spin"></i>}
-                            Simpan Absensi
-                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
                     </div>
-                </form>
+                </div>
+
+                {/* Fixed Footer */}
+                <div className="flex-shrink-0 p-4 border-t border-gray-100 dark:border-dark-border flex gap-3 bg-white dark:bg-dark-card">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 py-3 border border-gray-300 dark:border-dark-border rounded-xl text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-dark-bg transition-colors"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-lg disabled:opacity-50 transition-all"
+                    >
+                        {loading ? (
+                            <i className="fas fa-spinner fa-spin"></i>
+                        ) : (
+                            <><i className="fas fa-save"></i> Simpan Absensi</>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>,
         document.body

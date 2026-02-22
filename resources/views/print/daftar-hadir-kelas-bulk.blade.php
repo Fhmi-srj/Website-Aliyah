@@ -227,30 +227,8 @@
 @endsection
 
 @section('content')
-    @php
-        $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
-        $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga') ?? 'Madrasah Aliyah';
-        $motoLembaga = \App\Models\AppSetting::getValue('moto_lembaga');
-        $alamatLembaga = \App\Models\AppSetting::getValue('alamat_lembaga');
-        $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : null;
-    @endphp
-
     @foreach($sections as $idx => $section)
         <div class="{{ $idx > 0 ? 'section-break' : '' }}">
-            <div class="institution-header">
-                @if($logoUrl)
-                    <img src="{{ $logoUrl }}" alt="Logo" class="institution-logo">
-                @endif
-                <div class="institution-info">
-                    <p class="institution-name">{{ strtoupper($namaLembaga) }}</p>
-                    @if($motoLembaga)
-                        <p class="institution-motto">"{{ $motoLembaga }}"</p>
-                    @endif
-                    @if($alamatLembaga)
-                        <p class="institution-address">{{ $alamatLembaga }}</p>
-                    @endif
-                </div>
-            </div>
 
             <h1 class="doc-title">DAFTAR HADIR PESERTA DIDIK</h1>
             <p class="doc-subtitle">TAHUN PELAJARAN {{ $section['tahunAjaran'] }}</p>
