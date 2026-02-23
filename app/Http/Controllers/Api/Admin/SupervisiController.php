@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Supervisi;
+use App\Models\SupervisiQuestion;
 use App\Models\TahunAjaran;
 use App\Models\Kelas;
 use App\Models\ActivityLog;
@@ -198,6 +199,80 @@ class SupervisiController extends Controller
         ]);
     }
 
+    // ==========================================
+    // SUPERVISI QUESTIONS CRUD
+    // ==========================================
+
+    public function getQuestions(): JsonResponse
+    {
+        $questions = SupervisiQuestion::orderBy('bagian')
+            ->orderBy('sort_order')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $questions,
+        ]);
+    }
+
+    public function storeQuestion(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'bagian' => 'required|in:a,b',
+            'label' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        // Auto-generate key: find the max existing key number for this bagian
+        $maxKey = SupervisiQuestion::where('bagian', $validated['bagian'])
+            ->orderByRaw("CAST(SUBSTRING(`key`, 2) AS UNSIGNED) DESC")
+            ->value('key');
+
+        $nextNum = $maxKey ? ((int) substr($maxKey, 1)) + 1 : 1;
+        $validated['key'] = $validated['bagian'] . $nextNum;
+
+        // Auto sort_order
+        $maxSort = SupervisiQuestion::where('bagian', $validated['bagian'])->max('sort_order') ?? 0;
+        $validated['sort_order'] = $maxSort + 1;
+        $validated['is_active'] = true;
+
+        $question = SupervisiQuestion::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pertanyaan supervisi berhasil ditambahkan',
+            'data' => $question,
+        ], 201);
+    }
+
+    public function updateQuestion(Request $request, SupervisiQuestion $question): JsonResponse
+    {
+        $validated = $request->validate([
+            'label' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'sort_order' => 'nullable|integer',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $question->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pertanyaan supervisi berhasil diperbarui',
+            'data' => $question,
+        ]);
+    }
+
+    public function deleteQuestion(SupervisiQuestion $question): JsonResponse
+    {
+        $question->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pertanyaan supervisi berhasil dihapus',
+        ]);
+    }
+
     public function print(Supervisi $supervisi): JsonResponse
     {
         $supervisi->load([
@@ -229,20 +304,10 @@ class SupervisiController extends Controller
         $hasilA = $hasil['bagian_a'] ?? [];
         $hasilB = $hasil['bagian_b'] ?? [];
 
-        // Assessment criteria (mirrored from frontend)
-        $bagianA = [
-            ['key' => 'a1', 'label' => 'Kelengkapan Komponen Minimum', 'desc' => 'Modul ajar memuat Tujuan Pembelajaran, Langkah Pembelajaran, Rencana Asesmen, dan Media Pembelajaran.'],
-            ['key' => 'a2', 'label' => 'Kesesuaian dengan Karakteristik Siswa', 'desc' => 'Modul ajar dirancang sesuai kesiapan belajar, minat, dan tingkat penguasaan peserta didik.'],
-            ['key' => 'a3', 'label' => 'Kualitas Penyajian Materi', 'desc' => 'Modul ajar disusun secara fleksibel, jelas, sederhana, esensial, menarik, dan kontekstual.'],
-            ['key' => 'a4', 'label' => 'Instrumen Asesmen Terukur', 'desc' => 'Terdapat instrumen dan rubrik penilaian yang jelas untuk mengukur ketercapaian tujuan pembelajaran.'],
-        ];
-        $bagianB = [
-            ['key' => 'b1', 'label' => 'Pembelajaran Berdiferensiasi', 'desc' => 'Pelaksanaan mengakomodasi kebutuhan belajar siswa serta memberikan scaffolding atau tantangan yang tepat.'],
-            ['key' => 'b2', 'label' => 'Keterlibatan & Interaksi Aktif', 'desc' => 'Pendidik aktif mendengarkan, memberikan pertanyaan terbuka, serta melibatkan siswa dalam kolaborasi.'],
-            ['key' => 'b3', 'label' => 'Pemberian Umpan Balik', 'desc' => 'Terdapat umpan balik konstruktif dari guru ke siswa, serta kesempatan refleksi diri dan umpan balik antar-teman.'],
-            ['key' => 'b4', 'label' => 'Pengembangan Karakter', 'desc' => 'Pendidik menjadi teladan, membangun kesepakatan kelas, dan mengintegrasikan nilai-nilai Profil Pelajar Pancasila.'],
-            ['key' => 'b5', 'label' => 'Lingkungan Belajar Aman & Bahagia', 'desc' => 'Proses belajar menumbuhkan rasa bahagia, aman, dan nyaman bagi peserta didik secara holistik.'],
-        ];
+        // Assessment criteria from database
+        $allQuestions = SupervisiQuestion::active()->orderBy('sort_order')->get();
+        $bagianA = $allQuestions->where('bagian', 'a')->map(fn($q) => ['key' => $q->key, 'label' => $q->label, 'desc' => $q->description])->values()->toArray();
+        $bagianB = $allQuestions->where('bagian', 'b')->map(fn($q) => ['key' => $q->key, 'label' => $q->label, 'desc' => $q->description])->values()->toArray();
 
         // Calculate averages
         $sumA = 0;

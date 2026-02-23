@@ -75,6 +75,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('supervisi/{supervisi}/print', [SupervisiController::class, 'print']);
 
     Route::post('supervisi/{supervisi}/submit-hasil', [SupervisiController::class, 'submitHasil']);
+
+    // Supervisi Questions CRUD
+    Route::get('supervisi-questions', [SupervisiController::class, 'getQuestions']);
+    Route::post('supervisi-questions', [SupervisiController::class, 'storeQuestion']);
+    Route::put('supervisi-questions/{question}', [SupervisiController::class, 'updateQuestion']);
+    Route::delete('supervisi-questions/{question}', [SupervisiController::class, 'deleteQuestion']);
+
     Route::apiResource('supervisi', SupervisiController::class);
     Route::apiResource('jam-pelajaran', \App\Http\Controllers\Api\Admin\JamPelajaranController::class);
     Route::apiResource('kalender', \App\Http\Controllers\Api\Admin\KalenderController::class);

@@ -42,21 +42,6 @@ const LIKERT_COLORS = {
     4: 'bg-emerald-500 text-white shadow-emerald-200',
 };
 
-// Supervision assessment criteria
-const BAGIAN_A = [
-    { key: 'a1', label: 'Kelengkapan Komponen Minimum', desc: 'Modul ajar memuat Tujuan Pembelajaran, Langkah Pembelajaran, Rencana Asesmen, dan Media Pembelajaran.' },
-    { key: 'a2', label: 'Kesesuaian dengan Karakteristik Siswa', desc: 'Modul ajar dirancang sesuai kesiapan belajar, minat, dan tingkat penguasaan peserta didik.' },
-    { key: 'a3', label: 'Kualitas Penyajian Materi', desc: 'Modul ajar disusun secara fleksibel, jelas, sederhana, esensial, menarik, dan kontekstual.' },
-    { key: 'a4', label: 'Instrumen Asesmen Terukur', desc: 'Terdapat instrumen dan rubrik penilaian yang jelas untuk mengukur ketercapaian tujuan pembelajaran.' },
-];
-const BAGIAN_B = [
-    { key: 'b1', label: 'Pembelajaran Berdiferensiasi', desc: 'Pelaksanaan mengakomodasi kebutuhan belajar siswa serta memberikan scaffolding atau tantangan yang tepat.' },
-    { key: 'b2', label: 'Keterlibatan & Interaksi Aktif', desc: 'Pendidik aktif mendengarkan, memberikan pertanyaan terbuka, serta melibatkan siswa dalam kolaborasi.' },
-    { key: 'b3', label: 'Pemberian Umpan Balik', desc: 'Terdapat umpan balik konstruktif dari guru ke siswa, serta kesempatan refleksi diri dan umpan balik antar-teman.' },
-    { key: 'b4', label: 'Pengembangan Karakter', desc: 'Pendidik menjadi teladan, membangun kesepakatan kelas, dan mengintegrasikan nilai-nilai Profil Pelajar Pancasila.' },
-    { key: 'b5', label: 'Lingkungan Belajar Aman & Bahagia', desc: 'Proses belajar menumbuhkan rasa bahagia, aman, dan nyaman bagi peserta didik secara holistik.' },
-];
-
 function ManajemenSupervisi() {
     const [data, setData] = useState([]);
     const [selectedItems, setSelectedItems] = useState(new Set());
@@ -97,6 +82,17 @@ function ManajemenSupervisi() {
     const [expandedRows, setExpandedRows] = useState(new Set());
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Dynamic supervisi questions from API
+    const [allQuestions, setAllQuestions] = useState([]);
+    const BAGIAN_A = allQuestions.filter(q => q.bagian === 'a' && q.is_active).map(q => ({ ...q, desc: q.description }));
+    const BAGIAN_B = allQuestions.filter(q => q.bagian === 'b' && q.is_active).map(q => ({ ...q, desc: q.description }));
+
+    // Questions management popup state
+    const [showQuestionsPopup, setShowQuestionsPopup] = useState(false);
+    const [editingQuestion, setEditingQuestion] = useState(null);
+    const [questionForm, setQuestionForm] = useState({ bagian: 'a', label: '', description: '' });
+    const [savingQuestion, setSavingQuestion] = useState(false);
+
     // Wizard popup state
     const [showWizard, setShowWizard] = useState(false);
     const [wizardStep, setWizardStep] = useState(1);
@@ -118,6 +114,16 @@ function ManajemenSupervisi() {
             else next.add(idx);
             return next;
         });
+    };
+
+    const fetchQuestions = async () => {
+        try {
+            const res = await authFetch(`${API_BASE}/supervisi-questions`);
+            const json = await res.json();
+            setAllQuestions(json.data || []);
+        } catch (err) {
+            console.error('Error fetching questions:', err);
+        }
     };
 
     const fetchData = async (tahunId = tahunAjaranId) => {
@@ -143,7 +149,73 @@ function ManajemenSupervisi() {
         }
     };
 
+    useEffect(() => { fetchQuestions(); }, []);
     useEffect(() => { fetchData(tahunAjaranId); }, [tahunAjaranId]);
+
+    // === Questions CRUD Handlers ===
+    const handleSaveQuestion = async () => {
+        if (!questionForm.label.trim()) {
+            Swal.fire({ icon: 'warning', title: 'Label harus diisi', timer: 1500, showConfirmButton: false });
+            return;
+        }
+        setSavingQuestion(true);
+        try {
+            const isEdit = !!editingQuestion;
+            const url = isEdit ? `${API_BASE}/supervisi-questions/${editingQuestion.id}` : `${API_BASE}/supervisi-questions`;
+            const method = isEdit ? 'PUT' : 'POST';
+            const res = await authFetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify(questionForm),
+            });
+            if (res.ok) {
+                await fetchQuestions();
+                setEditingQuestion(null);
+                setQuestionForm({ bagian: 'a', label: '', description: '' });
+                Swal.fire({ icon: 'success', title: isEdit ? 'Diperbarui!' : 'Ditambahkan!', timer: 1200, showConfirmButton: false });
+            } else {
+                const err = await res.json().catch(() => null);
+                Swal.fire({ icon: 'error', title: 'Gagal', text: err?.message || 'Terjadi kesalahan' });
+            }
+        } catch (err) {
+            console.error('Save question error:', err);
+        } finally {
+            setSavingQuestion(false);
+        }
+    };
+
+    const handleDeleteQuestion = async (q) => {
+        const result = await Swal.fire({
+            title: `Hapus "${q.label}"?`,
+            text: 'Pertanyaan ini akan dihapus secara permanen!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await authFetch(`${API_BASE}/supervisi-questions/${q.id}`, { method: 'DELETE', headers: { Accept: 'application/json' } });
+            if (res.ok) {
+                await fetchQuestions();
+                Swal.fire({ icon: 'success', title: 'Terhapus!', timer: 1200, showConfirmButton: false });
+            }
+        } catch (err) {
+            console.error('Delete question error:', err);
+        }
+    };
+
+    const startEditQuestion = (q) => {
+        setEditingQuestion(q);
+        setQuestionForm({ bagian: q.bagian, label: q.label, description: q.description || '' });
+    };
+
+    const cancelEditQuestion = () => {
+        setEditingQuestion(null);
+        setQuestionForm({ bagian: 'a', label: '', description: '' });
+    };
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -606,6 +678,10 @@ function ManajemenSupervisi() {
                             <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Kelola jadwal & hasil supervisi guru</p>
                         </div>
                     </div>
+                    <button onClick={() => setShowQuestionsPopup(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all text-xs font-bold" title="Edit Poin Supervisi">
+                        <i className="fas fa-list-check"></i>
+                        <span className={isMobile ? '' : ''}>Edit Poin</span>
+                    </button>
                 </div>
             </header>
 
@@ -1153,6 +1229,143 @@ function ManajemenSupervisi() {
                                     {wizardSubmitting ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-save"></i> Simpan Hasil</>}
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Questions Management Popup */}
+            {showQuestionsPopup && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowQuestionsPopup(false); cancelEditQuestion(); }}>
+                    <div className="bg-white dark:bg-dark-surface rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden" style={{ maxHeight: '92vh' }} onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-5 flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center">
+                                        <i className="fas fa-list-check text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h2 className="font-bold text-sm">Edit Poin Supervisi</h2>
+                                        <p className="text-blue-100 text-xs">Kelola pertanyaan penilaian supervisi</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => { setShowQuestionsPopup(false); cancelEditQuestion(); }} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors">
+                                    <i className="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                            {/* Add / Edit Form */}
+                            <div className="bg-gray-50 dark:bg-dark-bg/30 rounded-xl p-4 space-y-3 border border-gray-100 dark:border-dark-border">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                    {editingQuestion ? '✏️ Edit Pertanyaan' : '➕ Tambah Pertanyaan Baru'}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {!editingQuestion && (
+                                        <div className="space-y-1">
+                                            <label className="block text-[11px] font-bold text-gray-500 uppercase">Bagian</label>
+                                            <select value={questionForm.bagian} onChange={e => setQuestionForm({ ...questionForm, bagian: e.target.value })} className="input-standard text-sm">
+                                                <option value="a">Bagian A — Perencanaan</option>
+                                                <option value="b">Bagian B — Pelaksanaan</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                    <div className={`space-y-1 ${editingQuestion ? 'md:col-span-2' : ''}`}>
+                                        <label className="block text-[11px] font-bold text-gray-500 uppercase">Label *</label>
+                                        <input type="text" value={questionForm.label} onChange={e => setQuestionForm({ ...questionForm, label: e.target.value })} className="input-standard text-sm" placeholder="Nama poin penilaian" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase">Deskripsi</label>
+                                    <textarea value={questionForm.description} onChange={e => setQuestionForm({ ...questionForm, description: e.target.value })} className="input-standard text-sm" rows="2" placeholder="Penjelasan detail poin ini (opsional)" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveQuestion} disabled={savingQuestion} className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all flex items-center gap-2">
+                                        {savingQuestion ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingQuestion ? 'fa-check' : 'fa-plus'}`}></i>}
+                                        {editingQuestion ? 'Simpan Perubahan' : 'Tambah'}
+                                    </button>
+                                    {editingQuestion && (
+                                        <button onClick={cancelEditQuestion} className="px-5 py-2 border border-gray-300 dark:border-dark-border rounded-xl text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 transition-all">
+                                            Batal
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Bagian A */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center"><i className="fas fa-book text-blue-600 text-xs"></i></div>
+                                    <h3 className="text-sm font-bold text-gray-700">Bagian A: Perencanaan Pembelajaran</h3>
+                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">{allQuestions.filter(q => q.bagian === 'a').length} poin</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {allQuestions.filter(q => q.bagian === 'a').map((q, idx) => (
+                                        <div key={q.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${editingQuestion?.id === q.id ? 'border-blue-300 bg-blue-50/50' : 'border-gray-100 dark:border-dark-border bg-white dark:bg-dark-surface hover:border-blue-200'}`}>
+                                            <span className="text-[10px] font-black text-gray-300 mt-1 w-5 flex-shrink-0">{idx + 1}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-xs font-bold text-gray-700 dark:text-dark-text">{q.label}</h4>
+                                                {q.description && <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed">{q.description}</p>}
+                                                <span className="text-[9px] text-gray-300 font-mono">{q.key}</span>
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button onClick={() => startEditQuestion(q)} className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 flex items-center justify-center transition-all" title="Edit">
+                                                    <i className="fas fa-pen text-[9px]"></i>
+                                                </button>
+                                                <button onClick={() => handleDeleteQuestion(q)} className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition-all" title="Hapus">
+                                                    <i className="fas fa-trash text-[9px]"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {allQuestions.filter(q => q.bagian === 'a').length === 0 && (
+                                        <p className="text-xs text-gray-400 text-center py-4 italic">Belum ada pertanyaan Bagian A</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Bagian B */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center"><i className="fas fa-chalkboard-teacher text-emerald-600 text-xs"></i></div>
+                                    <h3 className="text-sm font-bold text-gray-700">Bagian B: Pelaksanaan Pembelajaran</h3>
+                                    <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold">{allQuestions.filter(q => q.bagian === 'b').length} poin</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {allQuestions.filter(q => q.bagian === 'b').map((q, idx) => (
+                                        <div key={q.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${editingQuestion?.id === q.id ? 'border-blue-300 bg-blue-50/50' : 'border-gray-100 dark:border-dark-border bg-white dark:bg-dark-surface hover:border-blue-200'}`}>
+                                            <span className="text-[10px] font-black text-gray-300 mt-1 w-5 flex-shrink-0">{idx + 1}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-xs font-bold text-gray-700 dark:text-dark-text">{q.label}</h4>
+                                                {q.description && <p className="text-[10px] text-gray-400 mt-0.5 leading-relaxed">{q.description}</p>}
+                                                <span className="text-[9px] text-gray-300 font-mono">{q.key}</span>
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button onClick={() => startEditQuestion(q)} className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 flex items-center justify-center transition-all" title="Edit">
+                                                    <i className="fas fa-pen text-[9px]"></i>
+                                                </button>
+                                                <button onClick={() => handleDeleteQuestion(q)} className="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition-all" title="Hapus">
+                                                    <i className="fas fa-trash text-[9px]"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {allQuestions.filter(q => q.bagian === 'b').length === 0 && (
+                                        <p className="text-xs text-gray-400 text-center py-4 italic">Belum ada pertanyaan Bagian B</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex-shrink-0 p-4 border-t border-gray-100 dark:border-dark-border bg-white dark:bg-dark-surface">
+                            <button onClick={() => { setShowQuestionsPopup(false); cancelEditQuestion(); }} className="w-full py-3 bg-gray-100 dark:bg-dark-bg/30 text-gray-600 dark:text-gray-400 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
+                                Tutup
+                            </button>
                         </div>
                     </div>
                 </div>,
