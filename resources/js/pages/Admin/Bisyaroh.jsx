@@ -19,8 +19,10 @@ const CATEGORY_ICONS = {
 const CATEGORY_ORDER = ['tarif_dasar', 'tunjangan_jabatan', 'tunjangan_kegiatan', 'potongan'];
 
 function formatRupiah(val) {
-    if (!val && val !== 0) return '-';
-    return 'Rp' + Number(val).toLocaleString('id-ID');
+    if (val === null || val === undefined || val === '') return '-';
+    const num = Number(val);
+    if (isNaN(num)) return '-';
+    return 'Rp' + num.toLocaleString('id-ID');
 }
 
 function formatInputRupiah(val) {
@@ -458,20 +460,21 @@ function Bisyaroh() {
 
     // Totals
     const totals = useMemo(() => {
+        const n = v => Number(v) || 0;
         const base = data.reduce((acc, b) => ({
-            gaji_pokok: acc.gaji_pokok + (b.gaji_pokok || 0),
-            tunj_struktural: acc.tunj_struktural + (b.tunj_struktural || 0),
-            tunj_transport: acc.tunj_transport + (b.tunj_transport || 0),
-            tunj_masa_kerja: acc.tunj_masa_kerja + (b.tunj_masa_kerja || 0),
-            tunj_keg_rapat: acc.tunj_keg_rapat + (b.tunj_kegiatan || 0) + (b.tunj_rapat || 0),
-            jumlah: acc.jumlah + (b.jumlah || 0),
-            jumlah_potongan: acc.jumlah_potongan + (b.jumlah_potongan || 0),
-            total_penerimaan: acc.total_penerimaan + (b.total_penerimaan || 0),
+            gaji_pokok: acc.gaji_pokok + n(b.gaji_pokok),
+            tunj_struktural: acc.tunj_struktural + n(b.tunj_struktural),
+            tunj_transport: acc.tunj_transport + n(b.tunj_transport),
+            tunj_masa_kerja: acc.tunj_masa_kerja + n(b.tunj_masa_kerja),
+            tunj_keg_rapat: acc.tunj_keg_rapat + n(b.tunj_kegiatan) + n(b.tunj_rapat),
+            jumlah: acc.jumlah + n(b.jumlah),
+            jumlah_potongan: acc.jumlah_potongan + n(b.jumlah_potongan),
+            total_penerimaan: acc.total_penerimaan + n(b.total_penerimaan),
         }), { gaji_pokok: 0, tunj_struktural: 0, tunj_transport: 0, tunj_masa_kerja: 0, tunj_keg_rapat: 0, jumlah: 0, jumlah_potongan: 0, total_penerimaan: 0 });
         // Per-potongan totals
         const potTotals = {};
         potonganKeys.forEach(k => {
-            potTotals[k] = data.reduce((sum, b) => sum + ((b.potongan_detail && b.potongan_detail[k]) || 0), 0);
+            potTotals[k] = data.reduce((sum, b) => sum + (Number((b.potongan_detail && b.potongan_detail[k]) || 0)), 0);
         });
         base.potongan_per_item = potTotals;
         return base;
@@ -769,7 +772,7 @@ function Bisyaroh() {
                                             <td className="px-2 py-2 align-middle text-right text-xs font-mono text-gray-500">{b.tunj_struktural ? formatRupiah(b.tunj_struktural) : '-'}</td>
                                             <td className="px-2 py-2 align-middle text-right text-xs font-mono text-gray-500">{b.tunj_transport ? formatRupiah(b.tunj_transport) : '-'}</td>
                                             <td className="px-2 py-2 align-middle text-right text-xs font-mono text-gray-500">{b.tunj_masa_kerja ? formatRupiah(b.tunj_masa_kerja) : '-'}</td>
-                                            <td className="px-2 py-2 align-middle text-right text-xs font-mono text-gray-500">{(b.tunj_kegiatan + b.tunj_rapat) > 0 ? formatRupiah(b.tunj_kegiatan + b.tunj_rapat) : '-'}</td>
+                                            <td className="px-2 py-2 align-middle text-right text-xs font-mono text-gray-500">{(Number(b.tunj_kegiatan || 0) + Number(b.tunj_rapat || 0)) > 0 ? formatRupiah(Number(b.tunj_kegiatan || 0) + Number(b.tunj_rapat || 0)) : '-'}</td>
                                             <td className="px-2 py-2 align-middle text-right text-xs font-mono font-bold text-primary">{formatRupiah(b.jumlah)}</td>
                                             {potonganKeys.map(pk => (
                                                 <td key={pk} className="px-2 py-2 align-middle text-right text-xs font-mono text-rose-500">

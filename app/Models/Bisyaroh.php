@@ -34,6 +34,17 @@ class Bisyaroh extends Model
     ];
 
     protected $casts = [
+        'jumlah_jam' => 'integer',
+        'jumlah_hadir' => 'integer',
+        'gaji_pokok' => 'integer',
+        'tunj_struktural' => 'integer',
+        'tunj_transport' => 'integer',
+        'tunj_masa_kerja' => 'integer',
+        'tunj_kegiatan' => 'integer',
+        'tunj_rapat' => 'integer',
+        'jumlah' => 'integer',
+        'jumlah_potongan' => 'integer',
+        'total_penerimaan' => 'integer',
         'potongan_detail' => 'array',
         'detail_kegiatan' => 'array',
         'detail_rapat' => 'array',
