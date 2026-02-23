@@ -275,6 +275,7 @@ export const allAdminPages = [
     { path: '/data-induk/surat', label: 'Surat Menyurat', icon: 'fa-envelope', group: 'Data Induk' },
     { path: '/data-induk/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check', group: 'Data Induk' },
     { path: '/transaksi', label: 'Transaksi', icon: 'fa-money-bill-wave', group: 'Umum' },
+    { path: '/bisyaroh', label: 'Bisyaroh', icon: 'fa-wallet', group: 'Umum' },
     { path: '/manajemen-role', label: 'Manajemen Role', icon: 'fa-user-shield', group: 'Sistem' },
     { path: '/log-aktivitas', label: 'Log Aktivitas', icon: 'fa-history', group: 'Sistem' },
     { path: '/profil', label: 'Profil', icon: 'fa-user', group: 'Umum' },
