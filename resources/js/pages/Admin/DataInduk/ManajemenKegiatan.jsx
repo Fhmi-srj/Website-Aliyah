@@ -1179,8 +1179,14 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
         }
     };
 
-    // Stats counts
-    const guruStatuses = [formData.pj_status, ...formData.absensi_pendamping.map(p => p.status)];
+    // Stats counts — combine guru (PJ + pendamping) and siswa
+    const allStatuses = [formData.pj_status, ...formData.absensi_pendamping.map(p => p.status), ...mergedSiswa.map(s => s.status)];
+    const totalCounts = {
+        hadir: allStatuses.filter(s => s === 'H').length,
+        sakit: allStatuses.filter(s => s === 'S').length,
+        izin: allStatuses.filter(s => s === 'I').length,
+        alpha: allStatuses.filter(s => s === 'A').length,
+    };
     const siswaCounts = {
         hadir: mergedSiswa.filter(s => s.status === 'H').length,
         sakit: mergedSiswa.filter(s => s.status === 'S').length,
@@ -1222,19 +1228,19 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
                     {/* Counter Stats */}
                     <div className="flex gap-3 mt-3">
                         <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
-                            <p className="text-lg font-bold">{siswaCounts.hadir}</p>
+                            <p className="text-lg font-bold">{totalCounts.hadir}</p>
                             <p className="text-[10px] text-green-200 uppercase tracking-wider">Hadir</p>
                         </div>
                         <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
-                            <p className="text-lg font-bold">{siswaCounts.sakit}</p>
+                            <p className="text-lg font-bold">{totalCounts.sakit}</p>
                             <p className="text-[10px] text-green-200 uppercase tracking-wider">Sakit</p>
                         </div>
                         <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
-                            <p className="text-lg font-bold">{siswaCounts.izin}</p>
+                            <p className="text-lg font-bold">{totalCounts.izin}</p>
                             <p className="text-[10px] text-green-200 uppercase tracking-wider">Izin</p>
                         </div>
                         <div className="flex-1 bg-white/10 rounded-xl py-2 text-center">
-                            <p className="text-lg font-bold">{siswaCounts.alpha}</p>
+                            <p className="text-lg font-bold">{totalCounts.alpha}</p>
                             <p className="text-[10px] text-green-200 uppercase tracking-wider">Alpha</p>
                         </div>
                     </div>

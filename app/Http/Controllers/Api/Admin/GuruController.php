@@ -21,10 +21,19 @@ class GuruController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * Default: only active guru. Pass ?status=all to get all (for ManajemenGuru).
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $guru = Guru::with(['user:id,name,username,is_active', 'user.roles:id,name,display_name'])
+        $query = Guru::with(['user:id,name,username,is_active', 'user.roles:id,name,display_name']);
+
+        // Filter by status (default: only active)
+        $statusFilter = $request->input('status', 'aktif');
+        if (strtolower($statusFilter) !== 'all') {
+            $query->where('status', 'Aktif');
+        }
+
+        $guru = $query
             ->orderBy('nama')
             ->get()
             ->map(function ($item) {
@@ -451,7 +460,7 @@ class GuruController extends Controller
         $kegiatans = Kegiatan::whereJsonContains('guru_pendamping', $guruId)->get();
         foreach ($kegiatans as $kegiatan) {
             $pendamping = $kegiatan->guru_pendamping ?? [];
-            $pendamping = array_values(array_filter($pendamping, fn($id) => (int)$id !== $guruId));
+            $pendamping = array_values(array_filter($pendamping, fn($id) => (int) $id !== $guruId));
             $kegiatan->update(['guru_pendamping' => $pendamping]);
         }
 
@@ -459,7 +468,7 @@ class GuruController extends Controller
         $rapats = Rapat::whereJsonContains('peserta_rapat', $guruId)->get();
         foreach ($rapats as $rapat) {
             $peserta = $rapat->peserta_rapat ?? [];
-            $peserta = array_values(array_filter($peserta, fn($id) => (int)$id !== $guruId));
+            $peserta = array_values(array_filter($peserta, fn($id) => (int) $id !== $guruId));
             $rapat->update(['peserta_rapat' => $peserta]);
         }
     }

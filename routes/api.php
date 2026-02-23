@@ -174,6 +174,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('transaksi-kategori/{id}', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'update']);
     Route::delete('transaksi-kategori/{id}', [\App\Http\Controllers\Api\Admin\TransaksiKategoriController::class, 'destroy']);
 
+    // Bisyaroh (Gaji) Routes
+    Route::prefix('bisyaroh')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'index']);
+        Route::get('/settings', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'getSettings']);
+        Route::put('/settings', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'updateSettings']);
+        Route::post('/settings', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'addSetting']);
+        Route::delete('/settings/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'deleteSetting']);
+        Route::get('/kegiatan-bulan', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'kegiatanBulan']);
+        Route::get('/rapat-bulan', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'rapatBulan']);
+        Route::post('/generate', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'generate']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'show'])->whereNumber('id');
+        Route::delete('/', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'destroy']);
+
+        // History / Riwayat
+        Route::post('/history', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'saveHistory']);
+        Route::get('/history', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'getHistories']);
+        Route::get('/history/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'showHistory'])->whereNumber('id');
+        Route::patch('/history/{id}/lock', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'lockHistory'])->whereNumber('id');
+        Route::delete('/history/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'deleteHistory'])->whereNumber('id');
+    });
+
     // Table PDF Export Routes
     Route::prefix('export-pdf')->group(function () {
         Route::get('guru', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportGuru']);
@@ -267,5 +288,7 @@ Route::prefix('guru-panel')->middleware('token_auth')->group(function () {
 // Admin Print Routes - separate group with token_auth middleware
 Route::middleware('token_auth')->group(function () {
     Route::get('supervisi/{supervisi}/print-supervisi', [\App\Http\Controllers\Api\Admin\SupervisiController::class, 'printSupervisi']);
+    Route::get('bisyaroh/print-rekap', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'printRekap']);
+    Route::get('bisyaroh/{id}/print-rincian', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'printRincian']);
 });
 

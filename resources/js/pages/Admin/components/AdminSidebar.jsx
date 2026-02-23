@@ -41,6 +41,12 @@ const menuItems = [
         path: '/transaksi',
     },
     {
+        id: 'bisyaroh',
+        label: 'Bisyaroh',
+        icon: 'fa-wallet',
+        path: '/bisyaroh',
+    },
+    {
         id: 'manajemen-role',
         label: 'Manajemen Role',
         icon: 'fa-user-shield',

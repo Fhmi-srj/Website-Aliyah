@@ -26,6 +26,7 @@ import AbsensiSiswa from './pages/Admin/DataInduk/AbsensiSiswa';
 import ManajemenRole from './pages/Admin/ManajemenRole';
 import LogAktivitas from './pages/Admin/LogAktivitas';
 import Transaksi from './pages/Admin/Transaksi';
+import Bisyaroh from './pages/Admin/Bisyaroh';
 import PergantianTahun from './pages/Admin/Settings/WizardTahunAjaran';
 
 // Guru Pages
@@ -98,6 +99,7 @@ function App() {
                                         <Route path="/pergantian-tahun" element={<PergantianTahun />} />
                                         <Route path="/manajemen-role" element={<ManajemenRole />} />
                                         <Route path="/transaksi" element={<Transaksi />} />
+                                        <Route path="/bisyaroh" element={<Bisyaroh />} />
                                         <Route path="/log-aktivitas" element={<LogAktivitas />} />
                                         <Route path="/data-induk" element={<Navigate to="/data-induk/siswa" replace />} />
                                         <Route path="/data-induk/siswa" element={<ManajemenSiswa />} />

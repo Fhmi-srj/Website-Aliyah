@@ -192,7 +192,7 @@ class SuratMasukController extends Controller
                 $base64Image = explode(',', $base64Image)[1];
             }
 
-            $response = Http::timeout(30)->post(
+            $response = Http::withoutVerifying()->timeout(30)->post(
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}",
                 [
                     'contents' => [

@@ -134,6 +134,7 @@ function AdminLayout({ children }) {
         { id: 'surat', label: 'Surat Menyurat', path: '/data-induk/surat', icon: 'fa-envelope' },
         { id: 'supervisi', label: 'Supervisi', path: '/data-induk/supervisi', icon: 'fa-clipboard-check' },
         { id: 'transaksi', label: 'Transaksi', path: '/transaksi', icon: 'fa-money-bill-wave' },
+        { id: 'bisyaroh', label: 'Bisyaroh', path: '/bisyaroh', icon: 'fa-wallet' },
         { id: 'role', label: 'Manajemen Role', path: '/manajemen-role', icon: 'fa-user-shield' },
         { id: 'log-aktivitas', label: 'Log Aktivitas', path: '/log-aktivitas', icon: 'fa-history' },
         { id: 'profil', label: 'Profil Saya', path: '/profil', icon: 'fa-user' },

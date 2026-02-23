@@ -65,7 +65,7 @@ function ManajemenGuru() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await authFetch(`${API_BASE}/guru`);
+            const response = await authFetch(`${API_BASE}/guru?status=all`);
             const result = await response.json();
             setData(result.data || []);
         } catch (error) {
