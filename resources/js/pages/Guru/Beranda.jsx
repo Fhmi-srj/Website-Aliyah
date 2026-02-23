@@ -307,7 +307,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/ulangan")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-file-signature text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -352,7 +352,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/jurnal-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-book-open text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -361,7 +361,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/absen-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-clipboard-list text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -370,7 +370,7 @@ function Beranda() {
                         </button>
                         <button
                             onClick={() => navigate("/guru/supervisi")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-clipboard-check text-xl"></i>
                             <span className="text-[10px] font-medium">
@@ -379,6 +379,67 @@ function Beranda() {
                         </button>
                     </div>
                 </div>
+
+                {/* Pengingat - Compact list without card */}
+                {reminders && reminders.length > 0 && (
+                    <div>
+                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <i className="fas fa-bell text-green-500"></i>
+                            Pengingat
+                        </h3>
+                        <div className="space-y-2">
+                            {reminders.map((reminder, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (reminder.type === 'mengajar' || reminder.type === 'next') {
+                                            navigate('/guru/absensi/mengajar');
+                                        } else if (reminder.type === 'kegiatan') {
+                                            navigate('/guru/absensi/kegiatan');
+                                        } else if (reminder.type === 'rapat') {
+                                            navigate('/guru/absensi/rapat');
+                                        }
+                                    }}
+                                    className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] text-left"
+                                >
+                                    <div
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${reminder.priority === "high"
+                                            ? "bg-red-100"
+                                            : reminder.type === "next"
+                                                ? "bg-blue-100"
+                                                : "bg-yellow-100"
+                                            }`}
+                                    >
+                                        <i
+                                            className={`fas ${reminder.type === "mengajar"
+                                                ? "fa-chalkboard-teacher"
+                                                : reminder.type === "kegiatan"
+                                                    ? "fa-calendar-check"
+                                                    : reminder.type === "rapat"
+                                                        ? "fa-users"
+                                                        : "fa-clock"
+                                                } ${reminder.priority === "high"
+                                                    ? "text-red-500"
+                                                    : reminder.type === "next"
+                                                        ? "text-blue-500"
+                                                        : "text-yellow-500"
+                                                }`}
+                                        ></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-gray-800 text-sm font-medium truncate">
+                                            {reminder.title}
+                                        </p>
+                                        <p className="text-gray-500 text-xs truncate">
+                                            {new Date().toLocaleDateString('id-ID', { weekday: 'long' })} · {reminder.description}
+                                        </p>
+                                    </div>
+                                    <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Agenda Mendatang - Next 7 Days */}
                 <div>
@@ -448,69 +509,6 @@ function Beranda() {
                         </div>
                     )}
                 </div>
-
-
-
-                {/* Pengingat - Compact list without card */}
-                {reminders && reminders.length > 0 && (
-                    <div>
-                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                            <i className="fas fa-bell text-green-500"></i>
-                            Pengingat
-                        </h3>
-                        <div className="space-y-2">
-                            {reminders.map((reminder, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => {
-                                        if (reminder.type === 'mengajar' || reminder.type === 'next') {
-                                            navigate('/guru/absensi/mengajar');
-                                        } else if (reminder.type === 'kegiatan') {
-                                            navigate('/guru/absensi/kegiatan');
-                                        } else if (reminder.type === 'rapat') {
-                                            navigate('/guru/absensi/rapat');
-                                        }
-                                    }}
-                                    className="w-full flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] text-left"
-                                >
-                                    <div
-                                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${reminder.priority === "high"
-                                            ? "bg-red-100"
-                                            : reminder.type === "next"
-                                                ? "bg-blue-100"
-                                                : "bg-yellow-100"
-                                            }`}
-                                    >
-                                        <i
-                                            className={`fas ${reminder.type === "mengajar"
-                                                ? "fa-chalkboard-teacher"
-                                                : reminder.type === "kegiatan"
-                                                    ? "fa-calendar-check"
-                                                    : reminder.type === "rapat"
-                                                        ? "fa-users"
-                                                        : "fa-clock"
-                                                } ${reminder.priority === "high"
-                                                    ? "text-red-500"
-                                                    : reminder.type === "next"
-                                                        ? "text-blue-500"
-                                                        : "text-yellow-500"
-                                                }`}
-                                        ></i>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-gray-800 text-sm font-medium truncate">
-                                            {reminder.title}
-                                        </p>
-                                        <p className="text-gray-500 text-xs truncate">
-                                            {reminder.description}
-                                        </p>
-                                    </div>
-                                    <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

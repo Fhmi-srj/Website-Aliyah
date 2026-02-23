@@ -64,8 +64,10 @@ class DashboardController extends Controller
                     : Kegiatan::where('status', 'Aktif')->count(),
                 'total_ekskul' => Ekskul::count(),
                 'ekskul_aktif' => Ekskul::where('status', 'Aktif')->count(),
-                'total_rapat' => Rapat::count(),
-                'rapat_bulan_ini' => Rapat::whereBetween('tanggal', [$startOfMonth, $endOfMonth])->count(),
+                'total_rapat' => $tahunAjaranId ? Rapat::where('tahun_ajaran_id', $tahunAjaranId)->count() : Rapat::count(),
+                'rapat_bulan_ini' => $tahunAjaranId
+                    ? Rapat::where('tahun_ajaran_id', $tahunAjaranId)->whereBetween('tanggal', [$startOfMonth, $endOfMonth])->count()
+                    : Rapat::whereBetween('tanggal', [$startOfMonth, $endOfMonth])->count(),
             ];
 
             return response()->json([

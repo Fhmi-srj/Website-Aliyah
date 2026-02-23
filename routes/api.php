@@ -298,6 +298,15 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('ulangan/{id}', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'show']);
     Route::post('ulangan/{id}/nilai', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'updateNilai']);
     Route::get('ulangan/{id}/export', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'export']);
+
+    // Push Notifications
+    Route::prefix('push')->group(function () {
+        Route::get('vapid-key', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'vapidKey']);
+        Route::get('status', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'status']);
+        Route::post('subscribe', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'subscribe']);
+        Route::post('unsubscribe', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'unsubscribe']);
+        Route::put('preferences', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'updatePreferences']);
+    });
 });
 
 // Print Routes - separate group with token_auth middleware

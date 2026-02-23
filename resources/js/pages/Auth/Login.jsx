@@ -195,39 +195,6 @@ function Login() {
                             </button>
                         </form>
 
-                        {/* Quick Login (Dev Only) */}
-                        {(process.env.NODE_ENV === 'development' || true) && (
-                            <div className="quick-login">
-                                <div className="quick-login-header">
-                                    <i className="fas fa-flask"></i>
-                                    <span>Quick Login (Testing)</span>
-                                </div>
-                                <div className="quick-login-grid">
-                                    <button type="button" className="ql-btn ql-red" onClick={() => { setUsername('admin'); setPassword('password'); }}>
-                                        <i className="fas fa-crown"></i> Super Admin
-                                    </button>
-                                    <button type="button" className="ql-btn ql-red-light" onClick={() => { setUsername('ariefarfan'); setPassword('password'); }}>
-                                        <i className="fas fa-crown"></i> SA (Arief)
-                                    </button>
-                                    <button type="button" className="ql-btn ql-purple ql-span-2" onClick={() => { setUsername('akromadabi'); setPassword('password'); }}>
-                                        <i className="fas fa-user-tie"></i> Kepala Madrasah (Akrom)
-                                    </button>
-                                    <button type="button" className="ql-btn ql-blue" onClick={() => { setUsername('dewi'); setPassword('password'); }}>
-                                        <i className="fas fa-book"></i> Waka Kurikulum
-                                    </button>
-                                    <button type="button" className="ql-btn ql-indigo" onClick={() => { setUsername('rinomukti'); setPassword('password'); }}>
-                                        <i className="fas fa-users"></i> Waka Kesiswaan
-                                    </button>
-                                    <button type="button" className="ql-btn ql-green" onClick={() => { setUsername('adibkaromi'); setPassword('password'); }}>
-                                        <i className="fas fa-chalkboard-teacher"></i> Guru (Adib)
-                                    </button>
-                                    <button type="button" className="ql-btn ql-green-light" onClick={() => { setUsername('zaenalabidin'); setPassword('password'); }}>
-                                        <i className="fas fa-chalkboard-teacher"></i> Guru (Zaenal)
-                                    </button>
-                                </div>
-                                <p className="quick-login-hint">Klik tombol lalu klik "Masuk"</p>
-                            </div>
-                        )}
 
                         {/* Footer */}
                         <p className="login-footer">© 2026 MA ALHIKAM. All rights reserved.</p>
@@ -528,63 +495,7 @@ const cssStyles = `
         border: 1px solid #fecaca;
     }
 
-    /* ── Quick Login ────────────────────────────────────────────── */
-    .quick-login {
-        margin-top: 1.5rem;
-        padding: 16px;
-        background: #fffbeb;
-        border: 1px solid #fde68a;
-        border-radius: 12px;
-    }
 
-    .quick-login-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #a16207;
-        margin-bottom: 12px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .quick-login-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-    }
-
-    .ql-btn {
-        padding: 8px 10px;
-        color: white;
-        font-size: 0.7rem;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .ql-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .ql-span-2 { grid-column: span 2; }
-    .ql-red { background: #dc2626; }
-    .ql-red-light { background: #ef4444; }
-    .ql-purple { background: #7c3aed; }
-    .ql-blue { background: #2563eb; }
-    .ql-indigo { background: #4f46e5; }
-    .ql-green { background: #16a34a; }
-    .ql-green-light { background: #22c55e; }
-
-    .quick-login-hint {
-        margin-top: 8px;
-        font-size: 0.7rem;
-        color: #a16207;
-        text-align: center;
-    }
 
     /* ── Footer ─────────────────────────────────────────────────── */
     .login-footer {
@@ -754,9 +665,6 @@ const cssStyles = `
             padding: 24px 18px 32px;
         }
 
-        .ql-btn {
-            font-size: 0.65rem;
-            padding: 6px 8px;
-        }
+
     }
 `;

@@ -20,7 +20,7 @@ Schedule::command('wa:absen-reminder')->everyMinute()
 
 // Group: Jadwal harian
 Schedule::command('wa:schedule-daily')
-    ->dailyAt((function() {
+    ->dailyAt((function () {
         try {
             return \App\Models\AppSetting::getValue('wa_schedule_time', config('services.mpwa.schedule_time', '06:30'));
         } catch (\Exception $e) {
@@ -31,7 +31,7 @@ Schedule::command('wa:schedule-daily')
 
 // Group: Rekap absensi mengajar
 Schedule::command('wa:attendance-recap')
-    ->dailyAt((function() {
+    ->dailyAt((function () {
         try {
             return \App\Models\AppSetting::getValue('wa_recap_time', config('services.mpwa.recap_time', '13:30'));
         } catch (\Exception $e) {
@@ -42,7 +42,7 @@ Schedule::command('wa:attendance-recap')
 
 // Group: Laporan kegiatan & rapat
 Schedule::command('wa:activity-report')
-    ->dailyAt((function() {
+    ->dailyAt((function () {
         try {
             return \App\Models\AppSetting::getValue('wa_activity_report_time', config('services.mpwa.activity_report_time', '18:00'));
         } catch (\Exception $e) {
@@ -53,7 +53,7 @@ Schedule::command('wa:activity-report')
 
 // Group: Undangan rapat H-2 + Pengingat H
 Schedule::command('wa:meeting-invitation')
-    ->dailyAt((function() {
+    ->dailyAt((function () {
         try {
             return \App\Models\AppSetting::getValue('wa_meeting_invite_time', config('services.mpwa.meeting_invite_time', '07:00'));
         } catch (\Exception $e) {
@@ -61,3 +61,7 @@ Schedule::command('wa:meeting-invitation')
         }
     })())
     ->appendOutputTo(storage_path('logs/whatsapp-scheduler.log'));
+
+// === Web Push Notification Schedules ===
+Schedule::command('push:send-reminders')->everyMinute()
+    ->appendOutputTo(storage_path('logs/push-reminders.log'));

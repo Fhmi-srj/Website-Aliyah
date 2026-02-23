@@ -32,7 +32,6 @@ import PergantianTahun from './pages/Admin/Settings/WizardTahunAjaran';
 // Guru Pages
 import GuruLayout from './pages/Guru/components/GuruLayout';
 import GuruBeranda from './pages/Guru/Beranda';
-import GuruPencarian from './pages/Guru/Pencarian';
 import GuruRiwayat from './pages/Guru/Riwayat';
 
 import GuruProfil from './pages/Guru/Profil';
@@ -66,7 +65,6 @@ function App() {
                                 <GuruLayout>
                                     <Routes>
                                         <Route index element={<GuruBeranda />} />
-                                        <Route path="pencarian" element={<GuruPencarian />} />
                                         <Route path="riwayat" element={<GuruRiwayat />} />
 
                                         <Route path="profil" element={<GuruProfil />} />

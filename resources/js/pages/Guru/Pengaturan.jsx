@@ -1,22 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
+import { API_BASE, authFetch } from '../../config/api';
 
 function Pengaturan() {
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState({
-        jadwal: true,
-        kegiatan: true,
-        rapat: true,
+        jadwal: false,
+        kegiatan: false,
+        rapat: false,
     });
+    const [pushSupported, setPushSupported] = useState(false);
+    const [currentEndpoint, setCurrentEndpoint] = useState(null);
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showSafariGuide, setShowSafariGuide] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    // Simulate loading
+    // Helper: Convert VAPID key from base64url to Uint8Array
+    const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    // Load push subscription status on mount
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 500);
-        return () => clearTimeout(timer);
+        const init = async () => {
+            // Check if push is supported
+            const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+            setPushSupported(supported);
+
+            if (supported) {
+                try {
+                    const reg = await navigator.serviceWorker.ready;
+                    const sub = await reg.pushManager.getSubscription();
+                    if (sub) {
+                        setCurrentEndpoint(sub.endpoint);
+                        // Fetch preferences from backend
+                        const res = await authFetch(`${API_BASE}/guru-panel/push/status?endpoint=${encodeURIComponent(sub.endpoint)}`);
+                        const data = await res.json();
+                        if (data.success && data.subscribed) {
+                            setNotifications(data.preferences || { jadwal: true, kegiatan: true, rapat: true });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error loading push status:', err);
+                }
+            }
+
+            setLoading(false);
+        };
+        init();
     }, []);
 
     // Capture install prompt
@@ -32,16 +71,136 @@ function Pengaturan() {
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    const handleToggle = (key) => {
-        setNotifications(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+    // Subscribe to push notifications
+    const subscribePush = useCallback(async () => {
+        try {
+            // Request notification permission
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Izin Ditolak',
+                    text: 'Anda perlu mengizinkan notifikasi di pengaturan browser untuk mengaktifkan fitur ini.',
+                    confirmButtonColor: '#16a34a',
+                    customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm', confirmButton: 'rounded-xl px-4 !text-xs' }
+                });
+                return null;
+            }
+
+            // Get VAPID key from server
+            const vapidRes = await authFetch(`${API_BASE}/guru-panel/push/vapid-key`);
+            const vapidData = await vapidRes.json();
+            if (!vapidData.success) throw new Error('Failed to get VAPID key');
+
+            const reg = await navigator.serviceWorker.ready;
+            const subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidData.key),
+            });
+
+            const subJson = subscription.toJSON();
+
+            // Send subscription to backend
+            const res = await authFetch(`${API_BASE}/guru-panel/push/subscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    endpoint: subJson.endpoint,
+                    keys: {
+                        p256dh: subJson.keys.p256dh,
+                        auth: subJson.keys.auth,
+                    },
+                    preferences: { jadwal: true, kegiatan: true, rapat: true },
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setCurrentEndpoint(subJson.endpoint);
+                return subJson.endpoint;
+            }
+            return null;
+        } catch (err) {
+            console.error('Push subscribe error:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Tidak dapat mengaktifkan notifikasi. Coba lagi nanti.',
+                confirmButtonColor: '#16a34a',
+                customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm', confirmButton: 'rounded-xl px-4 !text-xs' }
+            });
+            return null;
+        }
+    }, []);
+
+    // Unsubscribe from push notifications
+    const unsubscribePush = useCallback(async (endpoint) => {
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) await sub.unsubscribe();
+
+            await authFetch(`${API_BASE}/guru-panel/push/unsubscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint }),
+            });
+
+            setCurrentEndpoint(null);
+        } catch (err) {
+            console.error('Push unsubscribe error:', err);
+        }
+    }, []);
+
+    // Update preferences on server
+    const updatePreferences = useCallback(async (endpoint, prefs) => {
+        try {
+            await authFetch(`${API_BASE}/guru-panel/push/preferences`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint, preferences: prefs }),
+            });
+        } catch (err) {
+            console.error('Update preferences error:', err);
+        }
+    }, []);
+
+    const handleToggle = async (key) => {
+        if (!pushSupported) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Tidak Didukung',
+                text: 'Browser Anda tidak mendukung push notification. Gunakan Chrome atau Firefox versi terbaru.',
+                confirmButtonColor: '#16a34a',
+                customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm', confirmButton: 'rounded-xl px-4 !text-xs' }
+            });
+            return;
+        }
+
+        const newNotifs = { ...notifications, [key]: !notifications[key] };
+        const anyEnabled = Object.values(newNotifs).some(v => v);
+
+        if (!currentEndpoint && newNotifs[key]) {
+            // First time enabling — subscribe
+            const endpoint = await subscribePush();
+            if (!endpoint) return;
+
+            setNotifications(newNotifs);
+            await updatePreferences(endpoint, newNotifs);
+        } else if (currentEndpoint && !anyEnabled) {
+            // All disabled — unsubscribe entirely
+            setNotifications(newNotifs);
+            await unsubscribePush(currentEndpoint);
+        } else if (currentEndpoint) {
+            // Just update preferences
+            setNotifications(newNotifs);
+            await updatePreferences(currentEndpoint, newNotifs);
+        }
 
         Swal.fire({
             icon: 'success',
             title: 'Tersimpan',
-            text: 'Pengaturan berhasil diperbarui',
+            text: newNotifs[key] ? 'Notifikasi diaktifkan' : 'Notifikasi dinonaktifkan',
             timer: 1500,
             showConfirmButton: false,
             customClass: {

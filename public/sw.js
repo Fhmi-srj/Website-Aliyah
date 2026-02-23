@@ -1,5 +1,5 @@
 // Service Worker - MAHAKAM APP PWA
-const CACHE_NAME = 'mahakam-v1';
+const CACHE_NAME = 'mahakam-v2';
 
 // Install event
 self.addEventListener('install', (event) => {
@@ -47,6 +47,66 @@ self.addEventListener('fetch', (event) => {
             .catch(() => {
                 // Fallback to cache
                 return caches.match(event.request);
+            })
+    );
+});
+
+// ─── Push Notification Handler ─────────────────────────────────
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
+    let data;
+    try {
+        data = event.data.json();
+    } catch (e) {
+        data = {
+            title: 'MAHAKAM APP',
+            body: event.data.text(),
+        };
+    }
+
+    const options = {
+        body: data.body || '',
+        icon: data.icon || '/pwa-icon/192',
+        badge: data.badge || '/pwa-icon/72',
+        tag: data.tag || 'default',
+        renotify: true,
+        vibrate: [200, 100, 200],
+        data: {
+            url: data.url || '/',
+        },
+        actions: [
+            { action: 'open', title: 'Buka' },
+            { action: 'dismiss', title: 'Tutup' },
+        ],
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'MAHAKAM APP', options)
+    );
+});
+
+// ─── Notification Click Handler ────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    if (event.action === 'dismiss') return;
+
+    const urlToOpen = event.notification.data?.url || '/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clientList) => {
+                // If app is already open, focus it and navigate
+                for (const client of clientList) {
+                    if (client.url.includes(self.location.origin)) {
+                        client.focus();
+                        client.navigate(urlToOpen);
+                        return;
+                    }
+                }
+                // Otherwise open new window
+                return clients.openWindow(urlToOpen);
             })
     );
 });
