@@ -146,4 +146,28 @@ Wassalamu'alaikum warahmatullahi wabarakatuh.
 Pimpinan Rapat : {pimpinan}
 Sekretaris Rapat : {sekretaris}
 TPL,
+
+    // Undangan kegiatan
+    'undangan_kegiatan' => <<<'TPL'
+*UNDANGAN KEGIATAN*
+Yth. Segenap Dewan Guru MA Alhikam
+
+Assalamu'alaikum warahmatullahi wabarakatuh.
+Mengharap kehadiran Bapak Ibu pada kegiatan berikut:
+
+🗓️ : {tanggal}
+🏛️ : {tempat}
+📌 : {nama_kegiatan}
+⏰ : {waktu} WIB - Selesai
+
+Demikian undangan ini disampaikan. Atas kehadirannya diucapkan terimakasih. 🙏
+Wassalamu'alaikum warahmatullahi wabarakatuh.
+
+Ttd,
+Kepala MA Alhikam
+{kepala_madrasah}
+
+*NB.*
+Penanggung Jawab : {penanggung_jawab}
+TPL,
 ];

@@ -71,6 +71,7 @@ function Pengaturan() {
     });
     const [waScheduleLoading, setWaScheduleLoading] = useState(false);
     const [waScheduleSaving, setWaScheduleSaving] = useState(false);
+    const [waManualSending, setWaManualSending] = useState({});
     const kopInputRef = useRef(null);
 
     // Mobile layout state
@@ -451,6 +452,34 @@ function Pengaturan() {
         }
     };
 
+    const handleManualSend = async (endpoint, label) => {
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: `Kirim ${label}?`,
+            text: `Pesan ${label} akan dikirim ke grup WhatsApp sekarang.`,
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Kirim',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#25D366',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setWaManualSending(prev => ({ ...prev, [endpoint]: true }));
+        try {
+            const response = await authFetch(`${API_BASE}/whatsapp/${endpoint}`, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Terkirim!', text: data.message, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim: ' + error.message });
+        } finally {
+            setWaManualSending(prev => ({ ...prev, [endpoint]: false }));
+        }
+    };
+
     const tabs = [
         { id: 'lembaga', label: 'Lembaga', icon: 'fa-building' },
         { id: 'absensi', label: 'Absensi', icon: 'fa-clipboard-check' },
@@ -782,8 +811,8 @@ function Pengaturan() {
                                 <div className="space-y-3">
                                     <div className={`grid grid-cols-1 ${isMobile ? '' : 'md:grid-cols-2'} gap-4`}>
                                         {[
-                                            { key: 'jadwal_harian', type: 'jadwal_harian', label: 'Jadwal Harian (Grup)', icon: 'fa-calendar-day', iconColor: 'text-blue-500', timeKey: 'wa_schedule_time', desc: 'Kirim daftar jadwal mengajar hari ini' },
-                                            { key: 'rekap_absensi', type: 'rekap_absensi', label: 'Rekap Absensi (Grup)', icon: 'fa-chart-bar', iconColor: 'text-green-500', timeKey: 'wa_recap_time', desc: 'Kirim rekap siapa yang sudah/belum absen' },
+                                            { key: 'jadwal_harian', type: 'jadwal_harian', label: 'Jadwal Harian (Grup)', icon: 'fa-calendar-day', iconColor: 'text-blue-500', timeKey: 'wa_schedule_time', desc: 'Kirim daftar jadwal mengajar hari ini', sendEndpoint: 'send-schedule', sendLabel: 'Jadwal Harian' },
+                                            { key: 'rekap_absensi', type: 'rekap_absensi', label: 'Rekap Absensi (Grup)', icon: 'fa-chart-bar', iconColor: 'text-green-500', timeKey: 'wa_recap_time', desc: 'Kirim rekap siapa yang sudah/belum absen', sendEndpoint: 'send-recap', sendLabel: 'Rekap Absensi' },
                                             { key: 'laporan_kegiatan', type: 'laporan_kegiatan', label: 'Laporan Kegiatan/Rapat (Grup)', icon: 'fa-clipboard-list', iconColor: 'text-purple-500', timeKey: 'wa_activity_report_time', desc: 'Kirim hasil kegiatan & rapat hari ini' },
                                             { key: 'undangan_rapat', type: 'undangan_rapat', label: 'Undangan & Pengingat Rapat (Grup)', icon: 'fa-bullhorn', iconColor: 'text-orange-500', timeKey: 'wa_meeting_invite_time', desc: 'Kirim undangan H-2 dan pengingat hari H' },
                                         ].map(section => (
@@ -794,6 +823,13 @@ function Pengaturan() {
                                                 <input type="time" value={waSchedule[section.timeKey]} onChange={(e) => setWaSchedule({ ...waSchedule, [section.timeKey]: e.target.value })}
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500" />
                                                 <p className="text-xs text-gray-400">{section.desc}</p>
+                                                {section.sendEndpoint && (
+                                                    <button onClick={() => handleManualSend(section.sendEndpoint, section.sendLabel)}
+                                                        disabled={waManualSending[section.sendEndpoint] || !waStatus.configured}
+                                                        className="w-full mt-2 px-3 py-2 bg-[#25D366] text-white rounded-lg text-xs hover:bg-[#1da851] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 font-medium">
+                                                        {waManualSending[section.sendEndpoint] ? (<><i className="fas fa-spinner fa-spin"></i> Mengirim...</>) : (<><i className="fab fa-whatsapp"></i> Kirim Sekarang ke Grup</>)}
+                                                    </button>
+                                                )}
                                                 <div className="flex items-center gap-2 pt-1 border-t border-gray-200 mt-2">
                                                     <input type="text" placeholder="08xx / 62xx" value={waTestNumbers[section.type] || ''}
                                                         onChange={(e) => setWaTestNumbers(prev => ({ ...prev, [section.type]: e.target.value }))}

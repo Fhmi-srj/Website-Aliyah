@@ -62,6 +62,8 @@ function ManajemenKegiatan() {
     const [absensiData, setAbsensiData] = useState(null);
     const [siswaListKegiatan, setSiswaListKegiatan] = useState([]);
     const [loadingAbsensi, setLoadingAbsensi] = useState(false);
+    const [waDropdown, setWaDropdown] = useState(null);
+    const [waSending, setWaSending] = useState({});
 
     const fileInputRef = useRef(null);
     const gpDropdownRef = useRef(null);
@@ -412,6 +414,40 @@ function ManajemenKegiatan() {
         window.open(`/print/hasil-kegiatan/${item.absensi_id}?token=${token}`, '_blank');
     };
 
+    const handleWaSend = async (id, type) => {
+        setWaDropdown(null);
+        const labels = {
+            'send-activity-invite': 'Undangan Kegiatan',
+            'send-activity-report': 'Laporan Kegiatan',
+        };
+        const label = labels[type] || type;
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: `Kirim ${label}?`,
+            text: `${label} akan dikirim ke grup WhatsApp sekarang.`,
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Kirim',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#25D366',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setWaSending(prev => ({ ...prev, [`${type}-${id}`]: true }));
+        try {
+            const response = await authFetch(`${API_BASE}/whatsapp/${type}/${id}`, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Terkirim!', text: data.message, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim: ' + error.message });
+        } finally {
+            setWaSending(prev => ({ ...prev, [`${type}-${id}`]: false }));
+        }
+    };
+
     const openAbsensiModal = async (item) => {
         setCurrentItem(item);
         try {
@@ -710,6 +746,29 @@ function ManajemenKegiatan() {
                                                 <button onClick={() => handlePrint(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl ${item.has_absensi ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500'} transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Print Hasil Kegiatan">
                                                     <i className={`fas fa-print ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
+                                                <div className="relative">
+                                                    <button onClick={(e) => { e.stopPropagation(); setWaDropdown(waDropdown === item.id ? null : item.id); }}
+                                                        disabled={waSending[`send-activity-invite-${item.id}`] || waSending[`send-activity-report-${item.id}`]}
+                                                        className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Kirim WA">
+                                                        {(waSending[`send-activity-invite-${item.id}`] || waSending[`send-activity-report-${item.id}`])
+                                                            ? <i className={`fas fa-spinner fa-spin ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
+                                                            : <i className={`fab fa-whatsapp ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>}
+                                                    </button>
+                                                    {waDropdown === item.id && (
+                                                        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-dark-card rounded-lg shadow-xl border border-gray-200 dark:border-dark-border py-1 z-50 min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+                                                            <button onClick={() => handleWaSend(item.id, 'send-activity-invite')}
+                                                                className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-2 text-gray-700 dark:text-dark-text">
+                                                                <i className="fas fa-envelope text-[#25D366]"></i> Kirim Undangan
+                                                            </button>
+                                                            {item.has_absensi && (
+                                                                <button onClick={() => handleWaSend(item.id, 'send-activity-report')}
+                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-2 text-gray-700 dark:text-dark-text">
+                                                                    <i className="fas fa-file-alt text-[#25D366]"></i> Kirim Laporan
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <button onClick={() => openEditModal(item)} className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center dark:bg-orange-900/20 dark:text-orange-400 hover:scale-110 active:scale-95`} title="Edit">
                                                     <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>

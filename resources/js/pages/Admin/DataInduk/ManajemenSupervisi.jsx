@@ -678,10 +678,6 @@ function ManajemenSupervisi() {
                             <p className="page-header-subtitle text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">Kelola jadwal & hasil supervisi guru</p>
                         </div>
                     </div>
-                    <button onClick={() => setShowQuestionsPopup(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all text-xs font-bold" title="Edit Poin Supervisi">
-                        <i className="fas fa-list-check"></i>
-                        <span className={isMobile ? '' : ''}>Edit Poin</span>
-                    </button>
                 </div>
             </header>
 
@@ -713,6 +709,10 @@ function ManajemenSupervisi() {
                         <button onClick={handleExport} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`}>
                             <i className="fas fa-file-export"></i>
                             <span>Export</span>
+                        </button>
+                        <button onClick={() => setShowQuestionsPopup(true)} className={`btn-secondary flex items-center gap-1 font-black uppercase tracking-widest ${isMobile ? '' : 'px-5 py-2.5 text-[10px] rounded-xl'}`} title="Edit Poin Supervisi">
+                            <i className="fas fa-list-check"></i>
+                            <span>Edit Poin</span>
                         </button>
                         <button onClick={openAddModal} className={`btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest ${isMobile ? '' : 'px-4 py-2.5 text-[10px] rounded-xl'}`}>
                             <i className="fas fa-plus-circle group-hover:rotate-12 transition-transform"></i>

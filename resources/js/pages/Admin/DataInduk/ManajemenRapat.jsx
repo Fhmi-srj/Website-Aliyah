@@ -61,6 +61,8 @@ function ManajemenRapat() {
     const [showAbsensiModal, setShowAbsensiModal] = useState(false);
     const [absensiData, setAbsensiData] = useState(null);
     const [loadingAbsensi, setLoadingAbsensi] = useState(false);
+    const [waDropdown, setWaDropdown] = useState(null);
+    const [waSending, setWaSending] = useState({});
 
     const toggleRowExpand = (idx) => {
         setExpandedRows(prev => {
@@ -418,6 +420,40 @@ function ManajemenRapat() {
         window.open(url, '_blank');
     };
 
+    const handleWaSend = async (id, type) => {
+        setWaDropdown(null);
+        const labels = {
+            'send-meeting-invite': 'Undangan Rapat',
+            'send-meeting-report': 'Laporan Rapat',
+        };
+        const label = labels[type] || type;
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: `Kirim ${label}?`,
+            text: `${label} akan dikirim ke grup WhatsApp sekarang.`,
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Kirim',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#25D366',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setWaSending(prev => ({ ...prev, [`${type}-${id}`]: true }));
+        try {
+            const response = await authFetch(`${API_BASE}/whatsapp/${type}/${id}`, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Terkirim!', text: data.message, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+            }
+        } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim: ' + error.message });
+        } finally {
+            setWaSending(prev => ({ ...prev, [`${type}-${id}`]: false }));
+        }
+    };
+
     const openAbsensiModal = async (item) => {
         setCurrentItem(item);
         try {
@@ -673,6 +709,29 @@ function ManajemenRapat() {
                                                         <i className={`fas fa-print ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                     </button>
                                                 )}
+                                                <div className="relative">
+                                                    <button onClick={(e) => { e.stopPropagation(); setWaDropdown(waDropdown === item.id ? null : item.id); }}
+                                                        disabled={waSending[`send-meeting-invite-${item.id}`] || waSending[`send-meeting-report-${item.id}`]}
+                                                        className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-all flex items-center justify-center`} title="Kirim WA">
+                                                        {(waSending[`send-meeting-invite-${item.id}`] || waSending[`send-meeting-report-${item.id}`])
+                                                            ? <i className={`fas fa-spinner fa-spin ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
+                                                            : <i className={`fab fa-whatsapp ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>}
+                                                    </button>
+                                                    {waDropdown === item.id && (
+                                                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[160px]" onClick={(e) => e.stopPropagation()}>
+                                                            <button onClick={() => handleWaSend(item.id, 'send-meeting-invite')}
+                                                                className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2 text-gray-700">
+                                                                <i className="fas fa-envelope text-[#25D366]"></i> Kirim Undangan
+                                                            </button>
+                                                            {item.has_absensi && (
+                                                                <button onClick={() => handleWaSend(item.id, 'send-meeting-report')}
+                                                                    className="w-full px-3 py-2 text-left text-xs hover:bg-green-50 flex items-center gap-2 text-gray-700">
+                                                                    <i className="fas fa-file-alt text-[#25D366]"></i> Kirim Laporan
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <button onClick={() => openEditModal(item)} className={`${isMobile ? 'w-4 h-4' : 'w-8 h-8'} flex-shrink-0 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center`} title="Edit">
                                                     <i className={`fas fa-edit ${isMobile ? 'text-[6px]' : 'text-[10px]'}`}></i>
                                                 </button>

@@ -132,6 +132,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('whatsapp/schedule-settings', [WhatsappController::class, 'getScheduleSettings']);
     Route::put('whatsapp/schedule-settings', [WhatsappController::class, 'updateScheduleSettings']);
 
+    // WhatsApp Manual Send Routes (pengganti cronjob)
+    Route::post('whatsapp/send-schedule', [WhatsappController::class, 'sendScheduleDaily']);
+    Route::post('whatsapp/send-recap', [WhatsappController::class, 'sendAttendanceRecap']);
+    Route::post('whatsapp/send-meeting-invite/{id}', [WhatsappController::class, 'sendMeetingInvitation']);
+    Route::post('whatsapp/send-meeting-report/{id}', [WhatsappController::class, 'sendMeetingReport']);
+    Route::post('whatsapp/send-activity-invite/{id}', [WhatsappController::class, 'sendActivityInvitation']);
+    Route::post('whatsapp/send-activity-report/{id}', [WhatsappController::class, 'sendActivityReport']);
+
     // Activity Log Routes
     Route::prefix('activity-logs')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\Admin\ActivityLogController::class, 'index']);

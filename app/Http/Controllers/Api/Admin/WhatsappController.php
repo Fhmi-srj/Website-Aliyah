@@ -4,8 +4,16 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\Jadwal;
+use App\Models\AbsensiMengajar;
+use App\Models\Rapat;
+use App\Models\Kegiatan;
+use App\Models\Guru;
+use App\Models\AbsensiRapat;
+use App\Models\AbsensiKegiatan;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class WhatsappController extends Controller
 {
@@ -187,6 +195,391 @@ class WhatsappController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengaturan jadwal notifikasi berhasil disimpan',
+        ]);
+    }
+
+    // ========================================================
+    // Manual Send Endpoints (pengganti cronjob)
+    // ========================================================
+
+    private $dayNames = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+
+    /**
+     * Kirim jadwal harian hari ini ke grup WA
+     */
+    public function sendScheduleDaily()
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $now = Carbon::now();
+        $hariIni = $this->dayNames[$now->dayOfWeek] ?? null;
+
+        if (!$hariIni || $hariIni === 'Minggu') {
+            return response()->json(['success' => false, 'message' => 'Hari ini hari Minggu, tidak ada jadwal']);
+        }
+
+        $jadwalList = Jadwal::with(['guru', 'mapel', 'kelas'])
+            ->where('status', 'aktif')
+            ->where('hari', $hariIni)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        if ($jadwalList->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada jadwal aktif hari ini']);
+        }
+
+        $grouped = $jadwalList->groupBy(fn($j) => $j->kelas->nama_kelas ?? 'Tanpa Kelas');
+        $daftarJadwal = '';
+        foreach ($grouped as $kelas => $items) {
+            $daftarJadwal .= "*Kelas {$kelas}*\n";
+            foreach ($items as $j) {
+                $guru = $j->guru->nama ?? '-';
+                $mapel = $j->mapel->nama_mapel ?? '-';
+                $jam = substr($j->jam_mulai, 0, 5) . '-' . substr($j->jam_selesai, 0, 5);
+                $daftarJadwal .= "• {$mapel} - {$guru} ({$jam})\n";
+            }
+            $daftarJadwal .= "\n";
+        }
+
+        $message = $wa->renderTemplate('jadwal_harian', [
+            'hari' => $hariIni,
+            'tanggal' => $now->translatedFormat('d F Y'),
+            'daftar_jadwal' => trim($daftarJadwal),
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Jadwal harian berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
+            'data' => ['total_jadwal' => $jadwalList->count()],
+        ]);
+    }
+
+    /**
+     * Kirim rekap absensi hari ini ke grup WA
+     */
+    public function sendAttendanceRecap()
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $now = Carbon::now();
+        $today = $now->format('Y-m-d');
+        $hariIni = $this->dayNames[$now->dayOfWeek] ?? null;
+
+        if (!$hariIni || $hariIni === 'Minggu') {
+            return response()->json(['success' => false, 'message' => 'Hari ini hari Minggu, tidak ada jadwal']);
+        }
+
+        $jadwalList = Jadwal::with(['guru', 'mapel', 'kelas'])
+            ->where('status', 'aktif')
+            ->where('hari', $hariIni)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        if ($jadwalList->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada jadwal aktif hari ini']);
+        }
+
+        $daftarRekap = '';
+        $totalHadir = 0;
+        $totalBelum = 0;
+
+        foreach ($jadwalList as $j) {
+            $guru = $j->guru->nama ?? '-';
+            $mapel = $j->mapel->nama_mapel ?? '-';
+            $kelas = $j->kelas->nama_kelas ?? '-';
+            $jam = substr($j->jam_mulai, 0, 5);
+
+            $absensi = AbsensiMengajar::where('jadwal_id', $j->id)
+                ->whereDate('tanggal', $today)
+                ->first();
+
+            if ($absensi) {
+                $daftarRekap .= "✅ {$guru} - {$mapel} ({$kelas}) | Hadir ({$jam})\n";
+                $totalSiswaH = 0;
+                $totalSiswaI = 0;
+                $totalSiswaS = 0;
+                $totalSiswaA = 0;
+                if (is_array($absensi->absensi_siswa)) {
+                    foreach ($absensi->absensi_siswa as $s) {
+                        match ($s['status'] ?? '') {
+                            'H' => $totalSiswaH++,
+                            'I' => $totalSiswaI++,
+                            'S' => $totalSiswaS++,
+                            'A' => $totalSiswaA++,
+                            default => null,
+                        };
+                    }
+                }
+                $daftarRekap .= "Siswa = H = {$totalSiswaH} | I = {$totalSiswaI} | S = {$totalSiswaS} | A = {$totalSiswaA}\n\n";
+                $totalHadir++;
+            } else {
+                $daftarRekap .= "❌ {$guru} - {$mapel} ({$kelas}) | Belum Absen\n\n";
+                $totalBelum++;
+            }
+        }
+
+        $daftarRekap .= "Total: {$totalHadir}/{$jadwalList->count()} guru sudah absen";
+
+        $message = $wa->renderTemplate('rekap_absensi', [
+            'hari' => $hariIni,
+            'tanggal' => $now->translatedFormat('d F Y'),
+            'daftar_rekap' => trim($daftarRekap),
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Rekap absensi berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
+            'data' => ['hadir' => $totalHadir, 'belum' => $totalBelum],
+        ]);
+    }
+
+    /**
+     * Kirim undangan rapat spesifik ke grup WA
+     */
+    public function sendMeetingInvitation($id)
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $rapat = Rapat::with(['pimpinanGuru', 'sekretarisGuru'])->find($id);
+        if (!$rapat) {
+            return response()->json(['success' => false, 'message' => 'Rapat tidak ditemukan']);
+        }
+
+        $kepalaMadrasah = AppSetting::getValue('nama_kepala_madrasah', 'Kepala MA Alhikam');
+        $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+        $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+
+        $message = $wa->renderTemplate('undangan_rapat', [
+            'agenda' => $rapat->agenda_rapat,
+            'tempat' => $rapat->tempat ?? '-',
+            'tanggal' => Carbon::parse($rapat->tanggal)->translatedFormat('l, d F Y'),
+            'waktu' => substr($rapat->waktu_mulai, 0, 5),
+            'pimpinan' => $pimpinanNama,
+            'sekretaris' => $sekretarisNama,
+            'kepala_madrasah' => $kepalaMadrasah,
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Undangan rapat berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
+        ]);
+    }
+
+    /**
+     * Kirim laporan rapat spesifik ke grup WA
+     */
+    public function sendMeetingReport($id)
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $rapat = Rapat::with(['pimpinanGuru', 'sekretarisGuru'])->find($id);
+        if (!$rapat) {
+            return response()->json(['success' => false, 'message' => 'Rapat tidak ditemukan']);
+        }
+
+        $today = $rapat->tanggal;
+        $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+        $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+
+        // Build kehadiran list
+        $daftarKehadiran = '';
+        $absensi = AbsensiRapat::where('rapat_id', $rapat->id)
+            ->whereDate('tanggal', $today)
+            ->first();
+
+        $allGuruIds = [];
+        if ($rapat->pimpinan_id)
+            $allGuruIds[] = $rapat->pimpinan_id;
+        if ($rapat->sekretaris_id)
+            $allGuruIds[] = $rapat->sekretaris_id;
+        if (is_array($rapat->peserta_rapat)) {
+            $allGuruIds = array_merge($allGuruIds, $rapat->peserta_rapat);
+        }
+        $allGuruIds = array_unique($allGuruIds);
+        $allGuru = Guru::whereIn('id', $allGuruIds)->get()->keyBy('id');
+
+        foreach ($allGuruIds as $guruId) {
+            $guru = $allGuru[$guruId] ?? null;
+            if (!$guru)
+                continue;
+
+            $nama = $guru->nama;
+            $role = '-';
+            $status = '❌';
+
+            if ($guruId == $rapat->pimpinan_id) {
+                $role = 'PIMPINAN RAPAT';
+                if ($absensi && $absensi->pimpinan_status === 'H')
+                    $status = '✅';
+            } elseif ($guruId == $rapat->sekretaris_id) {
+                $role = 'SEKRETARIS RAPAT';
+                if ($absensi && is_array($absensi->absensi_peserta)) {
+                    foreach ($absensi->absensi_peserta as $p) {
+                        if (($p['guru_id'] ?? 0) == $guruId && ($p['status'] ?? '') === 'H')
+                            $status = '✅';
+                    }
+                }
+            } else {
+                if ($absensi && is_array($absensi->absensi_peserta)) {
+                    foreach ($absensi->absensi_peserta as $p) {
+                        if (($p['guru_id'] ?? 0) == $guruId && ($p['status'] ?? '') === 'H') {
+                            $status = '✅';
+                            $role = 'ANGGOTA';
+                        }
+                    }
+                }
+            }
+
+            $daftarKehadiran .= "{$nama} | {$role} | {$status}\n";
+        }
+
+        $notulensi = '-';
+        if ($absensi && !empty($absensi->notulensi)) {
+            $notulensi = $absensi->notulensi;
+        }
+
+        $message = $wa->renderTemplate('laporan_rapat', [
+            'agenda' => $rapat->agenda_rapat,
+            'tanggal' => Carbon::parse($rapat->tanggal)->translatedFormat('l, d F Y'),
+            'tempat' => $rapat->tempat ?? '-',
+            'pimpinan' => $pimpinanNama,
+            'sekretaris' => $sekretarisNama,
+            'daftar_kehadiran' => trim($daftarKehadiran),
+            'notulensi' => $notulensi,
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Laporan rapat berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
+        ]);
+    }
+
+    /**
+     * Kirim undangan kegiatan spesifik ke grup WA
+     */
+    public function sendActivityInvitation($id)
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $kegiatan = Kegiatan::with(['penanggungJawab'])->find($id);
+        if (!$kegiatan) {
+            return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan']);
+        }
+
+        $kepalaMadrasah = AppSetting::getValue('nama_kepala_madrasah', 'Kepala MA Alhikam');
+        $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+
+        $message = $wa->renderTemplate('undangan_kegiatan', [
+            'nama_kegiatan' => $kegiatan->nama_kegiatan,
+            'tempat' => $kegiatan->tempat ?? '-',
+            'tanggal' => Carbon::parse($kegiatan->waktu_mulai)->translatedFormat('l, d F Y'),
+            'waktu' => Carbon::parse($kegiatan->waktu_mulai)->format('H:i'),
+            'penanggung_jawab' => $pjNama,
+            'kepala_madrasah' => $kepalaMadrasah,
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Undangan kegiatan berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
+        ]);
+    }
+
+    /**
+     * Kirim laporan kegiatan spesifik ke grup WA
+     */
+    public function sendActivityReport($id)
+    {
+        $wa = new WhatsappService();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'WhatsApp belum dikonfigurasi']);
+        }
+
+        $kegiatan = Kegiatan::with(['penanggungJawab'])->find($id);
+        if (!$kegiatan) {
+            return response()->json(['success' => false, 'message' => 'Kegiatan tidak ditemukan']);
+        }
+
+        $today = Carbon::parse($kegiatan->waktu_mulai)->format('Y-m-d');
+        $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+
+        // Build kehadiran list
+        $daftarKehadiran = '';
+        $absensi = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)
+            ->whereDate('tanggal', $today)
+            ->first();
+
+        $guruIds = [];
+        if ($kegiatan->penanggung_jawab_id)
+            $guruIds[] = $kegiatan->penanggung_jawab_id;
+        if (is_array($kegiatan->guru_pendamping)) {
+            $guruIds = array_merge($guruIds, $kegiatan->guru_pendamping);
+        }
+        $guruIds = array_unique($guruIds);
+        $allGuru = Guru::whereIn('id', $guruIds)->get()->keyBy('id');
+
+        foreach ($guruIds as $guruId) {
+            $guru = $allGuru[$guruId] ?? null;
+            if (!$guru)
+                continue;
+
+            $nama = $guru->nama;
+            $role = 'PENDAMPING';
+            $status = '❌';
+
+            if ($guruId == $kegiatan->penanggung_jawab_id) {
+                $role = 'PENANGGUNG JAWAB';
+                if ($absensi && ($absensi->pj_status ?? '') === 'H')
+                    $status = '✅';
+            } else {
+                if ($absensi && is_array($absensi->absensi_pendamping ?? null)) {
+                    foreach ($absensi->absensi_pendamping as $p) {
+                        if (($p['guru_id'] ?? 0) == $guruId && ($p['status'] ?? '') === 'H')
+                            $status = '✅';
+                    }
+                }
+            }
+
+            $daftarKehadiran .= "{$nama} | {$role} | {$status}\n";
+        }
+
+        $message = $wa->renderTemplate('laporan_kegiatan', [
+            'nama_kegiatan' => $kegiatan->nama_kegiatan,
+            'tanggal' => Carbon::parse($kegiatan->waktu_mulai)->translatedFormat('l, d F Y'),
+            'tempat' => $kegiatan->tempat ?? '-',
+            'penanggung_jawab' => $pjNama,
+            'daftar_kehadiran' => trim($daftarKehadiran),
+        ]);
+
+        $result = $wa->sendToGroup($message);
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Laporan kegiatan berhasil dikirim ke grup WA' : ($result['message'] ?? 'Gagal mengirim'),
         ]);
     }
 }
