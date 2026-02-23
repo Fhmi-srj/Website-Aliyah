@@ -108,6 +108,8 @@ class ActivityLog extends Model
             'delete' => 'Hapus',
             'restore' => 'Restore',
             'attendance' => 'Absensi',
+            'login' => 'Login',
+            'logout' => 'Logout',
             default => ucfirst($this->action),
         };
     }
@@ -123,6 +125,8 @@ class ActivityLog extends Model
             'delete' => 'red',
             'restore' => 'purple',
             'attendance' => 'yellow',
+            'login' => 'emerald',
+            'logout' => 'gray',
             default => 'gray',
         };
     }

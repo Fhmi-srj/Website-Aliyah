@@ -6,6 +6,7 @@ import { getRoleInfo } from '../../../config/roleConfig';
 import RoleSwitcher from '../../../components/RoleSwitcher';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
+import InstallPrompt from '../../../components/InstallPrompt';
 
 function GuruLayout({ children }) {
     const [fabOpen, setFabOpen] = useState(false);
@@ -66,10 +67,10 @@ function GuruLayout({ children }) {
 
     const navItems = [
         { to: '/guru', icon: 'fas fa-home', label: 'Beranda', end: true },
-        { to: '/guru/pencarian', icon: 'fas fa-search', label: 'Cari' },
-        { type: 'fab' }, // Placeholder for FAB
         { to: '/guru/riwayat', icon: 'fas fa-history', label: 'Riwayat' },
+        { type: 'fab' }, // Placeholder for FAB
         { to: '/guru/pengaturan', icon: 'fas fa-cog', label: 'Pengaturan' },
+        { to: '/guru/profil', icon: 'fas fa-user', label: 'Profil' },
     ];
 
     const fabOptions = [
@@ -80,6 +81,8 @@ function GuruLayout({ children }) {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+            {/* PWA Install Prompt */}
+            <InstallPrompt />
             {/* Desktop Block Message */}
             <div className="hidden md:flex fixed inset-0 bg-gradient-to-br from-green-600 to-green-800 z-50 items-center justify-center">
                 <div className="text-center text-white p-8">

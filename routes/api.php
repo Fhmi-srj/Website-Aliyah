@@ -239,6 +239,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'index']);
     Route::get('search', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'search']);
     Route::get('profile', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'profile']);
+    Route::put('profile', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'updateProfile']);
     Route::post('upload-photo', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'uploadPhoto']);
     Route::post('upload-ttd', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'uploadTtd']);
     Route::get('upcoming-events', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'upcomingEvents']);
@@ -288,6 +289,15 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
 
     // Supervisi
     Route::get('supervisi', [\App\Http\Controllers\Api\Guru\GuruSupervisiController::class, 'index']);
+
+    // Activity Logs (personal)
+    Route::get('activity-logs', [\App\Http\Controllers\Api\Guru\GuruActivityLogController::class, 'index']);
+
+    // Ulangan
+    Route::get('ulangan', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'index']);
+    Route::get('ulangan/{id}', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'show']);
+    Route::post('ulangan/{id}/nilai', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'updateNilai']);
+    Route::get('ulangan/{id}/export', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'export']);
 });
 
 // Print Routes - separate group with token_auth middleware

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../lib/axios';
 import Swal from 'sweetalert2';
@@ -17,12 +17,24 @@ function Profil() {
     const fileInputRef = useRef(null);
     const ttdInputRef = useRef(null);
 
+    // Activity log state
+    const [activityLogs, setActivityLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [logPage, setLogPage] = useState(1);
+    const [logPerPage, setLogPerPage] = useState(10);
+    const [logPagination, setLogPagination] = useState({ total: 0, last_page: 1, current_page: 1 });
+
     // Password change state
     const [passwords, setPasswords] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
+
+    // Profile edit state
+    const [isEditing, setIsEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [editForm, setEditForm] = useState({});
 
     // Fetch profile data
     useEffect(() => {
@@ -39,6 +51,33 @@ function Profil() {
         };
         fetchProfile();
     }, []);
+
+    // Fetch activity logs when Aktivitas tab becomes active or pagination changes
+    const fetchActivityLogs = useCallback(async (page, perPage) => {
+        try {
+            setLoadingLogs(true);
+            const response = await api.get('/guru-panel/activity-logs', {
+                params: { page, per_page: perPage }
+            });
+            const paginatedData = response.data.data;
+            setActivityLogs(paginatedData?.data || []);
+            setLogPagination({
+                total: paginatedData?.total || 0,
+                last_page: paginatedData?.last_page || 1,
+                current_page: paginatedData?.current_page || 1,
+            });
+        } catch (err) {
+            console.error('Error fetching activity logs:', err);
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'aktivitas') {
+            fetchActivityLogs(logPage, logPerPage);
+        }
+    }, [activeTab, logPage, logPerPage, fetchActivityLogs]);
 
     // Handle photo upload
     const handlePhotoClick = () => {
@@ -257,6 +296,47 @@ function Profil() {
         }
     };
 
+    // Profile edit handlers
+    const startEditing = () => {
+        setEditForm({
+            nama: profile?.name || '',
+            email: profile?.email === '-' ? '' : (profile?.email || ''),
+            kontak: profile?.kontak === '-' ? '' : (profile?.kontak || ''),
+            alamat: profile?.alamat === '-' ? '' : (profile?.alamat || ''),
+            tempat_lahir: profile?.tempat_lahir === '-' ? '' : (profile?.tempat_lahir || ''),
+            tanggal_lahir: profile?.tanggal_lahir_raw || '',
+            pendidikan: profile?.pendidikan === '-' ? '' : (profile?.pendidikan || ''),
+            jenis_kelamin: profile?.jenis_kelamin_raw || 'L',
+        });
+        setIsEditing(true);
+    };
+
+    const cancelEditing = () => {
+        setIsEditing(false);
+        setEditForm({});
+    };
+
+    const handleEditChange = (field, value) => {
+        setEditForm(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSaveProfile = async () => {
+        setSaving(true);
+        try {
+            await api.put('/guru-panel/profile', editForm);
+            const response = await api.get('/guru-panel/profile');
+            setProfile(response.data.user);
+            setIsEditing(false);
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Profil berhasil diperbarui', timer: 1500, showConfirmButton: false });
+        } catch (err) {
+            console.error('Error saving profile:', err);
+            const msg = err.response?.data?.message || err.response?.data?.error || 'Gagal menyimpan profil';
+            Swal.fire({ icon: 'error', title: 'Gagal', text: msg });
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="animate-pulse min-h-screen bg-white">
@@ -366,86 +446,171 @@ function Profil() {
                 {/* Identitas Tab */}
                 {activeTab === 'identitas' && (
                     <>
+                        {/* Edit/Cancel Button */}
+                        <div className="flex justify-end px-4 pt-3">
+                            {isEditing ? (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={cancelEditing}
+                                        className="px-3 py-1.5 text-xs text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        <i className="fas fa-times mr-1"></i>Batal
+                                    </button>
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={saving}
+                                        className="px-3 py-1.5 text-xs text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+                                    >
+                                        {saving ? <i className="fas fa-spinner fa-spin mr-1"></i> : <i className="fas fa-check mr-1"></i>}
+                                        Simpan
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={startEditing}
+                                    className="px-3 py-1.5 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
+                                >
+                                    <i className="fas fa-pen mr-1"></i>Edit Profil
+                                </button>
+                            )}
+                        </div>
+
                         <div className="divide-y divide-gray-100">
+                            {/* Nama - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-user text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Nama Lengkap</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.name || '-'}</p>
+                                    {isEditing ? (
+                                        <input type="text" value={editForm.nama} onChange={e => handleEditChange('nama', e.target.value)}
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.name || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* NIP - Read Only */}
                             <div className="flex items-center gap-3 px-4 py-3">
-                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <i className="fas fa-id-card text-green-600 text-sm"></i>
+                                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-id-card text-gray-500 text-sm"></i>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400">NIP</p>
+                                    <p className="text-xs text-gray-400">NIP <span className="text-[10px] text-gray-300">(admin)</span></p>
                                     <p className="font-medium text-gray-800 text-sm">{profile?.nip || '-'}</p>
                                 </div>
                             </div>
+                            {/* Email - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-envelope text-green-600 text-sm"></i>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-400">Email</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.email || '-'}</p>
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-400">Email <span className="text-[10px] text-green-500">(bisa dipakai login)</span></p>
+                                    {isEditing ? (
+                                        <input type="email" value={editForm.email} onChange={e => handleEditChange('email', e.target.value)}
+                                            placeholder="contoh@email.com"
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.email || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* Jabatan - Read Only */}
                             <div className="flex items-center gap-3 px-4 py-3">
-                                <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <i className="fas fa-briefcase text-green-600 text-sm"></i>
+                                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="fas fa-briefcase text-gray-500 text-sm"></i>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-400">Jabatan</p>
+                                    <p className="text-xs text-gray-400">Jabatan <span className="text-[10px] text-gray-300">(admin)</span></p>
                                     <p className="font-medium text-gray-800 text-sm">{profile?.jabatan || '-'}</p>
                                 </div>
                             </div>
+                            {/* Jenis Kelamin - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-venus-mars text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Jenis Kelamin</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.jenis_kelamin || '-'}</p>
+                                    {isEditing ? (
+                                        <select value={editForm.jenis_kelamin} onChange={e => handleEditChange('jenis_kelamin', e.target.value)}
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent">
+                                            <option value="L">Laki-laki</option>
+                                            <option value="P">Perempuan</option>
+                                        </select>
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.jenis_kelamin || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* Tempat, Tanggal Lahir - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-map-marker-alt text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Tempat, Tanggal Lahir</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
+                                    {isEditing ? (
+                                        <div className="flex gap-2">
+                                            <input type="text" value={editForm.tempat_lahir} onChange={e => handleEditChange('tempat_lahir', e.target.value)}
+                                                placeholder="Tempat lahir"
+                                                className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                            <input type="date" value={editForm.tanggal_lahir} onChange={e => handleEditChange('tanggal_lahir', e.target.value)}
+                                                className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                        </div>
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.tempat_lahir || '-'}, {profile?.tanggal_lahir || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* Alamat - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-home text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Alamat</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.alamat || '-'}</p>
+                                    {isEditing ? (
+                                        <textarea value={editForm.alamat} onChange={e => handleEditChange('alamat', e.target.value)}
+                                            placeholder="Alamat lengkap"
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent resize-y min-h-[40px]" />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.alamat || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* Pendidikan - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-graduation-cap text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Pendidikan</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.pendidikan || '-'}</p>
+                                    {isEditing ? (
+                                        <input type="text" value={editForm.pendidikan} onChange={e => handleEditChange('pendidikan', e.target.value)}
+                                            placeholder="S1 Pendidikan Islam"
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.pendidikan || '-'}</p>
+                                    )}
                                 </div>
                             </div>
+                            {/* Kontak - Editable */}
                             <div className="flex items-center gap-3 px-4 py-3">
                                 <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                     <i className="fas fa-phone text-green-600 text-sm"></i>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-xs text-gray-400">Kontak</p>
-                                    <p className="font-medium text-gray-800 text-sm">{profile?.kontak || '-'}</p>
+                                    {isEditing ? (
+                                        <input type="text" value={editForm.kontak} onChange={e => handleEditChange('kontak', e.target.value)}
+                                            placeholder="08xxxxxxxxxx"
+                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent" />
+                                    ) : (
+                                        <p className="font-medium text-gray-800 text-sm">{profile?.kontak || '-'}</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -571,12 +736,95 @@ function Profil() {
 
                 {/* Aktivitas Tab */}
                 {activeTab === 'aktivitas' && (
-                    <div className="py-12 text-center">
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i className="fas fa-history text-gray-300 text-3xl"></i>
+                    <div className="p-4">
+                        {/* Header: total count + per page selector */}
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs text-gray-500">
+                                <span className="font-semibold text-gray-700">{logPagination.total}</span> aktivitas
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-400">Tampilkan</span>
+                                <select
+                                    value={logPerPage}
+                                    onChange={(e) => { setLogPerPage(Number(e.target.value)); setLogPage(1); }}
+                                    className="text-xs bg-gray-100 border-0 rounded-lg px-2 py-1 text-gray-700 focus:ring-1 focus:ring-green-400 outline-none"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
                         </div>
-                        <p className="text-gray-500 font-medium">Riwayat Aktivitas</p>
-                        <p className="text-gray-400 text-sm mt-1">Aktivitas login akan ditampilkan di sini</p>
+
+                        {loadingLogs ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                            </div>
+                        ) : activityLogs.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i className="fas fa-history text-gray-300 text-3xl"></i>
+                                </div>
+                                <p className="text-gray-500 font-medium">Belum Ada Aktivitas</p>
+                                <p className="text-gray-400 text-sm mt-1">Aktivitas login, absensi, dll akan muncul di sini</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    {activityLogs.map((log) => {
+                                        const iconMap = { login: 'fa-sign-in-alt', logout: 'fa-sign-out-alt', attendance: 'fa-clipboard-check', create: 'fa-plus-circle', update: 'fa-edit', delete: 'fa-trash-alt' };
+                                        const colorMap = { login: 'bg-emerald-100 text-emerald-600', logout: 'bg-gray-100 text-gray-500', attendance: 'bg-yellow-100 text-yellow-600', create: 'bg-green-100 text-green-600', update: 'bg-blue-100 text-blue-600', delete: 'bg-red-100 text-red-600' };
+                                        const badgeMap = { login: 'bg-emerald-100 text-emerald-700', logout: 'bg-gray-100 text-gray-700', attendance: 'bg-yellow-100 text-yellow-700', create: 'bg-green-100 text-green-700', update: 'bg-blue-100 text-blue-700', delete: 'bg-red-100 text-red-700' };
+                                        const icon = iconMap[log.action] || 'fa-circle';
+                                        const color = colorMap[log.action] || 'bg-gray-100 text-gray-500';
+                                        const badge = badgeMap[log.action] || 'bg-gray-100 text-gray-700';
+                                        return (
+                                            <div key={log.id} className="flex items-start gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                                                <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                                    <i className={`fas ${icon} text-xs`}></i>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${badge}`}>
+                                                            {log.action_label}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-gray-700 text-xs leading-relaxed truncate">{log.description}</p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">{log.created_at_formatted}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Pagination Controls */}
+                                {logPagination.last_page > 1 && (
+                                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                        <button
+                                            onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                                            disabled={logPagination.current_page <= 1}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <i className="fas fa-chevron-left text-[10px]"></i>
+                                            Prev
+                                        </button>
+                                        <span className="text-xs text-gray-500">
+                                            <span className="font-semibold text-gray-700">{logPagination.current_page}</span>
+                                            {' / '}
+                                            {logPagination.last_page}
+                                        </span>
+                                        <button
+                                            onClick={() => setLogPage(p => Math.min(logPagination.last_page, p + 1))}
+                                            disabled={logPagination.current_page >= logPagination.last_page}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Next
+                                            <i className="fas fa-chevron-right text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 )}
             </SwipeableContent>

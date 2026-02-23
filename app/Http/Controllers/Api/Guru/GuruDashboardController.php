@@ -251,10 +251,12 @@ class GuruDashboardController extends Controller
             });
 
         // Calculate statistics for the entire tahun ajaran
-        $tahunAjaranId = $user->tahun_ajaran_id ?? null;
-        $tahunAjaran = $tahunAjaranId
-            ? TahunAjaran::find($tahunAjaranId)
+        $tahunAjaran = $user->tahun_ajaran_id
+            ? TahunAjaran::find($user->tahun_ajaran_id)
             : (TahunAjaran::getActive() ?? TahunAjaran::getCurrent());
+
+        // Use resolved tahun ajaran ID for ALL stat queries
+        $tahunAjaranId = $tahunAjaran ? $tahunAjaran->id : null;
 
         // Use tahun ajaran date range
         $startDate = $tahunAjaran ? Carbon::parse($tahunAjaran->tanggal_mulai)->startOfDay() : Carbon::now('Asia/Jakarta')->startOfYear();
@@ -326,12 +328,12 @@ class GuruDashboardController extends Controller
                 ->orWhereJsonContains('guru_pendamping', $guru->id)
                 ->orWhereJsonContains('guru_pendamping', (string) $guru->id);
         })
-            // Only filter by tahun_ajaran if the field is not null AND matches
+            // Filter by tahun_ajaran_id, or fallback to date range
             ->when($tahunAjaranId, function ($q) use ($tahunAjaranId) {
-                $q->where(function ($sq) use ($tahunAjaranId) {
-                    $sq->where('tahun_ajaran_id', $tahunAjaranId)
-                        ->orWhereNull('tahun_ajaran_id');
-                });
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            }, function ($q) use ($startDate, $endDate) {
+                $q->where('waktu_mulai', '>=', $startDate)
+                    ->where('waktu_mulai', '<=', $endDate);
             })
             // Only count kegiatan that have ended
             ->where('waktu_berakhir', '<=', Carbon::now('Asia/Jakarta'))
@@ -394,12 +396,12 @@ class GuruDashboardController extends Controller
                 ->orWhereJsonContains('peserta_rapat', $guru->id)
                 ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
         })
-            // Only filter by tahun_ajaran if the field is not null AND matches
+            // Filter by tahun_ajaran_id, or fallback to date range
             ->when($tahunAjaranId, function ($q) use ($tahunAjaranId) {
-                $q->where(function ($sq) use ($tahunAjaranId) {
-                    $sq->where('tahun_ajaran_id', $tahunAjaranId)
-                        ->orWhereNull('tahun_ajaran_id');
-                });
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            }, function ($q) use ($startDate, $endDate) {
+                $q->whereDate('tanggal', '>=', $startDate)
+                    ->whereDate('tanggal', '<=', $endDate);
             })
             ->get()
             ->filter(function ($rapat) {
@@ -1109,8 +1111,10 @@ class GuruDashboardController extends Controller
                 'sk' => $guru->sk ?? '-',
                 'jabatan' => $guru->jabatan ?? 'Guru',
                 'jenis_kelamin' => $guru->jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+                'jenis_kelamin_raw' => $guru->jenis_kelamin,
                 'tempat_lahir' => $guru->tempat_lahir ?? '-',
                 'tanggal_lahir' => $guru->tanggal_lahir ? $guru->tanggal_lahir->format('d F Y') : '-',
+                'tanggal_lahir_raw' => $guru->tanggal_lahir ? $guru->tanggal_lahir->format('Y-m-d') : '',
                 'alamat' => $guru->alamat ?? '-',
                 'pendidikan' => $guru->pendidikan ?? '-',
                 'kontak' => $guru->kontak ?? '-',
@@ -1119,6 +1123,52 @@ class GuruDashboardController extends Controller
                 'foto_url' => $guru->foto ? asset('storage/' . $guru->foto) : null,
                 'ttd_url' => $guru->ttd ? asset('storage/' . $guru->ttd) : null,
             ],
+        ]);
+    }
+
+    /**
+     * Update profile data for the logged-in guru
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+        $guru = $user->guru;
+
+        if (!$guru) {
+            return response()->json(['error' => 'Data guru tidak ditemukan'], 404);
+        }
+
+        $validated = $request->validate([
+            'nama' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255|unique:guru,email,' . $guru->id,
+            'kontak' => 'nullable|string|max:50',
+            'alamat' => 'nullable|string|max:500',
+            'tempat_lahir' => 'nullable|string|max:100',
+            'tanggal_lahir' => 'nullable|date',
+            'pendidikan' => 'nullable|string|max:100',
+            'jenis_kelamin' => 'nullable|in:L,P',
+        ]);
+
+        // Only update provided fields
+        $updateData = [];
+        foreach (['nama', 'email', 'kontak', 'alamat', 'tempat_lahir', 'tanggal_lahir', 'pendidikan', 'jenis_kelamin'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $updateData[$field] = $validated[$field];
+            }
+        }
+
+        if (!empty($updateData)) {
+            $guru->update($updateData);
+
+            // Also update user name if nama changed
+            if (isset($updateData['nama'])) {
+                $user->update(['name' => $updateData['nama']]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui',
         ]);
     }
 

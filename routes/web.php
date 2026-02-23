@@ -20,6 +20,16 @@ Route::prefix('print')->middleware(['web', 'token_auth'])->group(function () {
 // Document Verification Route (public, no auth)
 Route::get('/verify/{id}', [\App\Http\Controllers\VerificationController::class, 'show'])->name('verify.show');
 
+// PWA Routes
+Route::get('/manifest.json', [\App\Http\Controllers\ManifestController::class, 'manifest']);
+Route::get('/pwa-icon/{size}', [\App\Http\Controllers\ManifestController::class, 'icon'])->where('size', '[0-9]+');
+Route::get('/sw.js', function () {
+    return response()->file(public_path('sw.js'), [
+        'Content-Type' => 'application/javascript',
+        'Service-Worker-Allowed' => '/',
+    ]);
+});
+
 // SPA catch-all route - serves React app for all routes
 Route::get('/{any?}', function () {
     return view('app');

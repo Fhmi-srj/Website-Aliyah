@@ -104,6 +104,12 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
     const [guruKeterangan, setGuruKeterangan] = useState(jadwal?.guru_keterangan || ''); // Use jadwal's keterangan if available
     const [siswaExpanded, setSiswaExpanded] = useState(true); // Collapsible state
 
+    // Ulangan fields
+    const [jenisKegiatan, setJenisKegiatan] = useState('mengajar');
+    const [jenisUlangan, setJenisUlangan] = useState('ulangan_harian');
+    const [judulUlangan, setJudulUlangan] = useState(''); // Judul/bab/materi ulangan
+    const [nilaiSiswa, setNilaiSiswa] = useState({}); // { siswa_id: { nilai, keterangan } }
+
     // Guru Tugas fields - for when guru is absent
     const [guruTugasId, setGuruTugasId] = useState(jadwal?.guru_tugas_id || '');
     const [guruTugasNama, setGuruTugasNama] = useState(''); // Selected guru name
@@ -178,6 +184,33 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
 
                 // Set tugas siswa (task for students)
                 setTugasSiswa(data.tugas_siswa || '');
+
+                // Pre-populate ulangan fields
+                if (data.jenis_kegiatan) {
+                    setJenisKegiatan(data.jenis_kegiatan);
+                }
+                if (data.jenis_ulangan) {
+                    setJenisUlangan(data.jenis_ulangan);
+                }
+                // Pre-populate judul ulangan from ringkasan_materi
+                if (data.jenis_kegiatan === 'ulangan' && data.ringkasan_materi) {
+                    // Extract judul from "Ulangan Harian: Judul" format
+                    const parts = data.ringkasan_materi.split(': ');
+                    if (parts.length > 1) {
+                        setJudulUlangan(parts.slice(1).join(': '));
+                    }
+                }
+                // Pre-populate nilai siswa
+                if (data.nilai_siswa && typeof data.nilai_siswa === 'object') {
+                    const nilaiObj = {};
+                    for (const [siswaId, nilaiData] of Object.entries(data.nilai_siswa)) {
+                        nilaiObj[siswaId] = {
+                            nilai: nilaiData.nilai ?? '',
+                            keterangan: nilaiData.keterangan ?? '',
+                        };
+                    }
+                    setNilaiSiswa(nilaiObj);
+                }
 
                 // If siswa list exists, use it; otherwise fetch from jadwal
                 if (data.siswa && data.siswa.length > 0) {
@@ -269,8 +302,8 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
     };
 
     const handleSubmit = async () => {
-        // Validation: ringkasan materi required only if guru is present (H)
-        if (guruStatus === 'H' && !ringkasanMateri.trim()) {
+        // Validation: ringkasan materi required only if guru is present (H) AND not ulangan
+        if (guruStatus === 'H' && jenisKegiatan === 'mengajar' && !ringkasanMateri.trim()) {
             alert('Ringkasan Materi wajib diisi!');
             return;
         }
@@ -279,25 +312,39 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
             alert('Tugas untuk Siswa wajib diisi!');
             return;
         }
-        // Berita acara is optional now
 
         setLoading(true);
         try {
+            // Build nilai_siswa array for ulangan
+            const nilaiData = jenisKegiatan === 'ulangan'
+                ? absensiSiswa
+                    .filter(s => s.status === 'H' && nilaiSiswa[s.siswa_id]?.nilai !== undefined && nilaiSiswa[s.siswa_id]?.nilai !== '')
+                    .map(s => ({
+                        siswa_id: s.siswa_id,
+                        nilai: parseFloat(nilaiSiswa[s.siswa_id].nilai),
+                        keterangan: nilaiSiswa[s.siswa_id].keterangan || null,
+                    }))
+                : [];
+
             await api.post('/guru-panel/absensi', {
                 jadwal_id: jadwal.jadwal_id || jadwal.id,
-                tanggal: tanggal, // Include tanggal for unlocked mode
-                ringkasan_materi: guruStatus === 'H' ? ringkasanMateri : null,
+                tanggal: tanggal,
+                ringkasan_materi: guruStatus === 'H' ? (jenisKegiatan === 'ulangan' ? null : ringkasanMateri) : null,
                 berita_acara: guruStatus === 'H' ? beritaAcara : null,
                 guru_status: guruStatus,
                 guru_keterangan: guruStatus !== 'H' ? guruKeterangan : null,
                 guru_tugas_id: (guruStatus === 'I' || guruStatus === 'S') ? (guruTugasId || null) : null,
                 tugas_siswa: (guruStatus === 'I' || guruStatus === 'S') ? (tugasSiswa || null) : null,
-                is_unlocked: isUnlocked, // Flag to indicate this is unlocked submission
+                is_unlocked: isUnlocked,
+                jenis_kegiatan: jenisKegiatan,
+                jenis_ulangan: jenisKegiatan === 'ulangan' ? jenisUlangan : null,
+                judul_ulangan: jenisKegiatan === 'ulangan' ? judulUlangan : null,
                 absensi_siswa: guruStatus === 'H' ? absensiSiswa.map(s => ({
                     siswa_id: s.siswa_id,
                     status: s.status,
                     keterangan: s.keterangan || null
-                })) : [] // Empty if guru is absent
+                })) : [],
+                nilai_siswa: nilaiData,
             });
             onSuccess();
         } catch (err) {
@@ -533,8 +580,66 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                         </span>
                     </div>
 
-                    {/* Ringkasan Materi - only show when guru is present (H) */}
+                    {/* Jenis Kegiatan Toggle - only when guru hadir */}
                     {guruStatus === 'H' && (
+                        <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kegiatan</label>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setJenisKegiatan('mengajar')}
+                                    className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${jenisKegiatan === 'mengajar'
+                                        ? 'bg-green-500 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    <i className="fas fa-book"></i> Mengajar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setJenisKegiatan('ulangan')}
+                                    className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${jenisKegiatan === 'ulangan'
+                                        ? 'bg-purple-500 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    <i className="fas fa-file-signature"></i> Ulangan
+                                </button>
+                            </div>
+
+                            {/* Jenis Ulangan Dropdown */}
+                            {jenisKegiatan === 'ulangan' && (
+                                <>
+                                    <div className="mt-3">
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Jenis Ulangan</label>
+                                        <select
+                                            value={jenisUlangan}
+                                            onChange={e => setJenisUlangan(e.target.value)}
+                                            className="w-full border border-purple-200 bg-purple-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+                                        >
+                                            <option value="ulangan_harian">Ulangan Harian</option>
+                                            <option value="uts">UTS (Ujian Tengah Semester)</option>
+                                            <option value="uas">UAS (Ujian Akhir Semester)</option>
+                                            <option value="quiz">Quiz</option>
+                                        </select>
+                                    </div>
+                                    <div className="mt-3">
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Judul/Materi Ulangan</label>
+                                        <input
+                                            type="text"
+                                            value={judulUlangan}
+                                            onChange={e => setJudulUlangan(e.target.value)}
+                                            placeholder="Contoh: Bab 3 - Sholat, Hukum Tajwid, dll"
+                                            className="w-full border border-purple-200 bg-purple-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Ringkasan Materi - only show when guru is present (H) AND mengajar */}
+                    {guruStatus === 'H' && jenisKegiatan === 'mengajar' && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Ringkasan Materi</label>
                             <textarea
@@ -546,8 +651,8 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                         </div>
                     )}
 
-                    {/* Berita Acara - only show when guru is present (H) */}
-                    {guruStatus === 'H' && (
+                    {/* Berita Acara - only show when mengajar */}
+                    {guruStatus === 'H' && jenisKegiatan === 'mengajar' && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Berita Acara <span className="text-gray-400 text-xs">(opsional)</span></label>
                             <textarea
@@ -647,6 +752,32 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                                     className={`w-full mt-2 border rounded-lg p-2 text-sm focus:ring-2 focus:border-transparent ${siswa.status === 'S' ? 'border-blue-200 bg-blue-50 focus:ring-blue-400' : 'border-yellow-200 bg-yellow-50 focus:ring-yellow-400'}`}
                                                 />
                                             )}
+
+                                            {/* Nilai input for ulangan - only for hadir siswa */}
+                                            {jenisKegiatan === 'ulangan' && siswa.status === 'H' && (
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <label className="text-xs text-purple-600 font-medium whitespace-nowrap">Nilai:</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={nilaiSiswa[siswa.siswa_id]?.nilai ?? ''}
+                                                        onChange={e => setNilaiSiswa(prev => ({
+                                                            ...prev,
+                                                            [siswa.siswa_id]: { ...prev[siswa.siswa_id], nilai: e.target.value }
+                                                        }))}
+                                                        placeholder="0-100"
+                                                        className="w-20 border border-purple-200 bg-purple-50 rounded-lg px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Disabled nilai indicator for non-hadir siswa in ulangan mode */}
+                                            {jenisKegiatan === 'ulangan' && siswa.status !== 'H' && (
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <span className="text-xs text-gray-400 italic"><i className="fas fa-lock text-[0.6rem] mr-1"></i>Nilai diisi via menu Ulangan (susulan)</span>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -672,8 +803,8 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                             <i className="fas fa-spinner fa-spin"></i>
                         ) : (
                             <>
-                                <i className="fas fa-save"></i>
-                                Simpan Absensi
+                                <i className={`fas ${jenisKegiatan === 'ulangan' ? 'fa-file-signature' : 'fa-save'}`}></i>
+                                {jenisKegiatan === 'ulangan' ? 'Simpan Ulangan' : 'Simpan Absensi'}
                             </>
                         )}
                     </button>

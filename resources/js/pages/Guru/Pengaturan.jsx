@@ -8,6 +8,10 @@ function Pengaturan() {
         kegiatan: true,
         rapat: true,
     });
+    const [installPrompt, setInstallPrompt] = useState(null);
+    const [showSafariGuide, setShowSafariGuide] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     // Simulate loading
     useEffect(() => {
@@ -15,12 +19,25 @@ function Pengaturan() {
         return () => clearTimeout(timer);
     }, []);
 
+    // Capture install prompt
+    useEffect(() => {
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        setIsStandalone(standalone);
+
+        const handler = (e) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
     const handleToggle = (key) => {
         setNotifications(prev => ({
             ...prev,
             [key]: !prev[key]
         }));
-        
+
         Swal.fire({
             icon: 'success',
             title: 'Tersimpan',
@@ -51,30 +68,63 @@ function Pengaturan() {
 
     const settingsSections = [
         {
-            title: 'Notifikasi',
+            title: 'Notifikasi & Pintasan',
             items: [
-                { 
-                    icon: 'fa-calendar-alt', 
-                    label: 'Jadwal Mengajar', 
-                    type: 'toggle', 
+                {
+                    icon: 'fa-calendar-alt',
+                    label: 'Jadwal Mengajar',
+                    type: 'toggle',
                     key: 'jadwal',
                     description: 'Pengingat jadwal mengajar'
                 },
-                { 
-                    icon: 'fa-calendar-check', 
-                    label: 'Kegiatan', 
-                    type: 'toggle', 
+                {
+                    icon: 'fa-calendar-check',
+                    label: 'Kegiatan',
+                    type: 'toggle',
                     key: 'kegiatan',
                     description: 'Notifikasi kegiatan sekolah'
                 },
-                { 
-                    icon: 'fa-users', 
-                    label: 'Rapat', 
-                    type: 'toggle', 
+                {
+                    icon: 'fa-users',
+                    label: 'Rapat',
+                    type: 'toggle',
                     key: 'rapat',
                     description: 'Pengingat jadwal rapat'
                 },
-            ]
+                // Pintasan Layar items
+                ...((!isStandalone && (installPrompt || !isIOS)) ? [{
+                    icon: 'fa-mobile-alt',
+                    label: 'Pasang Aplikasi',
+                    type: 'action',
+                    description: 'Tambah pintasan ke layar utama',
+                    action: async () => {
+                        if (installPrompt) {
+                            installPrompt.prompt();
+                            const { outcome } = await installPrompt.userChoice;
+                            if (outcome === 'accepted') {
+                                Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Aplikasi telah dipasang', timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base' } });
+                            }
+                            setInstallPrompt(null);
+                        } else {
+                            Swal.fire({ icon: 'info', title: 'Petunjuk', text: 'Gunakan menu browser → "Tambahkan ke Layar Utama" atau "Install App"', confirmButtonColor: '#16a34a', customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm', confirmButton: 'rounded-xl px-4 !text-xs' } });
+                        }
+                    }
+                }] : []),
+                ...(isIOS ? [{
+                    icon: 'fa-apple-alt',
+                    label: 'Panduan iOS (Safari)',
+                    type: 'action',
+                    description: 'Cara pasang di iPhone / iPad',
+                    action: () => setShowSafariGuide(true),
+                }] : []),
+                ...(isStandalone ? [{
+                    icon: 'fa-check-circle',
+                    label: 'Aplikasi Terpasang',
+                    type: 'info',
+                    value: '✓',
+                    description: 'Pintasan sudah aktif di layar utama',
+                }] : []),
+            ].filter(item => item),
         },
         {
             title: 'Tampilan',
@@ -193,20 +243,21 @@ function Pengaturan() {
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
                                 {section.title}
                             </h3>
-                            
+
                             {/* Section Items */}
                             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
                                 {section.items.map((item, itemIdx) => (
                                     <div
                                         key={itemIdx}
-                                        className={`flex items-center gap-3 px-4 py-3 ${
-                                            item.type === 'coming-soon' || item.type === 'link' 
-                                                ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100' 
-                                                : ''
-                                        }`}
+                                        className={`flex items-center gap-3 px-4 py-3 ${item.type === 'coming-soon' || item.type === 'link' || item.type === 'action'
+                                            ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100'
+                                            : ''
+                                            }`}
                                         onClick={() => {
                                             if (item.type === 'coming-soon') {
                                                 showComingSoon(item.label);
+                                            } else if (item.type === 'action' && item.action) {
+                                                item.action();
                                             }
                                         }}
                                     >
@@ -214,7 +265,7 @@ function Pengaturan() {
                                         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                                             <i className={`fas ${item.icon} text-green-600 text-sm`}></i>
                                         </div>
-                                        
+
                                         {/* Label & Description */}
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm text-gray-800 font-medium">{item.label}</p>
@@ -222,7 +273,7 @@ function Pengaturan() {
                                                 <p className="text-xs text-gray-400 truncate">{item.description}</p>
                                             )}
                                         </div>
-                                        
+
                                         {/* Right Side - Toggle, Arrow, or Value */}
                                         {item.type === 'toggle' && (
                                             <button
@@ -230,23 +281,21 @@ function Pengaturan() {
                                                     e.stopPropagation();
                                                     handleToggle(item.key);
                                                 }}
-                                                className={`w-11 h-6 rounded-full transition-colors relative ${
-                                                    notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'
-                                                }`}
+                                                className={`w-11 h-6 rounded-full transition-colors relative ${notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'
+                                                    }`}
                                             >
                                                 <div
-                                                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                                                        notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
-                                                    }`}
+                                                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
+                                                        }`}
                                                 />
                                             </button>
                                         )}
-                                        
+
                                         {item.type === 'info' && (
                                             <span className="text-xs text-gray-400">{item.value}</span>
                                         )}
-                                        
-                                        {(item.type === 'coming-soon' || item.type === 'link') && (
+
+                                        {(item.type === 'coming-soon' || item.type === 'link' || item.type === 'action') && (
                                             <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
                                         )}
                                     </div>
@@ -262,6 +311,64 @@ function Pengaturan() {
                     </div>
                 </div>
             </div>
+
+            {/* Safari Guide Modal */}
+            {showSafariGuide && (
+                <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/40"
+                    onClick={() => setShowSafariGuide(false)}>
+                    <div className="bg-white rounded-t-3xl w-full max-w-md p-5 pb-8 animate-slideUp"
+                        onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                                    <i className="fas fa-mobile-alt text-blue-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800 text-sm">Panduan iOS Safari</h3>
+                                    <p className="text-xs text-gray-400">Tambah ke Layar Utama</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowSafariGuide(false)} className="text-gray-300 p-1">
+                                <i className="fas fa-times text-lg"></i>
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-blue-600 font-bold text-sm">1</span>
+                                </div>
+                                <p className="text-sm text-gray-700">
+                                    Buka halaman ini di <strong>Safari</strong>
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-blue-600 font-bold text-sm">2</span>
+                                </div>
+                                <p className="text-sm text-gray-700">
+                                    Ketuk <i className="fas fa-share-square text-blue-500 mx-1"></i> <strong>Share</strong> di bawah
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-blue-600 font-bold text-sm">3</span>
+                                </div>
+                                <p className="text-sm text-gray-700">
+                                    Pilih <i className="fas fa-plus-square text-gray-500 mx-1"></i> <strong>"Tambahkan ke Layar Utama"</strong>
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-green-600 font-bold text-sm">4</span>
+                                </div>
+                                <p className="text-sm text-gray-700">
+                                    Ketuk <strong>"Tambah"</strong> di pojok kanan atas
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -46,6 +46,9 @@ import Modul from './pages/Guru/Modul';
 import Download from './pages/Guru/Download';
 import JurnalKelas from './pages/Guru/JurnalKelas';
 import AbsenKelas from './pages/Guru/AbsenKelas';
+import GuruSupervisi from './pages/Guru/Supervisi';
+import RiwayatAktivitas from './pages/Guru/RiwayatAktivitas';
+import GuruUlangan from './pages/Guru/Ulangan';
 
 function App() {
     return (
@@ -77,6 +80,9 @@ function App() {
                                         <Route path="download" element={<Download />} />
                                         <Route path="jurnal-kelas" element={<JurnalKelas />} />
                                         <Route path="absen-kelas" element={<AbsenKelas />} />
+                                        <Route path="supervisi" element={<GuruSupervisi />} />
+                                        <Route path="riwayat-aktivitas" element={<RiwayatAktivitas />} />
+                                        <Route path="ulangan" element={<GuruUlangan />} />
                                     </Routes>
                                 </GuruLayout>
                             </TahunAjaranProvider>

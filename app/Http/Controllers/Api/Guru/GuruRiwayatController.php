@@ -139,6 +139,8 @@ class GuruRiwayatController extends Controller
                         'tugas_siswa' => $absensi->tugas_siswa,
                         'ringkasan_materi' => $absensi->ringkasan_materi,
                         'berita_acara' => $absensi->berita_acara,
+                        'jenis_kegiatan' => $absensi->jenis_kegiatan ?? 'mengajar',
+                        'jenis_ulangan' => $absensi->jenis_ulangan,
                         'hadir' => $hadir,
                         'izin' => $izinSakit,
                         'alpha' => $alpha,
@@ -221,6 +223,8 @@ class GuruRiwayatController extends Controller
                 'tugas_siswa' => $absensi->tugas_siswa,
                 'ringkasan_materi' => $absensi->ringkasan_materi,
                 'berita_acara' => $absensi->berita_acara,
+                'jenis_kegiatan' => $absensi->jenis_kegiatan ?? 'mengajar',
+                'jenis_ulangan' => $absensi->jenis_ulangan,
                 'hadir' => $hadir,
                 'izin' => $izinSakit,
                 'alpha' => $alpha,
@@ -257,7 +261,7 @@ class GuruRiwayatController extends Controller
             ], 404);
         }
 
-        $absensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas.siswa', 'guruTugas'])
+        $absensi = AbsensiMengajar::with(['jadwal.mapel', 'jadwal.kelas.siswa', 'guruTugas', 'nilaiSiswa'])
             ->where('id', $id)
             ->where('guru_id', $guru->id)
             ->first();
@@ -322,6 +326,17 @@ class GuruRiwayatController extends Controller
         $sakit = $siswaList->where('status', 'S')->count();
         $alpha = $siswaList->where('status', 'A')->count();
 
+        // Build nilai map for ulangan
+        $nilaiMap = [];
+        if ($absensi->jenis_kegiatan === 'ulangan') {
+            foreach ($absensi->nilaiSiswa as $nilai) {
+                $nilaiMap[$nilai->siswa_id] = [
+                    'nilai' => $nilai->nilai,
+                    'keterangan' => $nilai->keterangan,
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -339,6 +354,9 @@ class GuruRiwayatController extends Controller
                 'guru_tugas_id' => $absensi->guru_tugas_id,
                 'guru_tugas_nama' => $absensi->guruTugas?->nama,
                 'tugas_siswa' => $absensi->tugas_siswa,
+                'jenis_kegiatan' => $absensi->jenis_kegiatan ?? 'mengajar',
+                'jenis_ulangan' => $absensi->jenis_ulangan,
+                'nilai_siswa' => $nilaiMap,
                 'stats' => [
                     'hadir' => $hadir,
                     'izin' => $izin + $sakit,

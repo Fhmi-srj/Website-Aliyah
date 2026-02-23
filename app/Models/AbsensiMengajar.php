@@ -23,6 +23,8 @@ class AbsensiMengajar extends Model
         'ringkasan_materi',
         'berita_acara',
         'status',
+        'jenis_kegiatan',
+        'jenis_ulangan',
         'guru_status',
         'guru_keterangan',
         'guru_tugas_id',
@@ -61,6 +63,14 @@ class AbsensiMengajar extends Model
     public function guruTugas()
     {
         return $this->belongsTo(Guru::class, 'guru_tugas_id');
+    }
+
+    /**
+     * Get nilai siswa for this absensi (ulangan).
+     */
+    public function nilaiSiswa()
+    {
+        return $this->hasMany(NilaiSiswa::class);
     }
 
 

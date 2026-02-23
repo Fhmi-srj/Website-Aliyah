@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Guru;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -40,9 +41,12 @@ class AuthController extends Controller
         // First, try to find from users table (superadmin)
         $user = User::where('username', $request->username)->first();
 
-        // If not found in users, try guru table
+        // If not found in users, try guru table (by username or email)
         if (!$user) {
-            $guru = Guru::where('username', $request->username)
+            $guru = Guru::where(function ($query) use ($request) {
+                $query->where('username', $request->username)
+                    ->orWhere('email', $request->username);
+            })
                 ->where('status', 'Aktif')
                 ->first();
 
@@ -161,6 +165,17 @@ class AuthController extends Controller
             }
         }
 
+        // Log login activity (use create() directly since Auth::user() is null during login)
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'model_type' => 'User',
+            'model_id' => $user->id,
+            'description' => "Login berhasil: {$user->name} ({$user->role})",
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil',
@@ -182,7 +197,16 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        // Log logout activity
+        ActivityLog::log(
+            'logout',
+            $user,
+            "Logout: {$user->name} ({$user->role})"
+        );
+
+        $user->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,

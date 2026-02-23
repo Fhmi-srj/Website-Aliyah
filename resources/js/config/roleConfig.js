@@ -66,6 +66,9 @@ export const roleMenus = {
             { type: 'rapat', icon: 'fas fa-users', label: 'Rapat', position: 'right' },
         ],
         dropupMenu: [
+            { id: 'supervisi', path: '/guru/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check' },
+            { id: 'riwayat-aktivitas', path: '/guru/riwayat-aktivitas', label: 'Riwayat Aktivitas', icon: 'fa-stream' },
+            { id: 'divider-0', type: 'divider' },
             { id: 'sertifikat', path: '/guru/sertifikat', label: 'Sertifikat', icon: 'fa-certificate' },
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
@@ -92,6 +95,9 @@ export const roleMenus = {
             { id: 'kelola-jadwal', path: '/waka/kelola-jadwal', label: 'Kelola Jadwal', icon: 'fa-calendar-alt', isRoleSpecific: true },
             { id: 'divider-1', type: 'divider' },
             // Standard menus
+            { id: 'supervisi', path: '/guru/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check' },
+            { id: 'riwayat-aktivitas', path: '/guru/riwayat-aktivitas', label: 'Riwayat Aktivitas', icon: 'fa-stream' },
+            { id: 'divider-2', type: 'divider' },
             { id: 'sertifikat', path: '/guru/sertifikat', label: 'Sertifikat', icon: 'fa-certificate' },
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
@@ -118,6 +124,9 @@ export const roleMenus = {
             { id: 'kelola-ekskul', path: '/waka/kelola-ekskul', label: 'Kelola Ekskul', icon: 'fa-futbol', isRoleSpecific: true },
             { id: 'divider-1', type: 'divider' },
             // Standard menus
+            { id: 'supervisi', path: '/guru/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check' },
+            { id: 'riwayat-aktivitas', path: '/guru/riwayat-aktivitas', label: 'Riwayat Aktivitas', icon: 'fa-stream' },
+            { id: 'divider-2', type: 'divider' },
             { id: 'sertifikat', path: '/guru/sertifikat', label: 'Sertifikat', icon: 'fa-certificate' },
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
@@ -144,6 +153,9 @@ export const roleMenus = {
             { id: 'rekap-kelas', path: '/wali/rekap-kelas', label: 'Rekap Kelas', icon: 'fa-file-alt', isRoleSpecific: true },
             { id: 'divider-1', type: 'divider' },
             // Standard menus
+            { id: 'supervisi', path: '/guru/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check' },
+            { id: 'riwayat-aktivitas', path: '/guru/riwayat-aktivitas', label: 'Riwayat Aktivitas', icon: 'fa-stream' },
+            { id: 'divider-2', type: 'divider' },
             { id: 'sertifikat', path: '/guru/sertifikat', label: 'Sertifikat', icon: 'fa-certificate' },
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
@@ -171,6 +183,9 @@ export const roleMenus = {
             { id: 'rekap-guru', path: '/kepala/rekap-guru', label: 'Rekap Semua Guru', icon: 'fa-users', isRoleSpecific: true },
             { id: 'divider-1', type: 'divider' },
             // Standard menus
+            { id: 'supervisi', path: '/guru/supervisi', label: 'Supervisi', icon: 'fa-clipboard-check' },
+            { id: 'riwayat-aktivitas', path: '/guru/riwayat-aktivitas', label: 'Riwayat Aktivitas', icon: 'fa-stream' },
+            { id: 'divider-2', type: 'divider' },
             { id: 'sertifikat', path: '/guru/sertifikat', label: 'Sertifikat', icon: 'fa-certificate' },
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
