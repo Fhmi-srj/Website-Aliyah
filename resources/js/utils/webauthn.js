@@ -264,7 +264,7 @@ export async function deleteCredentialById(credentialId, authToken) {
         'Authorization': `Bearer ${authToken}`,
     };
 
-    const response = await fetch(`${API_PREFIX}/webauthn/credentials/${encodeURIComponent(credentialId)}`, {
+    const response = await fetch(`${API_BASE}/webauthn/credentials/${encodeURIComponent(credentialId)}`, {
         method: 'DELETE',
         headers,
         credentials: 'same-origin',
