@@ -713,8 +713,8 @@ function Pengaturan() {
 
                     {/* App Version Footer */}
                     <div className="text-center py-4">
-                        <p className="text-xs text-gray-400">MA Mamba'ul Huda</p>
-                        <p className="text-xs text-gray-300">Sistem Absensi Guru v1.0.0</p>
+                        <p className="text-xs text-gray-400">MAHAKAM APP</p>
+                        <p className="text-xs text-gray-300">Sistem Informasi Terpadu v1.0.0</p>
                     </div>
                 </div>
             </div>
