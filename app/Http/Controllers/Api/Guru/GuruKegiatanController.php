@@ -247,12 +247,17 @@ class GuruKegiatanController extends Controller
                         if ($isPj) {
                             $kehadiranStatus = $absensi->pj_status;
                         } else {
+                            // Check personal entry first
                             $pendampingData = $absensi->absensi_pendamping ?? [];
                             foreach ($pendampingData as $entry) {
-                                if ($entry['guru_id'] == $guru->id) {
+                                if ((string)($entry['guru_id'] ?? '') === (string)$guru->id) {
                                     $kehadiranStatus = $entry['status'] ?? null;
                                     break;
                                 }
+                            }
+                            // If no personal entry but absensi is submitted, default to 'H'
+                            if ($kehadiranStatus === null && $absensi->status === 'submitted') {
+                                $kehadiranStatus = 'H';
                             }
                         }
                     }
@@ -313,10 +318,18 @@ class GuruKegiatanController extends Controller
                     return 'sudah_absen';
                 }
             } else {
+                // If PJ already submitted, ALL pendamping are considered 'sudah_absen'
+                if ($absensi->status === 'submitted') {
+                    return 'sudah_absen';
+                }
+
+                // Check for self_attended (pendamping absen mandiri sebelum PJ submit)
                 $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
                 foreach ($pendampingAbsensi as $entry) {
-                    if ($entry['guru_id'] == $guru->id && (!empty($entry['self_attended']) || $absensi->status === 'submitted')) {
-                        return 'sudah_absen';
+                    if ((string)($entry['guru_id'] ?? '') === (string)$guru->id) {
+                        if (!empty($entry['self_attended']) || !empty($entry['status'])) {
+                            return 'sudah_absen';
+                        }
                     }
                 }
             }
@@ -347,10 +360,19 @@ class GuruKegiatanController extends Controller
                     return 'sudah_absen';
                 }
             } else {
+                // If PJ already submitted, ALL pendamping in the kegiatan are considered 'sudah_absen'
+                // (even if they don't have a personal entry in absensi_pendamping)
+                if ($absensi->status === 'submitted') {
+                    return 'sudah_absen';
+                }
+
+                // Check for self_attended (pendamping absen mandiri sebelum PJ submit)
                 $pendampingAbsensi = $absensi->absensi_pendamping ?? [];
                 foreach ($pendampingAbsensi as $entry) {
-                    if ($entry['guru_id'] == $guru->id && (!empty($entry['self_attended']) || $absensi->status === 'submitted')) {
-                        return 'sudah_absen';
+                    if ((string)($entry['guru_id'] ?? '') === (string)$guru->id) {
+                        if (!empty($entry['self_attended']) || !empty($entry['status'])) {
+                            return 'sudah_absen';
+                        }
                     }
                 }
             }

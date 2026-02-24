@@ -240,7 +240,7 @@ function AbsensiKegiatan() {
             <div className="p-4 space-y-3">
                 {allKegiatan.length > 0 ? (
                     allKegiatan.map((item, index) => {
-                        const colors = getStatusColor(isUnlocked && item.status_absensi === 'sudah_absen' ? 'sedang_berlangsung' : item.status_absensi, item.kehadiran_status);
+                        const colors = getStatusColor(item.status_absensi, item.kehadiran_status);
                         const canInteract = item.isToday && (item.status_absensi !== 'sudah_absen' || isUnlocked);
                         const isPJ = item.role === 'penanggung_jawab';
 

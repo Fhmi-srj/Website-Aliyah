@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
+use Laragear\WebAuthn\WebAuthnData;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements WebAuthnAuthenticatable
@@ -46,6 +47,15 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
         'last_login_at' => 'datetime',
         'locked_until' => 'datetime',
     ];
+
+    /**
+     * Override WebAuthn data to use username instead of email.
+     * This app uses 'username' as the unique identifier, not 'email'.
+     */
+    public function webAuthnData(): WebAuthnData
+    {
+        return WebAuthnData::make($this->username, $this->name ?? $this->username);
+    }
 
     /**
      * The roles that belong to this user.
