@@ -422,9 +422,6 @@ export function ModalAbsensiKegiatanPJ({ kegiatan, tanggal, guruPendamping, sisw
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Kehadiran Anda</label>
                         <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                    <i className="fas fa-chalkboard-teacher text-green-600"></i>
-                                </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-gray-800 truncate">{guruName}</p>
                                     <p className="text-xs text-gray-400">{guruNip || 'Penanggung Jawab'}</p>

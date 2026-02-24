@@ -498,7 +498,13 @@ class GuruKegiatanController extends Controller
         // Check if attendance is unlocked (either from request or admin setting)
         $isUnlocked = $request->input('is_unlocked', false) || \App\Models\AppSetting::isAttendanceUnlocked();
 
-        if ($existing && $existing->status === 'submitted' && !$isUnlocked) {
+        // Allow same-day edits: if today falls within the kegiatan date range
+        $isSameDay = $today->between(
+            Carbon::parse($kegiatan->waktu_mulai)->startOfDay(),
+            Carbon::parse($kegiatan->waktu_berakhir)->endOfDay()
+        );
+
+        if ($existing && $existing->status === 'submitted' && !$isSameDay && !$isUnlocked) {
             return response()->json(['error' => 'Absensi kegiatan ini sudah dilakukan'], 422);
         }
 

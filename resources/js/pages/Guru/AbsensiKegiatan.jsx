@@ -117,14 +117,14 @@ function AbsensiKegiatan() {
 
         setSelectedKegiatan(item);
 
-        // If unlocked + sudah_absen + pendamping, allow re-attendance
-        if (isUnlocked && item.status_absensi === 'sudah_absen' && item.role === 'pendamping') {
+        // If sudah_absen + pendamping (same-day or unlocked), allow re-attendance
+        if (item.status_absensi === 'sudah_absen' && item.role === 'pendamping') {
             setModalType('sedang_berlangsung');
             return;
         }
 
-        // If unlocked + sudah_absen + PJ, allow re-editing
-        if (isUnlocked && item.status_absensi === 'sudah_absen' && item.role === 'penanggung_jawab') {
+        // If sudah_absen + PJ (same-day or unlocked), allow re-editing
+        if (item.status_absensi === 'sudah_absen' && item.role === 'penanggung_jawab') {
             setModalType('sedang_berlangsung');
             try {
                 const response = await api.get(`/guru-panel/kegiatan/${item.id}/detail`);

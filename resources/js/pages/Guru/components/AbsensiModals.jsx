@@ -432,11 +432,6 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                     {/* Guru Self-Attendance Card */}
                     <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                         <div className="flex items-center gap-3">
-                            {/* Icon Avatar - matching other cards */}
-                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <i className="fas fa-chalkboard-teacher text-green-600"></i>
-                            </div>
-
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-gray-800 truncate">{guruName}</p>
