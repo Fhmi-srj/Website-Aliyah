@@ -178,9 +178,16 @@ class KalenderController extends Controller
                     $kalenderData['kegiatan_id'] = $kegiatan->id;
                 }
             } else {
-                // If changing away from "Kegiatan", just remove the link - DON'T delete the kegiatan
-                // This prevents accidental data loss
+                // Changed from "Kegiatan" to "Keterangan" — delete linked kegiatan if safe
                 if ($kalender->kegiatan_id) {
+                    $kegiatan = Kegiatan::find($kalender->kegiatan_id);
+                    if ($kegiatan) {
+                        // Only delete if no attendance records exist
+                        $hasAbsensi = \App\Models\AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->exists();
+                        if (!$hasAbsensi) {
+                            $kegiatan->delete();
+                        }
+                    }
                     $kalenderData['kegiatan_id'] = null;
                 }
             }
@@ -338,14 +345,61 @@ class KalenderController extends Controller
             ], 422);
         }
 
+        DB::beginTransaction();
         try {
+            $kalenders = Kalender::whereIn('id', $request->ids)->get();
+
+            if ($request->keterangan === 'Keterangan') {
+                // Changing to Keterangan — delete linked kegiatan records that have no absensi
+                foreach ($kalenders as $kalender) {
+                    if ($kalender->kegiatan_id) {
+                        $hasAbsensi = \App\Models\AbsensiKegiatan::where('kegiatan_id', $kalender->kegiatan_id)->exists();
+                        if (!$hasAbsensi) {
+                            Kegiatan::where('id', $kalender->kegiatan_id)->delete();
+                        }
+                        $kalender->kegiatan_id = null;
+                        $kalender->save();
+                    }
+                }
+            } elseif ($request->keterangan === 'Kegiatan') {
+                // Changing to Kegiatan — create linked kegiatan for items that don't have one
+                foreach ($kalenders as $kalender) {
+                    if (!$kalender->kegiatan_id) {
+                        $penanggungJawabNama = '';
+                        if ($kalender->guru_id) {
+                            $guru = \App\Models\Guru::find($kalender->guru_id);
+                            $penanggungJawabNama = $guru ? $guru->nama : '';
+                        }
+
+                        $kegiatan = Kegiatan::create([
+                            'nama_kegiatan' => $kalender->kegiatan,
+                            'jenis_kegiatan' => 'Rutin',
+                            'waktu_mulai' => $kalender->tanggal_mulai,
+                            'waktu_berakhir' => $kalender->tanggal_berakhir ?? $kalender->tanggal_mulai,
+                            'tempat' => $kalender->tempat ?? null,
+                            'penanggung_jawab_id' => $kalender->guru_id,
+                            'penanggung_jawab' => $penanggungJawabNama ?: '-',
+                            'status' => 'Aktif',
+                            'status_kbm' => $kalender->status_kbm,
+                            'tahun_ajaran_id' => $kalender->tahun_ajaran_id,
+                        ]);
+                        $kalender->kegiatan_id = $kegiatan->id;
+                        $kalender->save();
+                    }
+                }
+            }
+
+            // Update the keterangan field for all
             Kalender::whereIn('id', $request->ids)->update(['keterangan' => $request->keterangan]);
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => count($request->ids) . ' data berhasil diubah keterangannya menjadi ' . $request->keterangan
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()

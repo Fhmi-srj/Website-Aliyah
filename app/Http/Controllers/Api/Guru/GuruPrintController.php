@@ -1195,9 +1195,14 @@ class GuruPrintController extends Controller
                 'total_a' => 0,
             ];
 
+            $today = Carbon::today();
             for ($d = 1; $d <= $daysInMonth; $d++) {
+                $currentDate = Carbon::create($tahun, $bulan, $d);
                 if (!in_array($d, $schoolDays)) {
                     // Not a school day - empty cell
+                    $row['days'][$d] = '';
+                } elseif ($currentDate->gt($today)) {
+                    // Future date - empty cell (hasn't happened yet)
                     $row['days'][$d] = '';
                 } elseif (isset($attendance[$siswa->id][$d])) {
                     // Has a non-hadir record
@@ -1411,8 +1416,13 @@ class GuruPrintController extends Controller
                         'total_i' => 0,
                         'total_a' => 0
                     ];
+                    $today = Carbon::today();
                     for ($d = 1; $d <= $daysInMonth; $d++) {
+                        $currentDate = Carbon::create($tahun, $bulan, $d);
                         if (!in_array($d, $schoolDays)) {
+                            $row['days'][$d] = '';
+                        } elseif ($currentDate->gt($today)) {
+                            // Future date - empty cell
                             $row['days'][$d] = '';
                         } elseif (isset($attendance[$siswa->id][$d])) {
                             $fs = $attendance[$siswa->id][$d];
@@ -1914,12 +1924,17 @@ class GuruPrintController extends Controller
                     'total_a' => 0,
                 ];
 
+                $today = Carbon::today();
                 for ($d = 1; $d <= $daysInMonth; $d++) {
+                    $currentDate = Carbon::create($tahun, $bulan, $d);
                     $hasObligation = isset($guruObligation[$guru->id][$d]);
                     $hasRecord = isset($guruAttendance[$guru->id][$d]);
 
                     if (!$hasObligation) {
                         // No obligation = empty cell
+                        $row['days'][$d] = '';
+                    } elseif ($currentDate->gt($today)) {
+                        // Future date - empty cell (hasn't happened yet)
                         $row['days'][$d] = '';
                     } elseif ($hasRecord) {
                         // Has attendance record
