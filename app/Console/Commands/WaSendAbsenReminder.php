@@ -49,6 +49,16 @@ class WaSendAbsenReminder extends Command
         $today = $now->format('Y-m-d');
         $hariIni = $this->dayNames[$now->dayOfWeek] ?? null;
 
+        // Early check: MPWA must be configured
+        if (!$wa->isConfigured()) {
+            $this->error('MPWA belum dikonfigurasi! Pastikan MPWA_URL, MPWA_API_KEY, dan MPWA_SENDER ada di .env');
+            Log::channel('whatsapp')->error('wa:absen-reminder batal: MPWA tidak dikonfigurasi (MPWA_API_KEY/MPWA_SENDER kosong)');
+            return Command::FAILURE;
+        }
+
+        $this->info("[{$now->format('Y-m-d H:i:s')}] wa:absen-reminder berjalan | hari={$hariIni} | delay={$delay}menit");
+        Log::channel('whatsapp')->info("wa:absen-reminder start", ['time' => $now->toIso8601String(), 'hari' => $hariIni]);
+
         if (!$hariIni) {
             $this->info('Hari ini tidak ada jadwal (Minggu)');
             return Command::SUCCESS;
@@ -66,6 +76,7 @@ class WaSendAbsenReminder extends Command
         $sent += $this->processRemindRapat($wa, $now, $today, $delay, $dryRun);
 
         $this->info("Total reminder terkirim: {$sent}");
+        Log::channel('whatsapp')->info("wa:absen-reminder selesai", ['total_sent' => $sent]);
         return Command::SUCCESS;
     }
 
