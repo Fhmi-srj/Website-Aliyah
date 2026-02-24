@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE } from '../../config/api';
 import { hasAdminAccess } from '../../config/roleConfig';
-import { isWebAuthnSupported, authenticateCredential } from '../../utils/webauthn';
+import { isWebAuthnSupported } from '../../utils/webauthn';
 import logoImage from '../../../images/logo.png';
 
 function Login() {
@@ -19,7 +19,7 @@ function Login() {
     const [tahunAjaranList, setTahunAjaranList] = useState([]);
     const [loadingTahun, setLoadingTahun] = useState(true);
 
-    const { login } = useAuth();
+    const { login, loginWithWebAuthn } = useAuth();
     const navigate = useNavigate();
 
     // WebAuthn state
@@ -84,7 +84,7 @@ function Login() {
         setWebauthnLoading(true);
 
         try {
-            const result = await authenticateCredential(tahunAjaranId, remember);
+            const result = await loginWithWebAuthn(tahunAjaranId, remember);
 
             if (result.success) {
                 const activeRole = localStorage.getItem('active_role') || 'guru';

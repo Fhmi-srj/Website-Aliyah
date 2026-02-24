@@ -103,9 +103,9 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const loginWithWebAuthn = async (username, tahunAjaranId, remember = false) => {
+    const loginWithWebAuthn = async (tahunAjaranId, remember = false) => {
         try {
-            const data = await authenticateCredential(username, parseInt(tahunAjaranId), remember);
+            const data = await authenticateCredential(parseInt(tahunAjaranId), remember);
 
             if (data.success) {
                 const authToken = data.data.token;
