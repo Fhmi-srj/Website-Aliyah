@@ -19,9 +19,18 @@ use App\Http\Controllers\Api\Admin\SuratKeluarController;
 use App\Http\Controllers\Api\Admin\SuratMasukController;
 use App\Http\Controllers\Api\Admin\TemplateSuratController;
 use App\Http\Controllers\Api\AttendanceTokenController;
+use App\Http\Controllers\Api\WebAuthnController;
 
 // Public Auth Routes
 Route::post('auth/login', [AuthController::class, 'login']);
+
+// === WebAuthn Public Routes (login with fingerprint) ===
+// Session middleware required for challenge storage between options/verify steps
+Route::middleware(['web'])->group(function () {
+    Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
+    Route::post('webauthn/login', [WebAuthnController::class, 'login']);
+});
+Route::post('webauthn/has-credentials', [WebAuthnController::class, 'hasCredentials']);
 
 // Public Tahun Ajaran Routes (needed for login page)
 Route::get('tahun-ajaran', [TahunAjaranController::class, 'index']);
@@ -36,6 +45,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
+
+    // === WebAuthn Authenticated Routes (register fingerprint) ===
+    Route::middleware(['web'])->group(function () {
+        Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
+        Route::post('webauthn/register', [WebAuthnController::class, 'register']);
+    });
+    Route::get('webauthn/credentials', [WebAuthnController::class, 'credentials']);
+    Route::delete('webauthn/credentials/{credentialId}', [WebAuthnController::class, 'deleteCredential']);
 
     // Protected Tahun Ajaran Routes (write operations)
     Route::post('tahun-ajaran/set-active', [TahunAjaranController::class, 'setActive']);

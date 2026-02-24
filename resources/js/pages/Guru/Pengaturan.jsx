@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { API_BASE, authFetch } from '../../config/api';
+import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, getCredentials, deleteCredentialById } from '../../utils/webauthn';
 
 function Pengaturan() {
     const [loading, setLoading] = useState(true);
@@ -15,6 +16,11 @@ function Pengaturan() {
     const [showSafariGuide, setShowSafariGuide] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    // WebAuthn state
+    const [webauthnSupported] = useState(isWebAuthnSupported());
+    const [webauthnCredentials, setWebauthnCredentials] = useState([]);
+    const [webauthnLoading, setWebauthnLoading] = useState(false);
 
     // Helper: Convert VAPID key from base64url to Uint8Array
     const urlBase64ToUint8Array = (base64String) => {
@@ -56,7 +62,84 @@ function Pengaturan() {
             setLoading(false);
         };
         init();
+
+        // Load WebAuthn credentials
+        if (webauthnSupported) {
+            loadWebAuthnCredentials();
+        }
     }, []);
+
+    const loadWebAuthnCredentials = async () => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) return;
+            const creds = await getCredentials(token);
+            setWebauthnCredentials(creds);
+        } catch (err) {
+            console.error('Failed to load WebAuthn credentials:', err);
+        }
+    };
+
+    const handleRegisterWebAuthn = async () => {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Silakan login ulang terlebih dahulu.', confirmButtonColor: '#16a34a' });
+            return;
+        }
+
+        setWebauthnLoading(true);
+        try {
+            await registerCredential(token);
+            await loadWebAuthnCredentials();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Sidik jari berhasil didaftarkan. Sekarang Anda bisa login tanpa password.',
+                timer: 3000,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm' }
+            });
+        } catch (err) {
+            console.error('WebAuthn registration error:', err);
+            const msg = err.name === 'NotAllowedError'
+                ? 'Pendaftaran dibatalkan atau timeout.'
+                : (err.message || 'Gagal mendaftarkan sidik jari.');
+            Swal.fire({ icon: 'error', title: 'Gagal', text: msg, confirmButtonColor: '#16a34a' });
+        }
+        setWebauthnLoading(false);
+    };
+
+    const handleDeleteWebAuthn = async (credId) => {
+        const result = await Swal.fire({
+            title: 'Hapus Sidik Jari?',
+            text: 'Anda tidak bisa login dengan sidik jari ini lagi.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal',
+            customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base', htmlContainer: '!text-sm' }
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            await deleteCredentialById(credId, token);
+            await loadWebAuthnCredentials();
+            Swal.fire({
+                icon: 'success',
+                title: 'Dihapus!',
+                text: 'Sidik jari berhasil dihapus.',
+                timer: 2000,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-2xl !max-w-xs', title: '!text-base' }
+            });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus credential.', confirmButtonColor: '#16a34a' });
+        }
+    };
 
     // Capture install prompt
     useEffect(() => {
@@ -296,7 +379,75 @@ function Pengaturan() {
             title: 'Privasi & Keamanan',
             items: [
                 { icon: 'fa-lock', label: 'Ubah Password', type: 'link', to: '/guru/profil', tab: 'keamanan' },
-                { icon: 'fa-fingerprint', label: 'Autentikasi Biometrik', type: 'coming-soon' },
+                ...(webauthnSupported ? [{
+                    icon: 'fa-fingerprint',
+                    label: 'Login Sidik Jari',
+                    type: 'custom',
+                    description: webauthnCredentials.length > 0
+                        ? `${webauthnCredentials.length} perangkat terdaftar`
+                        : 'Belum ada sidik jari terdaftar',
+                    customContent: (
+                        <div style={{ padding: '0 16px 12px' }}>
+                            {/* Registered credentials list */}
+                            {webauthnCredentials.length > 0 && (
+                                <div style={{ marginBottom: '10px' }}>
+                                    {webauthnCredentials.map((cred, i) => (
+                                        <div key={cred.id} style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '8px 12px', background: '#f0fdf4', borderRadius: '10px',
+                                            marginBottom: i < webauthnCredentials.length - 1 ? '6px' : 0,
+                                            fontSize: '0.82rem'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <i className="fas fa-key" style={{ color: '#16a34a', fontSize: '0.75rem' }}></i>
+                                                <div>
+                                                    <div style={{ fontWeight: 500, color: '#1e293b' }}>
+                                                        {cred.alias || `Perangkat ${i + 1}`}
+                                                    </div>
+                                                    <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                                                        Didaftarkan {cred.created_at}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteWebAuthn(cred.id)}
+                                                style={{
+                                                    background: 'none', border: 'none', color: '#ef4444',
+                                                    cursor: 'pointer', padding: '4px 6px', fontSize: '0.85rem'
+                                                }}
+                                            >
+                                                <i className="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {/* Register button */}
+                            <button
+                                onClick={handleRegisterWebAuthn}
+                                disabled={webauthnLoading}
+                                style={{
+                                    width: '100%', padding: '10px', background: 'linear-gradient(135deg, #0891b2, #0e7490)',
+                                    color: 'white', border: 'none', borderRadius: '10px', fontSize: '0.85rem',
+                                    fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', gap: '6px', opacity: webauthnLoading ? 0.7 : 1
+                                }}
+                            >
+                                {webauthnLoading ? (
+                                    <><i className="fas fa-spinner fa-spin"></i> Mendaftarkan...</>
+                                ) : (
+                                    <><i className="fas fa-plus"></i> Daftarkan Sidik Jari</>
+                                )}
+                            </button>
+                        </div>
+                    ),
+                }] : [{
+                    icon: 'fa-fingerprint',
+                    label: 'Login Sidik Jari',
+                    type: 'info',
+                    value: 'Tidak didukung',
+                    description: 'Browser tidak mendukung WebAuthn'
+                }]),
             ]
         },
         {
@@ -406,58 +557,61 @@ function Pengaturan() {
                             {/* Section Items */}
                             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
                                 {section.items.map((item, itemIdx) => (
-                                    <div
-                                        key={itemIdx}
-                                        className={`flex items-center gap-3 px-4 py-3 ${item.type === 'coming-soon' || item.type === 'link' || item.type === 'action'
-                                            ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100'
-                                            : ''
-                                            }`}
-                                        onClick={() => {
-                                            if (item.type === 'coming-soon') {
-                                                showComingSoon(item.label);
-                                            } else if (item.type === 'action' && item.action) {
-                                                item.action();
-                                            }
-                                        }}
-                                    >
-                                        {/* Icon */}
-                                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <i className={`fas ${item.icon} text-green-600 text-sm`}></i>
-                                        </div>
+                                    <React.Fragment key={itemIdx}>
+                                        <div
+                                            className={`flex items-center gap-3 px-4 py-3 ${item.type === 'coming-soon' || item.type === 'link' || item.type === 'action'
+                                                ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100'
+                                                : ''
+                                                }`}
+                                            onClick={() => {
+                                                if (item.type === 'coming-soon') {
+                                                    showComingSoon(item.label);
+                                                } else if (item.type === 'action' && item.action) {
+                                                    item.action();
+                                                }
+                                            }}
+                                        >
+                                            {/* Icon */}
+                                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                <i className={`fas ${item.icon} text-green-600 text-sm`}></i>
+                                            </div>
 
-                                        {/* Label & Description */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-gray-800 font-medium">{item.label}</p>
-                                            {item.description && (
-                                                <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                                            {/* Label & Description */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-gray-800 font-medium">{item.label}</p>
+                                                {item.description && (
+                                                    <p className="text-xs text-gray-400 truncate">{item.description}</p>
+                                                )}
+                                            </div>
+
+                                            {/* Right Side - Toggle, Arrow, or Value */}
+                                            {item.type === 'toggle' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggle(item.key);
+                                                    }}
+                                                    className={`w-11 h-6 rounded-full transition-colors relative ${notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'
+                                                        }`}
+                                                >
+                                                    <div
+                                                        className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            )}
+
+                                            {item.type === 'info' && (
+                                                <span className="text-xs text-gray-400">{item.value}</span>
+                                            )}
+
+                                            {(item.type === 'coming-soon' || item.type === 'link' || item.type === 'action') && (
+                                                <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
                                             )}
                                         </div>
-
-                                        {/* Right Side - Toggle, Arrow, or Value */}
-                                        {item.type === 'toggle' && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleToggle(item.key);
-                                                }}
-                                                className={`w-11 h-6 rounded-full transition-colors relative ${notifications[item.key] ? 'bg-green-500' : 'bg-gray-300'
-                                                    }`}
-                                            >
-                                                <div
-                                                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications[item.key] ? 'translate-x-6' : 'translate-x-1'
-                                                        }`}
-                                                />
-                                            </button>
-                                        )}
-
-                                        {item.type === 'info' && (
-                                            <span className="text-xs text-gray-400">{item.value}</span>
-                                        )}
-
-                                        {(item.type === 'coming-soon' || item.type === 'link' || item.type === 'action') && (
-                                            <i className="fas fa-chevron-right text-gray-300 text-xs"></i>
-                                        )}
-                                    </div>
+                                        {/* Custom content below item (e.g. WebAuthn credentials) */}
+                                        {item.type === 'custom' && item.customContent}
+                                    </React.Fragment>
                                 ))}
                             </div>
                         </div>

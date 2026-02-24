@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_BASE } from '../config/api';
 import { getDefaultRole, hasAdminAccess, setDynamicRolePages } from '../config/roleConfig';
+import { authenticateCredential } from '../utils/webauthn';
 
 const AuthContext = createContext(null);
 
@@ -102,6 +103,46 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const loginWithWebAuthn = async (username, tahunAjaranId, remember = false) => {
+        try {
+            const data = await authenticateCredential(username, parseInt(tahunAjaranId), remember);
+
+            if (data.success) {
+                const authToken = data.data.token;
+                const userData = data.data.user;
+                const tahunAjaranData = data.data.tahun_ajaran;
+
+                setToken(authToken);
+                setUser(userData);
+                localStorage.setItem('auth_token', authToken);
+
+                // Initialize dynamic role pages from API data
+                const userRoles = userData.roles || [];
+                setDynamicRolePages(userRoles);
+
+                // Store tahun ajaran info
+                if (tahunAjaranData) {
+                    localStorage.setItem('tahun_ajaran', JSON.stringify(tahunAjaranData));
+                }
+
+                // Set default active role
+                const defaultRole = getDefaultRole(userRoles);
+                setActiveRole(defaultRole);
+                localStorage.setItem('active_role', defaultRole);
+
+                return { success: true };
+            } else {
+                return { success: false, message: data.message };
+            }
+        } catch (error) {
+            console.error('WebAuthn login error:', error);
+            if (error.name === 'NotAllowedError') {
+                return { success: false, message: 'Autentikasi dibatalkan atau timeout.' };
+            }
+            return { success: false, message: error.message || 'Gagal login dengan sidik jari.' };
+        }
+    };
+
     const logout = async () => {
         try {
             if (token) {
@@ -179,6 +220,7 @@ export function AuthProvider({ children }) {
         activeRole,
         tahunAjaran: getTahunAjaran(),
         login,
+        loginWithWebAuthn,
         logout,
         switchRole,
         hasRole,

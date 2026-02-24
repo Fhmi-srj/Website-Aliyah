@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE } from '../../config/api';
 import { hasAdminAccess } from '../../config/roleConfig';
+import { isWebAuthnSupported, checkHasCredentials } from '../../utils/webauthn';
 import logoImage from '../../../images/logo.png';
 
 function Login() {
@@ -18,8 +19,23 @@ function Login() {
     const [tahunAjaranList, setTahunAjaranList] = useState([]);
     const [loadingTahun, setLoadingTahun] = useState(true);
 
-    const { login } = useAuth();
+    const { login, loginWithWebAuthn } = useAuth();
     const navigate = useNavigate();
+
+    // WebAuthn state
+    const [webauthnSupported] = useState(isWebAuthnSupported());
+    const [hasPasskey, setHasPasskey] = useState(false);
+    const [webauthnLoading, setWebauthnLoading] = useState(false);
+
+    // Check if user has registered credentials when username changes
+    const checkCredentials = useCallback(async (uname) => {
+        if (!webauthnSupported || !uname || uname.length < 3) {
+            setHasPasskey(false);
+            return;
+        }
+        const has = await checkHasCredentials(uname);
+        setHasPasskey(has);
+    }, [webauthnSupported]);
 
     // Fetch tahun ajaran list on mount
     useEffect(() => {
@@ -66,6 +82,36 @@ function Login() {
         }
 
         setLoading(false);
+    };
+
+    const handleWebAuthnLogin = async () => {
+        setError('');
+
+        if (!username) {
+            setError('Masukkan username terlebih dahulu');
+            return;
+        }
+        if (!tahunAjaranId) {
+            setError('Pilih tahun ajaran terlebih dahulu');
+            return;
+        }
+
+        setWebauthnLoading(true);
+
+        const result = await loginWithWebAuthn(username, tahunAjaranId, remember);
+
+        if (result.success) {
+            const activeRole = localStorage.getItem('active_role') || 'guru';
+            if (hasAdminAccess(activeRole)) {
+                navigate('/dashboard', { replace: true });
+            } else {
+                navigate('/guru', { replace: true });
+            }
+        } else {
+            setError(result.message);
+        }
+
+        setWebauthnLoading(false);
     };
 
     return (
@@ -186,7 +232,7 @@ function Login() {
                             </div>
 
                             {/* Submit */}
-                            <button type="submit" className="btn-login" disabled={loading}>
+                            <button type="submit" className="btn-login" disabled={loading || webauthnLoading}>
                                 {loading ? (
                                     <><i className="fas fa-spinner fa-spin"></i> Memproses...</>
                                 ) : (
@@ -194,6 +240,30 @@ function Login() {
                                 )}
                             </button>
                         </form>
+
+                        {/* WebAuthn Fingerprint Login */}
+                        {webauthnSupported && (
+                            <div style={{ marginTop: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0 12px' }}>
+                                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500 }}>atau</span>
+                                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn-webauthn"
+                                    onClick={handleWebAuthnLogin}
+                                    onMouseEnter={() => { if (username?.length >= 3) checkCredentials(username); }}
+                                    disabled={webauthnLoading || loading}
+                                >
+                                    {webauthnLoading ? (
+                                        <><i className="fas fa-spinner fa-spin"></i> Memverifikasi...</>
+                                    ) : (
+                                        <><i className="fas fa-fingerprint"></i> Login Sidik Jari</>
+                                    )}
+                                </button>
+                            </div>
+                        )}
 
 
                         {/* Footer */}
@@ -472,6 +542,41 @@ const cssStyles = `
     }
 
     .btn-login:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-webauthn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #0891b2, #0e7490);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: 'Inter', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-webauthn:hover {
+        background: linear-gradient(135deg, #0e7490, #155e75);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(8, 145, 178, 0.4);
+    }
+
+    .btn-webauthn:active {
+        transform: translateY(0);
+    }
+
+    .btn-webauthn:disabled {
         opacity: 0.7;
         cursor: not-allowed;
         transform: none;
