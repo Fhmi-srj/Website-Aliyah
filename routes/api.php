@@ -20,14 +20,17 @@ use App\Http\Controllers\Api\Admin\SuratMasukController;
 use App\Http\Controllers\Api\Admin\TemplateSuratController;
 use App\Http\Controllers\Api\AttendanceTokenController;
 use App\Http\Controllers\Api\WebAuthnController;
+use Illuminate\Session\Middleware\StartSession;
 
 // Public Auth Routes
 Route::post('auth/login', [AuthController::class, 'login']);
 
-// === WebAuthn Public Routes (login with fingerprint) ===
-Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
-Route::post('webauthn/login', [WebAuthnController::class, 'login']);
-Route::post('webauthn/has-credentials', [WebAuthnController::class, 'hasCredentials']);
+// === WebAuthn Public Routes (login with fingerprint) - needs session for challenge storage ===
+Route::middleware([StartSession::class])->group(function () {
+    Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
+    Route::post('webauthn/login', [WebAuthnController::class, 'login']);
+    Route::post('webauthn/has-credentials', [WebAuthnController::class, 'hasCredentials']);
+});
 
 // Public Tahun Ajaran Routes (needed for login page)
 Route::get('tahun-ajaran', [TahunAjaranController::class, 'index']);
@@ -43,9 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
-    // === WebAuthn Authenticated Routes (register fingerprint) ===
-    Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
-    Route::post('webauthn/register', [WebAuthnController::class, 'register']);
+    // === WebAuthn Authenticated Routes (register fingerprint) - needs session for challenge storage ===
+    Route::middleware([StartSession::class])->group(function () {
+        Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
+        Route::post('webauthn/register', [WebAuthnController::class, 'register']);
+    });
     Route::get('webauthn/credentials', [WebAuthnController::class, 'credentials']);
     Route::delete('webauthn/credentials/{credentialId}', [WebAuthnController::class, 'deleteCredential']);
 
