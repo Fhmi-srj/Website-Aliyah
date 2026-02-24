@@ -26,7 +26,8 @@ class WebAuthnController extends Controller
      */
     public function registerOptions(AttestationRequest $request): Responsable
     {
-        return $request->fastRegistration()->toCreate();
+        // userless() = resident key: credential disimpan di device agar bisa login tanpa username
+        return $request->fastRegistration()->userless()->toCreate();
     }
 
     /**
@@ -101,9 +102,9 @@ class WebAuthnController extends Controller
      */
     public function loginOptions(AssertionRequest $request): Responsable
     {
-        $request->validate(['username' => 'required|string']);
-
-        return $request->toVerify($request->only('username'));
+        // toVerify(null) = discoverable credential: browser tampilkan semua credential terdaftar
+        // tanpa perlu username - user langsung scan jari
+        return $request->toVerify(null);
     }
 
     /**

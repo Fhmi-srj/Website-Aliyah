@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE } from '../../config/api';
 import { hasAdminAccess } from '../../config/roleConfig';
-import { isWebAuthnSupported, checkHasCredentials } from '../../utils/webauthn';
+import { isWebAuthnSupported, authenticateCredential } from '../../utils/webauthn';
 import logoImage from '../../../images/logo.png';
 
 function Login() {
@@ -19,23 +19,12 @@ function Login() {
     const [tahunAjaranList, setTahunAjaranList] = useState([]);
     const [loadingTahun, setLoadingTahun] = useState(true);
 
-    const { login, loginWithWebAuthn } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
 
     // WebAuthn state
     const [webauthnSupported] = useState(isWebAuthnSupported());
-    const [hasPasskey, setHasPasskey] = useState(false);
     const [webauthnLoading, setWebauthnLoading] = useState(false);
-
-    // Check if user has registered credentials when username changes
-    const checkCredentials = useCallback(async (uname) => {
-        if (!webauthnSupported || !uname || uname.length < 3) {
-            setHasPasskey(false);
-            return;
-        }
-        const has = await checkHasCredentials(uname);
-        setHasPasskey(has);
-    }, [webauthnSupported]);
 
     // Fetch tahun ajaran list on mount
     useEffect(() => {
@@ -87,10 +76,6 @@ function Login() {
     const handleWebAuthnLogin = async () => {
         setError('');
 
-        if (!username) {
-            setError('Masukkan username terlebih dahulu');
-            return;
-        }
         if (!tahunAjaranId) {
             setError('Pilih tahun ajaran terlebih dahulu');
             return;
@@ -98,17 +83,21 @@ function Login() {
 
         setWebauthnLoading(true);
 
-        const result = await loginWithWebAuthn(username, tahunAjaranId, remember);
+        try {
+            const result = await authenticateCredential(tahunAjaranId, remember);
 
-        if (result.success) {
-            const activeRole = localStorage.getItem('active_role') || 'guru';
-            if (hasAdminAccess(activeRole)) {
-                navigate('/dashboard', { replace: true });
+            if (result.success) {
+                const activeRole = localStorage.getItem('active_role') || 'guru';
+                if (hasAdminAccess(activeRole)) {
+                    navigate('/dashboard', { replace: true });
+                } else {
+                    navigate('/guru', { replace: true });
+                }
             } else {
-                navigate('/guru', { replace: true });
+                setError(result.message || 'Login sidik jari gagal');
             }
-        } else {
-            setError(result.message);
+        } catch (err) {
+            setError(err.message || 'Login sidik jari gagal. Coba lagi.');
         }
 
         setWebauthnLoading(false);
@@ -253,7 +242,6 @@ function Login() {
                                     type="button"
                                     className="btn-webauthn"
                                     onClick={handleWebAuthnLogin}
-                                    onMouseEnter={() => { if (username?.length >= 3) checkCredentials(username); }}
                                     disabled={webauthnLoading || loading}
                                 >
                                     <span className="webauthn-icon-wrap">

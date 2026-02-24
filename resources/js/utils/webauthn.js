@@ -159,18 +159,18 @@ export async function registerCredential(authToken) {
 }
 
 /**
- * Authenticate using a WebAuthn credential (fingerprint login).
+ * Authenticate using a WebAuthn credential (fingerprint login) - passwordless.
+ * No username required: browser will show all registered credentials for this site.
  *
- * @param {string} username - User's username
  * @param {number} tahunAjaranId - Selected tahun ajaran ID
  * @param {boolean} remember - Remember me flag
  * @returns {Promise<{success: boolean, data?: object, message?: string}>}
  */
-export async function authenticateCredential(username, tahunAjaranId, remember = false) {
+export async function authenticateCredential(tahunAjaranId, remember = false) {
     await initSession();
 
-    // Step 1: Get assertion options (challenge + allowed credentials) from server
-    const options = await webauthnFetch(`${API_BASE}/webauthn/login/options`, { username });
+    // Step 1: Get assertion options (challenge) - no username needed for discoverable credentials
+    const options = await webauthnFetch(`${API_BASE}/webauthn/login/options`, {});
 
     // Step 2: Prepare options for navigator.credentials.get()
     const publicKeyOptions = {
@@ -178,14 +178,19 @@ export async function authenticateCredential(username, tahunAjaranId, remember =
         challenge: base64urlToBuffer(options.challenge),
     };
 
-    if (options.allowCredentials) {
+    // For discoverable credentials, allowCredentials should be empty or omitted
+    // This tells the browser to show ALL credentials registered for this RP
+    if (options.allowCredentials && options.allowCredentials.length > 0) {
         publicKeyOptions.allowCredentials = options.allowCredentials.map(cred => ({
             ...cred,
             id: base64urlToBuffer(cred.id),
         }));
+    } else {
+        publicKeyOptions.allowCredentials = []; // empty = discoverable
     }
 
     // Step 3: Get credential via browser API (triggers fingerprint scan)
+    // Browser will show account selector if multiple credentials exist
     const credential = await navigator.credentials.get({
         publicKey: publicKeyOptions,
     });
