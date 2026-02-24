@@ -30,6 +30,9 @@ class Kegiatan extends Model
     ];
 
     protected $casts = [
+        'penanggung_jawab_id' => 'integer',
+        'tahun_ajaran_id' => 'integer',
+        'kalender_id' => 'integer',
         'waktu_mulai' => 'datetime',
         'waktu_berakhir' => 'datetime',
         'guru_pendamping' => 'array',

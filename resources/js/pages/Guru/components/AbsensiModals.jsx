@@ -122,8 +122,10 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
 
     useEffect(() => {
         // In unlocked mode with existing absensi record, always fetch to get guru_status and existing data
-        if (isUnlocked && jadwal?.id) {
-            fetchExistingAbsensiById(jadwal.id);
+        // Use absensi_id if available (same-day edit from jadwal view), otherwise use jadwal.id (riwayat unlock)
+        const absensiIdToFetch = jadwal?.absensi_id || jadwal?.id;
+        if (isUnlocked && absensiIdToFetch) {
+            fetchExistingAbsensiById(absensiIdToFetch);
         }
         // If no existing absensi but has jadwal_id (new record in unlocked mode), fetch fresh siswa list
         else if (isUnlocked && siswaList.length === 0 && jadwal?.jadwal_id) {
@@ -430,9 +432,9 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                     {/* Guru Self-Attendance Card */}
                     <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
                         <div className="flex items-center gap-3">
-                            {/* Avatar */}
-                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-lg flex-shrink-0">
-                                {guruName?.charAt(0)?.toUpperCase() || 'G'}
+                            {/* Icon Avatar - matching other cards */}
+                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i className="fas fa-chalkboard-teacher text-green-600"></i>
                             </div>
 
                             {/* Info */}

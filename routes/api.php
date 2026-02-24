@@ -25,11 +25,8 @@ use App\Http\Controllers\Api\WebAuthnController;
 Route::post('auth/login', [AuthController::class, 'login']);
 
 // === WebAuthn Public Routes (login with fingerprint) ===
-// Session middleware required for challenge storage between options/verify steps
-Route::middleware(['web'])->group(function () {
-    Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
-    Route::post('webauthn/login', [WebAuthnController::class, 'login']);
-});
+Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
+Route::post('webauthn/login', [WebAuthnController::class, 'login']);
 Route::post('webauthn/has-credentials', [WebAuthnController::class, 'hasCredentials']);
 
 // Public Tahun Ajaran Routes (needed for login page)
@@ -47,10 +44,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
     // === WebAuthn Authenticated Routes (register fingerprint) ===
-    Route::middleware(['web'])->group(function () {
-        Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
-        Route::post('webauthn/register', [WebAuthnController::class, 'register']);
-    });
+    Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
+    Route::post('webauthn/register', [WebAuthnController::class, 'register']);
     Route::get('webauthn/credentials', [WebAuthnController::class, 'credentials']);
     Route::delete('webauthn/credentials/{credentialId}', [WebAuthnController::class, 'deleteCredential']);
 

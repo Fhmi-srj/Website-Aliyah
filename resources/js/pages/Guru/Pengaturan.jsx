@@ -385,35 +385,123 @@ function Pengaturan() {
                     type: 'custom',
                     description: webauthnCredentials.length > 0
                         ? `${webauthnCredentials.length} perangkat terdaftar`
-                        : 'Belum ada sidik jari terdaftar',
+                        : 'Daftar untuk login tanpa password',
                     customContent: (
-                        <div style={{ padding: '0 16px 12px' }}>
+                        <div style={{ padding: '4px 16px 14px' }}>
+                            {/* Hero Card */}
+                            <div style={{
+                                background: 'linear-gradient(135deg, #0f766e 0%, #0e7490 50%, #0369a1 100%)',
+                                borderRadius: '16px',
+                                padding: '16px',
+                                marginBottom: '12px',
+                                position: 'relative',
+                                overflow: 'hidden',
+                            }}>
+                                {/* Background decoration */}
+                                <div style={{
+                                    position: 'absolute', top: '-20px', right: '-20px',
+                                    width: '100px', height: '100px', borderRadius: '50%',
+                                    background: 'rgba(255,255,255,0.08)', pointerEvents: 'none',
+                                }} />
+                                <div style={{
+                                    position: 'absolute', bottom: '-30px', left: '-10px',
+                                    width: '80px', height: '80px', borderRadius: '50%',
+                                    background: 'rgba(255,255,255,0.05)', pointerEvents: 'none',
+                                }} />
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', position: 'relative', zIndex: 1 }}>
+                                    {/* Animated fingerprint icon */}
+                                    <div style={{
+                                        width: '52px', height: '52px',
+                                        background: 'rgba(255,255,255,0.15)',
+                                        borderRadius: '14px', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center',
+                                        backdropFilter: 'blur(4px)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        flexShrink: 0,
+                                    }}>
+                                        <i className="fas fa-fingerprint" style={{
+                                            fontSize: '1.5rem', color: '#fff',
+                                        }}></i>
+                                    </div>
+                                    <div>
+                                        <div style={{
+                                            color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                                            marginBottom: '2px', letterSpacing: '-0.01em',
+                                        }}>
+                                            Login Biometrik
+                                        </div>
+                                        <div style={{
+                                            color: 'rgba(255,255,255,0.7)', fontSize: '0.72rem',
+                                            lineHeight: 1.4,
+                                        }}>
+                                            {webauthnCredentials.length > 0
+                                                ? 'Login cepat tanpa password aktif ✓'
+                                                : 'Scan sidik jari untuk login cepat'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Status badge */}
+                                <div style={{
+                                    marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px',
+                                    position: 'relative', zIndex: 1,
+                                }}>
+                                    <div style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                        background: webauthnCredentials.length > 0 ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.12)',
+                                        borderRadius: '20px', padding: '4px 10px',
+                                        fontSize: '0.68rem', color: '#fff', fontWeight: 500,
+                                        border: webauthnCredentials.length > 0 ? '1px solid rgba(74,222,128,0.3)' : '1px solid rgba(255,255,255,0.15)',
+                                    }}>
+                                        <i className={`fas ${webauthnCredentials.length > 0 ? 'fa-shield-alt' : 'fa-info-circle'}`}
+                                            style={{ fontSize: '0.6rem' }}></i>
+                                        {webauthnCredentials.length > 0
+                                            ? `${webauthnCredentials.length} Perangkat Aktif`
+                                            : 'Belum Terdaftar'}
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Registered credentials list */}
                             {webauthnCredentials.length > 0 && (
                                 <div style={{ marginBottom: '10px' }}>
                                     {webauthnCredentials.map((cred, i) => (
                                         <div key={cred.id} style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                            padding: '8px 12px', background: '#f0fdf4', borderRadius: '10px',
+                                            padding: '10px 12px',
+                                            background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+                                            borderRadius: '12px',
                                             marginBottom: i < webauthnCredentials.length - 1 ? '6px' : 0,
-                                            fontSize: '0.82rem'
+                                            fontSize: '0.82rem',
+                                            border: '1px solid rgba(22, 163, 74, 0.1)',
                                         }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <i className="fas fa-key" style={{ color: '#16a34a', fontSize: '0.75rem' }}></i>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <div style={{
+                                                    width: '32px', height: '32px', borderRadius: '10px',
+                                                    background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                }}>
+                                                    <i className="fas fa-mobile-alt" style={{ color: '#fff', fontSize: '0.75rem' }}></i>
+                                                </div>
                                                 <div>
-                                                    <div style={{ fontWeight: 500, color: '#1e293b' }}>
+                                                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.82rem' }}>
                                                         {cred.alias || `Perangkat ${i + 1}`}
                                                     </div>
-                                                    <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-                                                        Didaftarkan {cred.created_at}
+                                                    <div style={{ color: '#94a3b8', fontSize: '0.68rem', marginTop: '1px' }}>
+                                                        <i className="fas fa-clock" style={{ marginRight: '4px', fontSize: '0.6rem' }}></i>
+                                                        {cred.created_at}
                                                     </div>
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => handleDeleteWebAuthn(cred.id)}
                                                 style={{
-                                                    background: 'none', border: 'none', color: '#ef4444',
-                                                    cursor: 'pointer', padding: '4px 6px', fontSize: '0.85rem'
+                                                    background: '#fef2f2', border: '1px solid rgba(239,68,68,0.15)',
+                                                    color: '#ef4444', cursor: 'pointer', padding: '6px 8px',
+                                                    fontSize: '0.75rem', borderRadius: '8px',
+                                                    transition: 'all 0.2s',
                                                 }}
                                             >
                                                 <i className="fas fa-trash-alt"></i>
@@ -422,21 +510,27 @@ function Pengaturan() {
                                     ))}
                                 </div>
                             )}
+
                             {/* Register button */}
                             <button
                                 onClick={handleRegisterWebAuthn}
                                 disabled={webauthnLoading}
                                 style={{
-                                    width: '100%', padding: '10px', background: 'linear-gradient(135deg, #0891b2, #0e7490)',
-                                    color: 'white', border: 'none', borderRadius: '10px', fontSize: '0.85rem',
+                                    width: '100%', padding: '12px',
+                                    background: webauthnCredentials.length > 0
+                                        ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
+                                        : 'linear-gradient(135deg, #0891b2, #0e7490)',
+                                    color: 'white', border: 'none', borderRadius: '12px', fontSize: '0.83rem',
                                     fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', gap: '6px', opacity: webauthnLoading ? 0.7 : 1
+                                    justifyContent: 'center', gap: '8px', opacity: webauthnLoading ? 0.7 : 1,
+                                    transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                                    letterSpacing: '-0.01em',
                                 }}
                             >
                                 {webauthnLoading ? (
                                     <><i className="fas fa-spinner fa-spin"></i> Mendaftarkan...</>
                                 ) : (
-                                    <><i className="fas fa-plus"></i> Daftarkan Sidik Jari</>
+                                    <><i className="fas fa-fingerprint"></i> {webauthnCredentials.length > 0 ? 'Tambah Perangkat Lain' : 'Daftarkan Sidik Jari'}</>
                                 )}
                             </button>
                         </div>

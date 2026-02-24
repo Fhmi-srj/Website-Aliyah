@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
-import { ModalBelumMulai, ModalAbsensiSiswa, ModalSudahAbsen } from './components/AbsensiModals';
+import { ModalBelumMulai, ModalAbsensiSiswa } from './components/AbsensiModals';
 import { AnimatedDayTabs } from './components/AnimatedTabs';
 import SwipeableContent from './components/SwipeableContent';
 
@@ -105,12 +105,13 @@ function AbsensiMengajar() {
 
         setSelectedJadwal(jadwal);
 
-        // Treat 'terlewat' same as 'sedang_berlangsung' - both should open absensi modal
-        const effectiveStatus = jadwal.status === 'terlewat' ? 'sedang_berlangsung' : jadwal.status;
+        // Treat 'terlewat' and 'sudah_absen' same as 'sedang_berlangsung' - all should open absensi modal
+        const effectiveStatus = (jadwal.status === 'terlewat' || jadwal.status === 'sudah_absen')
+            ? 'sedang_berlangsung' : jadwal.status;
         setModalType(effectiveStatus);
 
-        // If sedang_berlangsung or terlewat, fetch siswa list
-        if (jadwal.status === 'sedang_berlangsung' || jadwal.status === 'terlewat') {
+        // Fetch siswa list for all actionable statuses
+        if (jadwal.status === 'sedang_berlangsung' || jadwal.status === 'terlewat' || jadwal.status === 'sudah_absen') {
             try {
                 const response = await api.get(`/guru-panel/jadwal/${jadwal.id}/detail`);
                 setSiswaList(response.data.siswa || []);
@@ -221,7 +222,7 @@ function AbsensiMengajar() {
                     {currentSchedule.length > 0 ? (
                         currentSchedule.map(jadwal => {
                             const colors = getStatusColor(jadwal.status, jadwal.kehadiran_status);
-                            const canInteract = isToday && jadwal.status !== 'sudah_absen';
+                            const canInteract = isToday;
 
                             return (
                                 <button
@@ -229,7 +230,7 @@ function AbsensiMengajar() {
                                     onClick={() => isToday && handleJadwalClick(jadwal)}
                                     disabled={!isToday}
                                     className={`w-full bg-white rounded-xl shadow-sm p-4 transition-all border-l-4 ${colors.border} ${canInteract ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-                                        } ${jadwal.status === 'sudah_absen' ? 'opacity-60' : ''} ${!isToday ? 'opacity-50' : ''}`}
+                                        } ${!isToday ? 'opacity-50' : ''}`}
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -287,13 +288,7 @@ function AbsensiMengajar() {
                     onSuccess={handleAbsensiSuccess}
                     guruName={guruData.name}
                     guruNip={guruData.nip}
-                />
-            )}
-
-            {modalType === 'sudah_absen' && selectedJadwal && (
-                <ModalSudahAbsen
-                    jadwal={selectedJadwal}
-                    onClose={handleCloseModal}
+                    isUnlocked={selectedJadwal.status === 'sudah_absen'}
                 />
             )}
 

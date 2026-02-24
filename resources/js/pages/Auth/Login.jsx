@@ -243,11 +243,11 @@ function Login() {
 
                         {/* WebAuthn Fingerprint Login */}
                         {webauthnSupported && (
-                            <div style={{ marginTop: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0 12px' }}>
-                                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-                                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500 }}>atau</span>
-                                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                            <div style={{ marginTop: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0 16px' }}>
+                                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, #e2e8f0)' }}></div>
+                                    <span style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>atau</span>
+                                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, #e2e8f0)' }}></div>
                                 </div>
                                 <button
                                     type="button"
@@ -256,11 +256,10 @@ function Login() {
                                     onMouseEnter={() => { if (username?.length >= 3) checkCredentials(username); }}
                                     disabled={webauthnLoading || loading}
                                 >
-                                    {webauthnLoading ? (
-                                        <><i className="fas fa-spinner fa-spin"></i> Memverifikasi...</>
-                                    ) : (
-                                        <><i className="fas fa-fingerprint"></i> Login Sidik Jari</>
-                                    )}
+                                    <span className="webauthn-icon-wrap">
+                                        <i className={`fas ${webauthnLoading ? 'fa-spinner fa-spin' : 'fa-fingerprint'}`}></i>
+                                    </span>
+                                    <span>{webauthnLoading ? 'Memverifikasi...' : 'Login dengan Sidik Jari'}</span>
                                 </button>
                             </div>
                         )}
@@ -550,30 +549,58 @@ const cssStyles = `
 
     .btn-webauthn {
         width: 100%;
-        padding: 14px;
-        background: linear-gradient(135deg, #0891b2, #0e7490);
+        padding: 15px 18px;
+        background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #0369a1 100%);
         color: white;
         border: none;
-        border-radius: 10px;
-        font-size: 1rem;
+        border-radius: 12px;
+        font-size: 0.95rem;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         font-family: 'Inter', sans-serif;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 10px;
+        position: relative;
+        overflow: hidden;
+        letter-spacing: -0.01em;
+        box-shadow: 0 2px 12px rgba(8, 145, 178, 0.25);
+    }
+
+    .btn-webauthn::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%; width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-webauthn:hover::before {
+        left: 100%;
+    }
+
+    .webauthn-icon-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px; height: 28px;
+        background: rgba(255,255,255,0.18);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        flex-shrink: 0;
     }
 
     .btn-webauthn:hover {
-        background: linear-gradient(135deg, #0e7490, #155e75);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(8, 145, 178, 0.4);
+        background: linear-gradient(135deg, #0e7490, #0369a1, #1d4ed8);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(8, 145, 178, 0.4);
     }
 
     .btn-webauthn:active {
         transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(8, 145, 178, 0.3);
     }
 
     .btn-webauthn:disabled {

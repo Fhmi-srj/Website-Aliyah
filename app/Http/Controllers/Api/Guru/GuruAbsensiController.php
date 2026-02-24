@@ -155,6 +155,7 @@ class GuruAbsensiController extends Controller
                     'jam_ke' => $jadwal->jam_ke,
                     'status' => $status,
                     'kehadiran_status' => $kehadiranStatus,
+                    'absensi_id' => $absensi?->id,
                 ];
             }
 
@@ -309,8 +310,9 @@ class GuruAbsensiController extends Controller
             $guruStatus = $validated['guru_status'] ?? 'H';
 
             if ($absensi) {
-                // If unlocked mode, update existing record
-                if ($isUnlocked) {
+                // Allow same-day edits or admin-unlocked edits for other days
+                $isSameDay = $targetDate->equalTo($today);
+                if ($isSameDay || $isUnlocked) {
                     // Capture old values for logging
                     $oldAbsensiValues = $absensi->toArray();
 

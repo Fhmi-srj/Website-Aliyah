@@ -54,7 +54,7 @@ class GuruKegiatanController extends Controller
                     $guruPendamping = is_array($item->guru_pendamping) ? $item->guru_pendamping : [];
 
                     // Determine role
-                    $item->is_pj = $item->penanggung_jawab_id === $guru->id;
+                    $item->is_pj = (int) $item->penanggung_jawab_id === (int) $guru->id;
                     $item->is_pendamping = in_array($guru->id, $guruPendamping) || in_array((string) $guru->id, $guruPendamping);
                     $item->role = $item->is_pj ? 'penanggung_jawab' : 'pendamping';
 
@@ -201,7 +201,7 @@ class GuruKegiatanController extends Controller
 
             foreach ($kegiatanList as $item) {
                 $guruPendamping = is_array($item->guru_pendamping) ? $item->guru_pendamping : [];
-                $isPj = $item->penanggung_jawab_id === $guru->id;
+                $isPj = (int) $item->penanggung_jawab_id === (int) $guru->id;
                 $isPendamping = in_array($guru->id, $guruPendamping) || in_array((string) $guru->id, $guruPendamping);
                 $role = $isPj ? 'penanggung_jawab' : 'pendamping';
 
@@ -400,7 +400,7 @@ class GuruKegiatanController extends Controller
         }
 
         // Check if guru is authorized (PJ or pendamping)
-        $isPj = $kegiatan->penanggung_jawab_id === $guru->id;
+        $isPj = (int) $kegiatan->penanggung_jawab_id === (int) $guru->id;
         $isPendamping = in_array($guru->id, $kegiatan->guru_pendamping ?? []);
 
         if (!$isPj && !$isPendamping) {
@@ -486,7 +486,7 @@ class GuruKegiatanController extends Controller
         $kegiatan = Kegiatan::find($validated['kegiatan_id']);
 
         // Verify guru is the PJ
-        if ($kegiatan->penanggung_jawab_id !== $guru->id) {
+        if ((int) $kegiatan->penanggung_jawab_id !== (int) $guru->id) {
             return response()->json(['error' => 'Hanya penanggung jawab yang bisa menyimpan absensi'], 403);
         }
 
@@ -763,7 +763,7 @@ class GuruKegiatanController extends Controller
         }
 
         // Check if guru is authorized (PJ or pendamping)
-        $isPj = $kegiatan->penanggung_jawab_id === $guru->id;
+        $isPj = (int) $kegiatan->penanggung_jawab_id === (int) $guru->id;
         $isPendamping = in_array($guru->id, $kegiatan->guru_pendamping ?? []);
 
         if (!$isPj && !$isPendamping) {
