@@ -60,7 +60,7 @@ export default function TabPemasukan({ isMobile }) {
     };
 
     const openAdd = () => { setMode('add'); setForm({ sumber_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0] }); setNominalDisplay(''); setShowModal(true); };
-    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id || '', nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal }); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
+    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id ? Number(item.sumber_id) : (item.sumber?.id ? Number(item.sumber.id) : ''), nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal ? item.tanggal.substring(0, 10) : new Date().toISOString().split('T')[0] }); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
 
     const submit = async () => {
         try {

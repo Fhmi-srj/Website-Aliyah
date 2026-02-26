@@ -65,7 +65,7 @@ export default function TabPengeluaran({ isMobile }) {
     };
 
     const openAdd = () => { setMode('add'); setForm({ sumber_id: '', kategori_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0] }); setNominalDisplay(''); setShowModal(true); };
-    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id || '', kategori_id: item.kategori_id || '', nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal }); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
+    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id ? Number(item.sumber_id) : (item.sumber?.id ? Number(item.sumber.id) : ''), kategori_id: item.kategori_id ? Number(item.kategori_id) : (item.kategori?.id ? Number(item.kategori.id) : ''), nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal ? item.tanggal.substring(0, 10) : new Date().toISOString().split('T')[0] }); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
 
     const submit = async () => {
         try {

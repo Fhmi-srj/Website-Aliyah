@@ -480,9 +480,13 @@ function Beranda() {
                                         ></i>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-gray-800 text-sm font-medium truncate">{event.title}</p>
+                                        <p className="text-gray-800 text-sm font-medium truncate">
+                                            {event.type === 'mengajar' ? event.date : event.title}
+                                        </p>
                                         <div className="flex items-center gap-2 mt-0.5">
-                                            <span className="text-[10px] text-gray-400">{event.date}</span>
+                                            {event.type !== 'mengajar' && (
+                                                <span className="text-[10px] text-gray-400">{event.date}</span>
+                                            )}
                                             {event.time && (
                                                 <span className="text-[10px] text-gray-400">{event.time}</span>
                                             )}
@@ -493,8 +497,11 @@ function Beranda() {
                                                 {event.type === 'mengajar' ? 'Mengajar' :
                                                     event.type === 'kegiatan' ? 'Kegiatan' : 'Rapat'}
                                             </span>
+                                            {event.type === 'mengajar' && event.subtitle && (
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700">{event.subtitle}</span>
+                                            )}
                                         </div>
-                                        {event.subtitle && (
+                                        {event.type !== 'mengajar' && event.subtitle && (
                                             <p className="text-xs text-gray-500 truncate mt-0.5">{event.subtitle}</p>
                                         )}
                                     </div>
