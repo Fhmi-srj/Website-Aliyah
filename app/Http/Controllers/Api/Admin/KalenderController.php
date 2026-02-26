@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Kalender;
 use App\Models\Kegiatan;
 use App\Models\ActivityLog;
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +14,33 @@ use Illuminate\Support\Facades\DB;
 class KalenderController extends Controller
 {
     /**
+     * Get the active tahun ajaran ID for the current user.
+     */
+    private function getActiveTahunAjaranId(Request $request): ?int
+    {
+        $user = $request->user();
+        if ($user && $user->tahun_ajaran_id) {
+            return $user->tahun_ajaran_id;
+        }
+        $current = TahunAjaran::getCurrent();
+        return $current ? $current->id : null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $kalender = Kalender::with('guru:id,nama')
-            ->orderBy('tanggal_mulai', 'desc')
-            ->get();
+        $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $this->getActiveTahunAjaranId($request);
+
+        $query = Kalender::with(['guru:id,nama', 'kegiatanRef'])
+            ->orderBy('tanggal_mulai', 'desc');
+
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+
+        $kalender = $query->get();
 
         return response()->json([
             'success' => true,
@@ -41,6 +62,12 @@ class KalenderController extends Controller
             'guru_id' => 'nullable|exists:guru,id',
             'keterangan' => 'required|in:Kegiatan,Keterangan',
             'rab' => 'nullable|numeric|min:0',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
+            'jenis_kegiatan' => 'nullable|in:Rutin,Tahunan,Insidental',
+            'guru_pendamping' => 'nullable|array',
+            'guru_pendamping.*' => 'exists:guru,id',
+            'kelas_peserta' => 'nullable|array',
+            'kelas_peserta.*' => 'exists:kelas,id',
         ]);
 
         if ($validator->fails()) {
@@ -53,8 +80,21 @@ class KalenderController extends Controller
 
         DB::beginTransaction();
         try {
-            $kalenderData = $request->all();
+            $kalenderData = $request->only([
+                'tanggal_mulai',
+                'tanggal_berakhir',
+                'kegiatan',
+                'tempat',
+                'status_kbm',
+                'guru_id',
+                'keterangan',
+                'rab'
+            ]);
             $kegiatanId = null;
+
+            // Auto-assign tahun_ajaran_id if not provided
+            $tahunAjaranId = $request->tahun_ajaran_id ?? $this->getActiveTahunAjaranId($request);
+            $kalenderData['tahun_ajaran_id'] = $tahunAjaranId;
 
             // If keterangan is "Kegiatan", create linked kegiatan entry
             if ($request->keterangan === 'Kegiatan') {
@@ -65,20 +105,19 @@ class KalenderController extends Controller
                     $penanggungJawabNama = $guru ? $guru->nama : '';
                 }
 
-                // Get active tahun ajaran
-                $tahunAjaran = \App\Models\TahunAjaran::where('is_active', true)->first();
-
                 $kegiatan = Kegiatan::create([
                     'nama_kegiatan' => $request->kegiatan,
-                    'jenis_kegiatan' => 'Rutin',
+                    'jenis_kegiatan' => $request->jenis_kegiatan ?? 'Rutin',
                     'waktu_mulai' => $request->tanggal_mulai,
                     'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
                     'tempat' => $request->tempat,
                     'penanggung_jawab_id' => $request->guru_id,
-                    'penanggung_jawab' => $penanggungJawabNama, // Add the required field
+                    'penanggung_jawab' => $penanggungJawabNama,
+                    'guru_pendamping' => $request->guru_pendamping,
+                    'kelas_peserta' => $request->kelas_peserta,
                     'status' => 'Aktif',
                     'status_kbm' => $request->status_kbm,
-                    'tahun_ajaran_id' => $tahunAjaran ? $tahunAjaran->id : null,
+                    'tahun_ajaran_id' => $tahunAjaranId,
                 ]);
                 $kegiatanId = $kegiatan->id;
             }
@@ -130,6 +169,12 @@ class KalenderController extends Controller
             'guru_id' => 'nullable|exists:guru,id',
             'keterangan' => 'required|in:Kegiatan,Keterangan',
             'rab' => 'nullable|numeric|min:0',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
+            'jenis_kegiatan' => 'nullable|in:Rutin,Tahunan,Insidental',
+            'guru_pendamping' => 'nullable|array',
+            'guru_pendamping.*' => 'exists:guru,id',
+            'kelas_peserta' => 'nullable|array',
+            'kelas_peserta.*' => 'exists:kelas,id',
         ]);
 
         if ($validator->fails()) {
@@ -142,39 +187,54 @@ class KalenderController extends Controller
 
         DB::beginTransaction();
         try {
-            $kalenderData = $request->all();
+            $kalenderData = $request->only([
+                'tanggal_mulai',
+                'tanggal_berakhir',
+                'kegiatan',
+                'tempat',
+                'status_kbm',
+                'guru_id',
+                'keterangan',
+                'rab',
+                'tahun_ajaran_id'
+            ]);
 
             // Capture old values for logging
             $oldValues = $kalender->getOriginal();
 
+            // Resolve guru name for kegiatan sync
+            $penanggungJawabNama = '-';
+            if ($request->guru_id) {
+                $guru = \App\Models\Guru::find($request->guru_id);
+                $penanggungJawabNama = $guru ? $guru->nama : '-';
+            }
+
             // Handle kegiatan sync
             if ($request->keterangan === 'Kegiatan') {
+                $kegiatanData = [
+                    'nama_kegiatan' => $request->kegiatan,
+                    'jenis_kegiatan' => $request->jenis_kegiatan ?? 'Rutin',
+                    'waktu_mulai' => $request->tanggal_mulai,
+                    'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
+                    'tempat' => $request->tempat,
+                    'penanggung_jawab_id' => $request->guru_id,
+                    'penanggung_jawab' => $penanggungJawabNama,
+                    'guru_pendamping' => $request->guru_pendamping,
+                    'kelas_peserta' => $request->kelas_peserta,
+                    'status_kbm' => $request->status_kbm,
+                ];
+
                 // If already linked to kegiatan, update it
                 if ($kalender->kegiatan_id) {
                     $kegiatan = Kegiatan::find($kalender->kegiatan_id);
                     if ($kegiatan) {
-                        $kegiatan->update([
-                            'nama_kegiatan' => $request->kegiatan,
-                            'waktu_mulai' => $request->tanggal_mulai,
-                            'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
-                            'tempat' => $request->tempat,
-                            'penanggung_jawab_id' => $request->guru_id,
-                            'penanggung_jawab' => $request->guru_id ? (\App\Models\Guru::find($request->guru_id)?->nama ?? '-') : '-',
-                        ]);
+                        $kegiatan->update($kegiatanData);
                     }
                 } else {
                     // Create new kegiatan link
-                    $kegiatan = Kegiatan::create([
-                        'nama_kegiatan' => $request->kegiatan,
-                        'jenis_kegiatan' => 'Rutin',
-                        'waktu_mulai' => $request->tanggal_mulai,
-                        'waktu_berakhir' => $request->tanggal_berakhir ?? $request->tanggal_mulai,
-                        'tempat' => $request->tempat,
-                        'penanggung_jawab_id' => $request->guru_id,
-                        'penanggung_jawab' => $request->guru_id ? (\App\Models\Guru::find($request->guru_id)?->nama ?? '-') : '-',
-                        'status' => 'Aktif',
-                        'tahun_ajaran_id' => $kalender->tahun_ajaran_id,
-                    ]);
+                    $kegiatanData['status'] = 'Aktif';
+                    $kegiatanData['tahun_ajaran_id'] = $request->tahun_ajaran_id ?? $kalender->tahun_ajaran_id;
+                    $kegiatan = Kegiatan::create($kegiatanData);
                     $kalenderData['kegiatan_id'] = $kegiatan->id;
                 }
             } else {
@@ -190,6 +250,10 @@ class KalenderController extends Controller
                     }
                     $kalenderData['kegiatan_id'] = null;
                 }
+                // Clear kegiatan-specific fields
+                $kalenderData['guru_id'] = null;
+                $kalenderData['tempat'] = null;
+                $kalenderData['rab'] = null;
             }
 
             $kalender->update($kalenderData);

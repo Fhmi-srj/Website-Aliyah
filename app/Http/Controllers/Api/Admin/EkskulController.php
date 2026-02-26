@@ -4,21 +4,38 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ekskul;
+use App\Models\TahunAjaran;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class EkskulController extends Controller
 {
+    private function getActiveTahunAjaranId(Request $request)
+    {
+        $user = $request->user();
+        if ($user && $user->tahun_ajaran_id) {
+            return $user->tahun_ajaran_id;
+        }
+        $active = TahunAjaran::where('is_active', true)->first();
+        return $active ? $active->id : null;
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $ekskul = Ekskul::with('pembina:id,nama')
-                ->withCount('anggota')
-                ->orderBy('nama_ekskul')
-                ->get();
+            $tahunAjaranId = $request->query('tahun_ajaran_id') ?? $this->getActiveTahunAjaranId($request);
+
+            $query = Ekskul::with('pembina:id,nama')
+                ->withCount('anggota');
+
+            if ($tahunAjaranId) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+
+            $ekskul = $query->orderBy('nama_ekskul')->get();
 
             return response()->json([
                 'success' => true,
@@ -48,7 +65,12 @@ class EkskulController extends Controller
                 'tempat' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Tidak Aktif',
+                'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
             ]);
+
+            if (empty($validated['tahun_ajaran_id'])) {
+                $validated['tahun_ajaran_id'] = $this->getActiveTahunAjaranId($request);
+            }
 
             $ekskul = Ekskul::create($validated);
             $ekskul->load('pembina:id,nama');
@@ -97,7 +119,13 @@ class EkskulController extends Controller
                 'tempat' => 'nullable|string|max:100',
                 'deskripsi' => 'nullable|string|max:500',
                 'status' => 'required|in:Aktif,Tidak Aktif',
+                'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
             ]);
+
+            // Preserve existing tahun_ajaran_id if not provided
+            if (empty($validated['tahun_ajaran_id'])) {
+                $validated['tahun_ajaran_id'] = $ekskul->tahun_ajaran_id ?? $this->getActiveTahunAjaranId($request);
+            }
 
             $ekskul->update($validated);
             $ekskul->load('pembina:id,nama');

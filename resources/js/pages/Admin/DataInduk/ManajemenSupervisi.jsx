@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import CrudModal from '../../../components/CrudModal';
 import { API_BASE } from '../../../config/api';
 import { authFetch } from '../../../config/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
@@ -52,7 +54,9 @@ function ManajemenSupervisi() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const [tahunAjaranId, setTahunAjaranId] = useState('');
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
     const [currentItem, setCurrentItem] = useState(null);

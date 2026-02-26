@@ -70,7 +70,7 @@ class SuratMasukController extends Controller
             'nomor_surat' => $validated['nomor_surat'] ?? null,
             'keterangan' => $validated['keterangan'] ?? null,
             'file_surat' => $filePath,
-            'tahun_ajaran_id' => $validated['tahun_ajaran_id'] ?? null,
+            'tahun_ajaran_id' => $validated['tahun_ajaran_id'] ?? $request->user()->tahun_ajaran_id,
         ]);
 
         ActivityLog::logCreate($surat, "Menambahkan surat masuk dari: " . ($surat->pengirim ?? 'Unknown'));

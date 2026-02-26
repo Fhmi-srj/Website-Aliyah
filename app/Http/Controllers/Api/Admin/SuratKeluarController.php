@@ -77,7 +77,7 @@ class SuratKeluarController extends Controller
             'nomor_surat' => $nomorData['nomor_surat'],
             'tanggal' => $validated['tanggal'],
             'keterangan' => $validated['keterangan'] ?? null,
-            'tahun_ajaran_id' => $validated['tahun_ajaran_id'] ?? null,
+            'tahun_ajaran_id' => $validated['tahun_ajaran_id'] ?? $request->user()->tahun_ajaran_id,
         ];
 
         // Auto-generate .docx for template jenis (007, 008, 009)

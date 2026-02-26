@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import CrudModal from '../../../components/CrudModal';
 import DateRangePicker from '../../../components/DateRangePicker';
 import { API_BASE, authFetch } from '../../../config/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
@@ -17,6 +19,10 @@ function ManajemenKalender() {
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
 
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
+
     const [formData, setFormData] = useState({
         tanggal_mulai: '',
         tanggal_berakhir: '',
@@ -25,13 +31,24 @@ function ManajemenKalender() {
         guru_id: '',
         keterangan: 'Kegiatan',
         tempat: '',
-        rab: ''
+        rab: '',
+        jenis_kegiatan: 'Rutin',
+        guru_pendamping: [],
+        kelas_peserta: []
     });
 
     const [guruList, setGuruList] = useState([]);
+    const [kelasList, setKelasList] = useState([]);
     const [guruSearch, setGuruSearch] = useState('');
+    const [gpSearch, setGpSearch] = useState('');
     const [showGuruDropdown, setShowGuruDropdown] = useState(false);
+    const [showGpDropdown, setShowGpDropdown] = useState(false);
+    const [showKelasDropdown, setShowKelasDropdown] = useState(false);
     const guruDropdownRef = useRef(null);
+    const gpDropdownRef = useRef(null);
+    const kelasDropdownRef = useRef(null);
+
+    const jenisKegiatanList = ['Rutin', 'Tahunan', 'Insidental'];
 
     // Sorting state
     const [sortColumn, setSortColumn] = useState(null);
@@ -53,15 +70,19 @@ function ManajemenKalender() {
     // File input ref for import
     const fileInputRef = useRef(null);
 
-    const fetchData = async () => {
+    const fetchData = async (tahunId = tahunAjaranId) => {
+        if (!tahunId) return;
         try {
             setLoading(true);
-            const [calendarRes, guruRes] = await Promise.all([
-                authFetch(`${API_BASE}/kalender`),
-                authFetch(`${API_BASE}/guru`)
+            const taParam = `?tahun_ajaran_id=${tahunId}`;
+            const [calendarRes, guruRes, kelasRes] = await Promise.all([
+                authFetch(`${API_BASE}/kalender${taParam}`),
+                authFetch(`${API_BASE}/guru`),
+                authFetch(`${API_BASE}/kelas${taParam}`)
             ]);
             setData((await calendarRes.json()).data || []);
             setGuruList((await guruRes.json()).data || []);
+            setKelasList((await kelasRes.json()).data || []);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -69,7 +90,7 @@ function ManajemenKalender() {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(tahunAjaranId); }, [tahunAjaranId]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -81,6 +102,8 @@ function ManajemenKalender() {
         const handleClick = (e) => {
             setActiveFilter(null);
             if (guruDropdownRef.current && !guruDropdownRef.current.contains(e.target)) setShowGuruDropdown(false);
+            if (gpDropdownRef.current && !gpDropdownRef.current.contains(e.target)) setShowGpDropdown(false);
+            if (kelasDropdownRef.current && !kelasDropdownRef.current.contains(e.target)) setShowKelasDropdown(false);
         };
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
@@ -200,15 +223,23 @@ function ManajemenKalender() {
             guru_id: '',
             keterangan: 'Kegiatan',
             tempat: '',
-            rab: ''
+            rab: '',
+            jenis_kegiatan: 'Rutin',
+            guru_pendamping: [],
+            kelas_peserta: []
         });
         setGuruSearch('');
+        setGpSearch('');
         setShowModal(true);
     };
 
     const openEditModal = (item) => {
         setModalMode('edit');
         setCurrentItem(item);
+
+        // Get linked kegiatan data if available
+        const linkedKegiatan = item.kegiatan_id ? data.find(d => d.id === item.id) : null;
+
         setFormData({
             tanggal_mulai: item.tanggal_mulai ? item.tanggal_mulai.slice(0, 16) : '',
             tanggal_berakhir: item.tanggal_berakhir ? item.tanggal_berakhir.slice(0, 16) : '',
@@ -217,23 +248,46 @@ function ManajemenKalender() {
             guru_id: item.guru_id || '',
             keterangan: item.keterangan || 'Kegiatan',
             tempat: item.tempat || '',
-            rab: item.rab || ''
+            rab: item.rab || '',
+            jenis_kegiatan: item.kegiatan_ref?.jenis_kegiatan || 'Rutin',
+            guru_pendamping: (item.kegiatan_ref?.guru_pendamping || []).map(g => parseInt(typeof g === 'object' ? g.id : g)).filter(Boolean),
+            kelas_peserta: (item.kegiatan_ref?.kelas_peserta || []).map(k => parseInt(typeof k === 'object' ? k.id : k)).filter(Boolean)
         });
         setGuruSearch(item.guru?.nama || '');
+        setGpSearch('');
         setShowModal(true);
     };
 
     const closeModal = () => setShowModal(false);
+
+    const toggleGp = (id) => {
+        setFormData(prev => ({
+            ...prev,
+            guru_pendamping: prev.guru_pendamping.includes(id)
+                ? prev.guru_pendamping.filter(gid => gid !== id)
+                : [...prev.guru_pendamping, id]
+        }));
+    };
+
+    const toggleKelas = (id) => {
+        setFormData(prev => ({
+            ...prev,
+            kelas_peserta: prev.kelas_peserta.includes(id)
+                ? prev.kelas_peserta.filter(kid => kid !== id)
+                : [...prev.kelas_peserta, id]
+        }));
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             const url = modalMode === 'add' ? `${API_BASE}/kalender` : `${API_BASE}/kalender/${currentItem.id}`;
             const method = modalMode === 'add' ? 'POST' : 'PUT';
+            const payload = { ...formData, tahun_ajaran_id: tahunAjaranId };
             const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 closeModal();
@@ -463,6 +517,9 @@ function ManajemenKalender() {
     );
 
     const filteredGuru = guruList.filter(g => g.nama?.toLowerCase().includes(guruSearch.toLowerCase()));
+    const filteredGp = guruList.filter(g => g.nama?.toLowerCase().includes(gpSearch.toLowerCase()));
+
+    const isKegiatan = formData.keterangan === 'Kegiatan';
 
     const formatCurrency = (val) => {
         if (!val) return 'Rp 0';
@@ -760,19 +817,24 @@ function ManajemenKalender() {
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Nama Kegiatan / Agenda *</label>
                             <input type="text" required value={formData.kegiatan} onChange={(e) => setFormData({ ...formData, kegiatan: e.target.value })} className="input-standard" placeholder="Contoh: Rapat Wali Murid, Libur Semester..." />
                         </div>
-                        <div className="space-y-1.5 md:col-span-2">
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Tempat / Lokasi</label>
-                            <input type="text" value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Aula Utama, Lapangan, dll..." />
-                        </div>
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Klasifikasi & Penanggung Jawab</label>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Klasifikasi</label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Tipe Agenda</label>
-                            <select value={formData.keterangan} onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })} className="input-standard outline-none">
+                            <select value={formData.keterangan} onChange={(e) => {
+                                const val = e.target.value;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    keterangan: val,
+                                    // Reset kegiatan-specific fields when switching to Keterangan
+                                    ...(val === 'Keterangan' ? { tempat: '', guru_id: '', rab: '', guru_pendamping: [], kelas_peserta: [] } : {})
+                                }));
+                                if (val === 'Keterangan') setGuruSearch('');
+                            }} className="input-standard outline-none">
                                 <option value="Kegiatan">Kegiatan</option>
                                 <option value="Keterangan">Keterangan</option>
                             </select>
@@ -784,40 +846,122 @@ function ManajemenKalender() {
                                 <option value="Libur">Libur / Tidak Aktif</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5 relative md:col-span-2" ref={guruDropdownRef}>
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Penanggung Jawab (Opsional)</label>
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    placeholder="Cari Nama Guru PJ..."
-                                    value={guruSearch}
-                                    onChange={(e) => { setGuruSearch(e.target.value); setShowGuruDropdown(true); }}
-                                    onFocus={() => setShowGuruDropdown(true)}
-                                    className="input-standard font-bold"
-                                />
-                            </div>
-                            {showGuruDropdown && (
-                                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
-                                    {filteredGuru.map(g => (
-                                        <div key={g.id} onClick={() => { setFormData({ ...formData, guru_id: g.id }); setGuruSearch(g.nama); setShowGuruDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0 border-r-4 border-r-transparent hover:border-r-primary transition-all">
-                                            <span className="text-xs font-bold text-gray-700 dark:text-dark-text uppercase">{g.nama}</span>
-                                            <span className="text-[10px] text-gray-400 font-medium tracking-wider">{g.nip || 'NIP -'}</span>
-                                        </div>
-                                    ))}
-                                    {filteredGuru.length === 0 && <div className="px-4 py-3 text-xs text-gray-400 italic">Guru tidak ditemukan...</div>}
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
 
-                <div>
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Estimasi Anggaran</label>
-                    <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nilai RAB (IDR)</label>
-                        <input type="number" value={formData.rab} onChange={(e) => setFormData({ ...formData, rab: e.target.value })} className="input-standard" placeholder="0" />
-                    </div>
-                </div>
+                {/* Kegiatan-specific fields — only show when tipe = Kegiatan */}
+                {isKegiatan && (
+                    <>
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Detail Kegiatan</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Jenis Kegiatan</label>
+                                    <select value={formData.jenis_kegiatan} onChange={(e) => setFormData({ ...formData, jenis_kegiatan: e.target.value })} className="input-standard outline-none">
+                                        {jenisKegiatanList.map(j => <option key={j} value={j}>{j}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Tempat / Lokasi *</label>
+                                    <input type="text" value={formData.tempat} onChange={(e) => setFormData({ ...formData, tempat: e.target.value })} className="input-standard" placeholder="Aula Utama, Lapangan, dll..." />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Pelaksana & Peserta</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5 relative" ref={guruDropdownRef}>
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Penanggung Jawab *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Cari Nama Guru PJ..."
+                                        value={guruSearch}
+                                        onChange={(e) => { setGuruSearch(e.target.value); setShowGuruDropdown(true); }}
+                                        onFocus={() => setShowGuruDropdown(true)}
+                                        className="input-standard font-bold"
+                                    />
+                                    {showGuruDropdown && (
+                                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
+                                            {filteredGuru.map(g => (
+                                                <div key={g.id} onClick={() => { setFormData({ ...formData, guru_id: g.id }); setGuruSearch(g.nama); setShowGuruDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0 border-r-4 border-r-transparent hover:border-r-primary transition-all">
+                                                    <span className="text-xs font-bold text-gray-700 dark:text-dark-text uppercase">{g.nama}</span>
+                                                    <span className="text-[10px] text-gray-400 font-medium tracking-wider">{g.nip || 'NIP -'}</span>
+                                                </div>
+                                            ))}
+                                            {filteredGuru.length === 0 && <div className="px-4 py-3 text-xs text-gray-400 italic">Guru tidak ditemukan...</div>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-1.5 relative" ref={gpDropdownRef}>
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Guru Pendamping (Beberapa)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Pilih Guru Pendamping..."
+                                        value={gpSearch}
+                                        onChange={(e) => { setGpSearch(e.target.value); setShowGpDropdown(true); }}
+                                        onFocus={() => setShowGpDropdown(true)}
+                                        className="input-standard"
+                                    />
+                                    {formData.guru_pendamping.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {formData.guru_pendamping.map(id => {
+                                                const g = guruList.find(g => g.id === id);
+                                                return g ? (
+                                                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold">
+                                                        {g.nama}
+                                                        <button type="button" onClick={() => toggleGp(id)} className="hover:text-rose-500">
+                                                            <i className="fas fa-times text-[8px]"></i>
+                                                        </button>
+                                                    </span>
+                                                ) : null;
+                                            })}
+                                        </div>
+                                    )}
+                                    {showGpDropdown && (
+                                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
+                                            {filteredGp.filter(g => !formData.guru_pendamping.includes(g.id)).map(g => (
+                                                <div key={g.id} onClick={() => { toggleGp(g.id); setShowGpDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0 transition-all">
+                                                    <span className="text-xs font-bold text-gray-700 dark:text-dark-text uppercase">{g.nama}</span>
+                                                </div>
+                                            ))}
+                                            {filteredGp.filter(g => !formData.guru_pendamping.includes(g.id)).length === 0 && <div className="px-4 py-3 text-xs text-gray-400 italic">Semua guru sudah dipilih</div>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Target Kelas Peserta</label>
+                            <div className="space-y-1.5 relative" ref={kelasDropdownRef}>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {kelasList.map(k => (
+                                        <button
+                                            key={k.id}
+                                            type="button"
+                                            onClick={() => toggleKelas(k.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${formData.kelas_peserta.includes(k.id)
+                                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                                    : 'bg-gray-100 text-gray-500 hover:bg-primary/10 hover:text-primary dark:bg-dark-border dark:text-gray-400'
+                                                }`}
+                                        >
+                                            {k.nama_kelas}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Estimasi Anggaran</label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nilai RAB (IDR)</label>
+                                <input type="number" value={formData.rab} onChange={(e) => setFormData({ ...formData, rab: e.target.value })} className="input-standard" placeholder="0" />
+                            </div>
+                        </div>
+                    </>
+                )}
             </CrudModal>
 
             <style dangerouslySetInnerHTML={{

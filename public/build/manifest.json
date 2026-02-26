@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-C6MXGxOn.css",
+    "file": "assets/app-CafPhipo.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -9,12 +9,12 @@
     "src": "resources/images/logo.png"
   },
   "resources/js/main.jsx": {
-    "file": "assets/main-DtL_1l_v.js",
+    "file": "assets/main-WwmtZx1l.js",
     "name": "main",
     "src": "resources/js/main.jsx",
     "isEntry": true,
     "css": [
-      "assets/app-C6MXGxOn.css"
+      "assets/app-CafPhipo.css"
     ],
     "assets": [
       "assets/logo-KVNS57bw.png"

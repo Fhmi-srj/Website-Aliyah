@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CrudModal, { ModalSection } from '../../../components/CrudModal';
 import { API_BASE, authFetch } from '../../../config/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
@@ -16,7 +18,9 @@ function ManajemenJadwal() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const [tahunAjaranId, setTahunAjaranId] = useState('');
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
     const [currentItem, setCurrentItem] = useState(null);
@@ -240,7 +244,7 @@ function ManajemenJadwal() {
             const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ ...formData, tahun_ajaran_id: tahunAjaranId })
             });
             if (res.ok) {
                 closeModal();

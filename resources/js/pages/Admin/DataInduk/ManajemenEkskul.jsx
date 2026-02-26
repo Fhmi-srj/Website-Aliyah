@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import CrudModal, { ModalSection } from '../../../components/CrudModal';
 import { API_BASE, authFetch } from '../../../config/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
@@ -14,6 +16,10 @@ function ManajemenEkskul() {
     const [siswaList, setSiswaList] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+
+    const { tahunAjaran: authTahunAjaran } = useAuth();
+    const { activeTahunAjaran } = useTahunAjaran();
+    const tahunAjaranId = authTahunAjaran?.id || activeTahunAjaran?.id;
 
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('add');
@@ -63,11 +69,12 @@ function ManajemenEkskul() {
     const kategoriList = ['Olahraga', 'Seni', 'Akademik', 'Keagamaan'];
     const hariList = ['Sabtu', 'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis'];
 
-    const fetchData = async () => {
+    const fetchData = async (tahunId = tahunAjaranId) => {
         try {
             setLoading(true);
+            const ekskulUrl = tahunId ? `${API_BASE}/ekskul?tahun_ajaran_id=${tahunId}` : `${API_BASE}/ekskul`;
             const [ekskulRes, guruRes, siswaRes] = await Promise.all([
-                authFetch(`${API_BASE}/ekskul`),
+                authFetch(ekskulUrl),
                 authFetch(`${API_BASE}/guru`),
                 authFetch(`${API_BASE}/siswa`)
             ]);
@@ -81,7 +88,7 @@ function ManajemenEkskul() {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(tahunAjaranId); }, [tahunAjaranId]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -253,7 +260,7 @@ function ManajemenEkskul() {
             const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ ...formData, tahun_ajaran_id: tahunAjaranId })
             });
             if (res.ok) {
                 closeModal();
