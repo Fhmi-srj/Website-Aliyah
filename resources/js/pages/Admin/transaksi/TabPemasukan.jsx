@@ -5,10 +5,14 @@ import Swal from 'sweetalert2';
 import SearchableDropdown from '../components/SearchableDropdown';
 import { formatRupiah, parseRupiah } from '../../../utils/currency';
 
-const formatTanggal = (d) => {
+const formatTanggal = (d, mobile = false) => {
     if (!d) return '-';
     const dt = new Date(d);
     if (isNaN(dt)) return d;
+    if (mobile) {
+        const bulanShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${String(dt.getDate()).padStart(2, '0')} ${bulanShort[dt.getMonth()]} ${String(dt.getFullYear()).slice(-2)}`;
+    }
     const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     return `${hari[dt.getDay()]}, ${dt.getDate()} ${bulan[dt.getMonth()]} ${dt.getFullYear()} | ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
@@ -18,6 +22,10 @@ export default function TabPemasukan({ isMobile }) {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState('terbaru');
+    const [filterSumber, setFilterSumber] = useState('');
+    const [filterAdmin, setFilterAdmin] = useState('');
+    const [showFilter, setShowFilter] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [mode, setMode] = useState('add');
     const [current, setCurrent] = useState(null);
@@ -75,35 +83,86 @@ export default function TabPemasukan({ isMobile }) {
         if (c.isConfirmed) { try { await authFetch(`${API_BASE}/pemasukan/${id}`, { method: 'DELETE', headers: { Accept: 'application/json' } }); fetchData(); Swal.fire({ icon: 'success', title: 'Terhapus!', timer: 1500, showConfirmButton: false }); } catch { } }
     };
 
-    const filtered = list.filter(i => { if (!search) return true; const s = search.toLowerCase(); return i.keterangan?.toLowerCase().includes(s) || i.sumber?.nama?.toLowerCase().includes(s) || String(i.nominal).includes(s); });
+    const adminList = [...new Map(list.filter(i => i.admin?.name).map(i => [i.admin.id || i.admin.name, { id: i.admin.id || i.admin.name, nama: i.admin.name }])).values()];
+
+    const filtered = list.filter(i => {
+        if (search) { const s = search.toLowerCase(); if (!(i.keterangan?.toLowerCase().includes(s) || i.sumber?.nama?.toLowerCase().includes(s) || String(i.nominal).includes(s))) return false; }
+        if (filterSumber && String(i.sumber?.id) !== String(filterSumber)) return false;
+        if (filterAdmin && String(i.admin?.id || i.admin?.name) !== String(filterAdmin)) return false;
+        return true;
+    }).sort((a, b) => {
+        if (sortBy === 'terbaru') return new Date(b.tanggal) - new Date(a.tanggal);
+        if (sortBy === 'terlama') return new Date(a.tanggal) - new Date(b.tanggal);
+        if (sortBy === 'nominal_desc') return parseFloat(b.nominal || 0) - parseFloat(a.nominal || 0);
+        if (sortBy === 'nominal_asc') return parseFloat(a.nominal || 0) - parseFloat(b.nominal || 0);
+        return 0;
+    });
+
+    const activeFilterCount = (filterSumber ? 1 : 0) + (filterAdmin ? 1 : 0) + (sortBy !== 'terbaru' ? 1 : 0);
 
     return (
         <>
             {/* Controls */}
             <div className={`${isMobile ? 'mobile-controls-row bg-gray-50/50 rounded-xl border border-gray-100' : 'flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100'}`}>
                 {isMobile ? (
-                    <div className="flex gap-1.5 w-full">
-                        <div className="relative group" style={{ width: '65%' }}>
-                            <i className="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors text-[10px]"></i>
-                            <input type="search" value={search} onChange={e => setSearch(e.target.value)}
-                                className="w-full !pl-7 pr-2 py-1.5 text-[10px] bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
-                                placeholder="Cari..." />
-                        </div>
-                        <div style={{ width: '35%' }}>
-                            <button onClick={openAdd} className="btn-primary flex items-center justify-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest w-full py-1.5 text-[10px] rounded-xl">
+                    <div className="flex flex-col gap-1.5 w-full">
+                        <div className="flex gap-1.5 w-full">
+                            <div className="relative group flex-1">
+                                <i className="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors text-[10px]"></i>
+                                <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+                                    className="w-full !pl-7 pr-2 py-1.5 text-[10px] bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
+                                    placeholder="Cari..." />
+                            </div>
+                            <button onClick={() => setShowFilter(f => !f)} className={`relative flex items-center justify-center w-8 h-8 rounded-xl border transition-all ${showFilter ? 'bg-primary text-white border-primary' : 'bg-white text-gray-500 border-gray-200'}`}>
+                                <i className="fas fa-sliders-h text-[10px]"></i>
+                                {activeFilterCount > 0 && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center">{activeFilterCount}</span>}
+                            </button>
+                            <button onClick={openAdd} className="btn-primary flex items-center justify-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest px-3 py-1.5 text-[10px] rounded-xl">
                                 <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i><span>Tambah</span>
                             </button>
                         </div>
+                        {showFilter && (
+                            <div className="flex gap-1.5 pt-1">
+                                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="flex-1 min-w-0 px-1.5 py-1 rounded-lg text-[8px] font-bold bg-white border border-gray-200 text-gray-600 transition-all">
+                                    <option value="terbaru">Terbaru</option>
+                                    <option value="terlama">Terlama</option>
+                                    <option value="nominal_desc">Rp ↓</option>
+                                    <option value="nominal_asc">Rp ↑</option>
+                                </select>
+                                <select value={filterSumber} onChange={e => setFilterSumber(e.target.value)} className="flex-1 min-w-0 px-1.5 py-1 rounded-lg text-[8px] font-bold bg-white border border-gray-200 text-gray-600 transition-all">
+                                    <option value="">Sumber</option>
+                                    {sumberList.map(k => (<option key={k.id} value={String(k.id)}>{k.nama}</option>))}
+                                </select>
+                                <select value={filterAdmin} onChange={e => setFilterAdmin(e.target.value)} className="flex-1 min-w-0 px-1.5 py-1 rounded-lg text-[8px] font-bold bg-white border border-gray-200 text-gray-600 transition-all">
+                                    <option value="">Admin</option>
+                                    {adminList.map(a => (<option key={a.id} value={String(a.id)}>{a.nama}</option>))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <>
-                        <div className="flex items-center w-full md:w-[400px] relative group">
-                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                            <input type="search" value={search} onChange={e => setSearch(e.target.value)}
-                                className="w-full !pl-8 pr-2 py-3 text-sm bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
-                                placeholder="Cari pemasukan..." />
-                        </div>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex items-center gap-3 flex-wrap w-full">
+                            <div className="relative group flex-1 min-w-[200px]">
+                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
+                                <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+                                    className="w-full !pl-8 pr-2 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400 shadow-sm"
+                                    placeholder="Cari pemasukan..." />
+                            </div>
+                            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-3 py-2.5 rounded-xl text-xs font-bold bg-white border border-gray-200 text-gray-600 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm">
+                                <option value="terbaru">Terbaru</option>
+                                <option value="terlama">Terlama</option>
+                                <option value="nominal_desc">Nominal ↓</option>
+                                <option value="nominal_asc">Nominal ↑</option>
+                            </select>
+                            <select value={filterSumber} onChange={e => setFilterSumber(e.target.value)} className="px-3 py-2.5 rounded-xl text-xs font-bold bg-white border border-gray-200 text-gray-600 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm">
+                                <option value="">Semua Sumber</option>
+                                {sumberList.map(k => (<option key={k.id} value={String(k.id)}>{k.nama}</option>))}
+                            </select>
+                            <select value={filterAdmin} onChange={e => setFilterAdmin(e.target.value)} className="px-3 py-2.5 rounded-xl text-xs font-bold bg-white border border-gray-200 text-gray-600 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-sm">
+                                <option value="">Semua Admin</option>
+                                {adminList.map(a => (<option key={a.id} value={String(a.id)}>{a.nama}</option>))}
+                            </select>
                             <button onClick={openAdd} className="btn-primary flex items-center gap-1 group shadow-lg shadow-primary/20 font-black uppercase tracking-widest px-4 py-2.5 text-[10px] rounded-xl">
                                 <i className="fas fa-plus group-hover:rotate-90 transition-transform"></i><span>Tambah</span>
                             </button>
@@ -131,7 +190,7 @@ export default function TabPemasukan({ isMobile }) {
                             {filtered.map((item, idx) => (
                                 <tr key={item.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0 group">
                                     {!isMobile && <td className="py-2.5 pl-6 align-middle text-center text-xs font-bold text-gray-400">{idx + 1}</td>}
-                                    <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`text-gray-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>{formatTanggal(item.tanggal)}</span></td>
+                                    <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`text-gray-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>{formatTanggal(item.tanggal, isMobile)}</span></td>
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>{item.sumber?.nama || '-'}</span></td>
                                     <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`font-bold text-emerald-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>Rp {fmt(item.nominal)}</span></td>
                                     {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold">{item.admin?.name || '-'}</span></td>}

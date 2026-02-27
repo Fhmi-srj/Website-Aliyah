@@ -33,6 +33,7 @@ class MapelController extends Controller
             'kode_mapel' => 'nullable|string|max:20',
             'kkm' => 'nullable|integer|min:0|max:100',
             'status' => 'nullable|in:Aktif,Tidak Aktif',
+            'is_non_akademik' => 'nullable|boolean',
         ]);
 
         // Set defaults
@@ -41,6 +42,7 @@ class MapelController extends Controller
         }
         $validated['kkm'] = $validated['kkm'] ?? 75;
         $validated['status'] = $validated['status'] ?? 'Aktif';
+        $validated['is_non_akademik'] = $validated['is_non_akademik'] ?? false;
 
         $mapel = Mapel::create($validated);
 
@@ -73,6 +75,7 @@ class MapelController extends Controller
             'kode_mapel' => 'nullable|string|max:20',
             'kkm' => 'nullable|integer|min:0|max:100',
             'status' => 'nullable|in:Aktif,Tidak Aktif',
+            'is_non_akademik' => 'nullable|boolean',
         ]);
 
         // Set defaults for optional fields if null but not sent (usually they are sent from front-end)

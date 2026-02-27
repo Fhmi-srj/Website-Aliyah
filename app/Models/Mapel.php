@@ -19,6 +19,11 @@ class Mapel extends Model
         'guru_pengampu_id',
         'kkm',
         'status',
+        'is_non_akademik',
+    ];
+
+    protected $casts = [
+        'is_non_akademik' => 'boolean',
     ];
 
     /**

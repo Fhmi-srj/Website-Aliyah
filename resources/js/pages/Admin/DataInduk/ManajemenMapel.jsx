@@ -18,7 +18,8 @@ function ManajemenMapel() {
     const [formData, setFormData] = useState({
         nama_mapel: '',
         kode_mapel: '',
-        status: 'Aktif'
+        status: 'Aktif',
+        is_non_akademik: false
     });
 
     // Sorting state
@@ -27,6 +28,7 @@ function ManajemenMapel() {
 
     // Filter state
     const [filterStatus, setFilterStatus] = useState('');
+    const [filterTipe, setFilterTipe] = useState('');
     const [activeFilter, setActiveFilter] = useState(null);
 
     // Mobile detection
@@ -122,6 +124,8 @@ function ManajemenMapel() {
     const filteredData = (() => {
         let result = data.filter(item => {
             if (filterStatus && item.status !== filterStatus) return false;
+            if (filterTipe === 'akademik' && item.is_non_akademik) return false;
+            if (filterTipe === 'non_akademik' && !item.is_non_akademik) return false;
             if (!search) return true;
             const s = search.toLowerCase();
             return (
@@ -146,15 +150,15 @@ function ManajemenMapel() {
     // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, filterStatus]);
+    }, [search, filterStatus, filterTipe]);
 
-    // Modal functions
     const openAddModal = () => {
         setModalMode('add');
         setFormData({
             nama_mapel: '',
             kode_mapel: '',
-            status: 'Aktif'
+            status: 'Aktif',
+            is_non_akademik: false
         });
 
         setShowModal(true);
@@ -166,9 +170,9 @@ function ManajemenMapel() {
         setFormData({
             nama_mapel: item.nama_mapel || '',
             kode_mapel: item.kode_mapel || '',
-            status: item.status || 'Aktif'
+            status: item.status || 'Aktif',
+            is_non_akademik: item.is_non_akademik || false
         });
-        setIsModalClosing(false);
         setShowModal(true);
     };
 
@@ -486,6 +490,20 @@ function ManajemenMapel() {
                                         setFilterValue={setFilterStatus}
                                     />
                                 )}
+                                {!isMobile && (
+                                    <SortableHeader
+                                        label="Tipe"
+                                        column="is_non_akademik"
+                                        filterable
+                                        filterOptions={[
+                                            { label: 'Semua', value: '' },
+                                            { label: 'Akademik', value: 'akademik' },
+                                            { label: 'Non-Akademik', value: 'non_akademik' }
+                                        ]}
+                                        filterValue={filterTipe}
+                                        setFilterValue={setFilterTipe}
+                                    />
+                                )}
                                 <th className={`select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest ${isMobile ? 'px-2' : 'px-6'}`}>Aksi</th>
                             </tr>
                         </thead>
@@ -509,6 +527,9 @@ function ManajemenMapel() {
                                             <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} font-black text-gray-700 group-hover:text-primary transition-colors uppercase tracking-tight`}>
                                                 {item.nama_mapel}
                                             </span>
+                                            {item.is_non_akademik && (
+                                                <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[7px] font-black uppercase tracking-wider">Non-Akademik</span>
+                                            )}
                                         </td>
                                         {!isMobile && (
                                             <td className="py-2.5 px-2 align-middle whitespace-nowrap">
@@ -517,6 +538,13 @@ function ManajemenMapel() {
                                         )}
                                         {!isMobile && (
                                             <td className="py-2.5 px-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>
+                                        )}
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2 align-middle whitespace-nowrap">
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${item.is_non_akademik ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                    {item.is_non_akademik ? 'Non-Akademik' : 'Akademik'}
+                                                </span>
+                                            </td>
                                         )}
                                         <td className={`text-center ${isMobile ? 'py-1 px-1' : 'py-2.5 px-6'}`}>
                                             <div className="flex items-center justify-center gap-1">
@@ -541,6 +569,12 @@ function ManajemenMapel() {
                                                         <span className="expand-label">Status</span>
                                                         <span className="expand-value">{renderStatus(item.status)}</span>
                                                     </div>
+                                                    <div className="expand-item">
+                                                        <span className="expand-label">Tipe</span>
+                                                        <span className={`expand-value text-[9px] font-bold ${item.is_non_akademik ? 'text-amber-600' : 'text-blue-600'}`}>
+                                                            {item.is_non_akademik ? 'Non-Akademik' : 'Akademik'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -557,7 +591,7 @@ function ManajemenMapel() {
                                             <div>
                                                 <p className="text-sm font-bold text-gray-400 dark:text-gray-500">Data Mapel Kosong</p>
                                                 <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-medium">
-                                                    {search || filterStatus
+                                                    {search || filterStatus || filterTipe
                                                         ? 'Tidak ada data yang sesuai filter/pencarian Anda'
                                                         : 'Belum ada data mata pelajaran yang tersedia'}
                                                 </p>
@@ -593,7 +627,8 @@ function ManajemenMapel() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Modal */}
             <CrudModal
@@ -641,10 +676,25 @@ function ManajemenMapel() {
                                 <option value="Tidak Aktif">Tidak Aktif</option>
                             </select>
                         </div>
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.is_non_akademik}
+                                    onChange={(e) => setFormData({ ...formData, is_non_akademik: e.target.checked })}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                            </label>
+                            <div>
+                                <span className="text-xs font-bold text-amber-700">Non-Akademik</span>
+                                <p className="text-[9px] text-amber-500 mt-0.5">Kegiatan rutin (Senam, Upacara, dll)</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </CrudModal>
-        </div>
+        </div >
     );
 }
 
