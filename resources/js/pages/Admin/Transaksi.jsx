@@ -8,7 +8,7 @@ import TabPemasukan from './transaksi/TabPemasukan';
 import TabPengeluaran from './transaksi/TabPengeluaran';
 
 function Transaksi() {
-    const [activeTab, setActiveTab] = useState('input');
+    const [activeTab, setActiveTab] = useState('pengeluaran');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     useEffect(() => {
@@ -18,11 +18,10 @@ function Transaksi() {
     }, []);
 
     const tabs = [
-        { id: 'input', label: 'Input Tagihan', icon: 'fa-file-invoice-dollar' },
-        { id: 'bayar', label: 'Bayar Tagihan', mobileLabel: 'Bayar', icon: 'fa-hand-holding-usd' },
-
-        { id: 'pemasukan', label: 'Pemasukan', icon: 'fa-arrow-down' },
         { id: 'pengeluaran', label: 'Pengeluaran', icon: 'fa-arrow-up' },
+        { id: 'pemasukan', label: 'Pemasukan', icon: 'fa-arrow-down' },
+        { id: 'bayar', label: 'Bayar Tagihan', mobileLabel: 'Bayar', icon: 'fa-hand-holding-usd' },
+        { id: 'input', label: 'Input Tagihan', icon: 'fa-file-invoice-dollar' },
     ];
 
     return (
@@ -45,7 +44,7 @@ function Transaksi() {
                 <div className={`flex bg-gray-50/50 rounded-2xl border border-gray-100 ${isMobile ? 'gap-0 p-1 overflow-x-auto scrollbar-hide' : 'gap-1 p-1.5 flex-wrap'}`}>
                     {tabs.map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-1 rounded-xl font-black uppercase tracking-widest transition-all whitespace-nowrap ${isMobile ? 'px-2 py-1.5 text-[8px]' : 'gap-2 px-4 py-2.5 text-[10px]'} ${activeTab === tab.id
+                            className={`flex items-center justify-center gap-1 rounded-xl font-black uppercase tracking-widest transition-all whitespace-nowrap ${isMobile ? 'flex-1 px-2 py-1.5 text-[8px]' : 'gap-2 px-4 py-2.5 text-[10px]'} ${activeTab === tab.id
                                 ? 'bg-white text-primary shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'}`}>
                             <i className={`fas ${tab.icon} ${isMobile ? 'text-[9px]' : ''}`}></i>
                             {isMobile ? (tab.mobileLabel || tab.label.split(' ').pop()) : tab.label}
