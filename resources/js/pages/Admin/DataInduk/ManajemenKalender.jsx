@@ -895,39 +895,52 @@ function ManajemenKalender() {
                                 </div>
                                 <div className="space-y-1.5 relative" ref={gpDropdownRef}>
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Guru Pendamping (Beberapa)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Pilih Guru Pendamping..."
-                                        value={gpSearch}
-                                        onChange={(e) => { setGpSearch(e.target.value); setShowGpDropdown(true); }}
-                                        onFocus={() => setShowGpDropdown(true)}
-                                        className="input-standard"
-                                    />
-                                    {formData.guru_pendamping.length > 0 && (
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {formData.guru_pendamping.map(id => {
-                                                const g = guruList.find(g => g.id === id);
-                                                return g ? (
-                                                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold">
-                                                        {g.nama}
-                                                        <button type="button" onClick={() => toggleGp(id)} className="hover:text-rose-500">
-                                                            <i className="fas fa-times text-[8px]"></i>
-                                                        </button>
-                                                    </span>
-                                                ) : null;
-                                            })}
-                                        </div>
-                                    )}
+                                    <div className="relative group">
+                                        <input
+                                            type="text"
+                                            placeholder="Pilih Guru Pendamping..."
+                                            value={gpSearch}
+                                            onChange={(e) => { setGpSearch(e.target.value); setShowGpDropdown(true); }}
+                                            onFocus={() => setShowGpDropdown(true)}
+                                            className="input-standard"
+                                        />
+                                    </div>
                                     {showGpDropdown && (
                                         <div className="absolute z-50 mt-1 w-full bg-white dark:bg-dark-surface border border-gray-100 dark:border-dark-border rounded-xl shadow-xl max-h-48 overflow-y-auto animate-fadeIn">
-                                            {filteredGp.filter(g => !formData.guru_pendamping.includes(g.id)).map(g => (
-                                                <div key={g.id} onClick={() => { toggleGp(g.id); setShowGpDropdown(false); }} className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex flex-col gap-0.5 border-b border-gray-50 dark:border-dark-border last:border-0 transition-all">
-                                                    <span className="text-xs font-bold text-gray-700 dark:text-dark-text uppercase">{g.nama}</span>
+                                            <div onClick={() => {
+                                                const allIds = filteredGp.map(g => g.id);
+                                                const allSelected = allIds.every(id => formData.guru_pendamping.includes(id));
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    guru_pendamping: allSelected
+                                                        ? prev.guru_pendamping.filter(id => !allIds.includes(id))
+                                                        : [...new Set([...prev.guru_pendamping, ...allIds])]
+                                                }));
+                                            }} className={`px-4 py-2.5 cursor-pointer flex items-center justify-between border-b-2 border-gray-100 dark:border-dark-border sticky top-0 bg-white dark:bg-dark-surface z-10 ${filteredGp.length > 0 && filteredGp.every(g => formData.guru_pendamping.includes(g.id)) ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50'}`}>
+                                                <span className="text-xs font-black uppercase tracking-wide"><i className="fas fa-check-double mr-2 text-[10px]"></i>{filteredGp.length > 0 && filteredGp.every(g => formData.guru_pendamping.includes(g.id)) ? 'Hapus Semua' : 'Pilih Semua'}</span>
+                                                <span className="text-[10px] text-gray-400 font-bold">{formData.guru_pendamping.length}/{guruList.length}</span>
+                                            </div>
+                                            {filteredGp.map(g => (
+                                                <div key={g.id} onClick={() => toggleGp(g.id)} className={`px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex items-center justify-between border-b border-gray-50 dark:border-dark-border last:border-0 ${formData.guru_pendamping.includes(g.id) ? 'bg-primary/5 text-primary' : ''}`}>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold dark:text-dark-text">{g.nama}</span>
+                                                        <span className="text-[10px] text-gray-400">{g.jabatan || 'Guru'}</span>
+                                                    </div>
+                                                    {formData.guru_pendamping.includes(g.id) && <i className="fas fa-check text-[10px]"></i>}
                                                 </div>
                                             ))}
-                                            {filteredGp.filter(g => !formData.guru_pendamping.includes(g.id)).length === 0 && <div className="px-4 py-3 text-xs text-gray-400 italic">Semua guru sudah dipilih</div>}
                                         </div>
                                     )}
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {formData.guru_pendamping.map(id => {
+                                            const g = guruList.find(x => x.id === id);
+                                            return g ? (
+                                                <span key={id} onClick={() => toggleGp(id)} className="px-2 py-1 bg-gray-100 dark:bg-dark-bg/50 rounded-lg text-[9px] font-bold text-gray-600 dark:text-gray-400 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                                                    {g.nama} <i className="fas fa-times ml-1 opacity-0 group-hover:opacity-100"></i>
+                                                </span>
+                                            ) : null;
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -942,8 +955,8 @@ function ManajemenKalender() {
                                             type="button"
                                             onClick={() => toggleKelas(k.id)}
                                             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${formData.kelas_peserta.includes(k.id)
-                                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                                    : 'bg-gray-100 text-gray-500 hover:bg-primary/10 hover:text-primary dark:bg-dark-border dark:text-gray-400'
+                                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                                : 'bg-gray-100 text-gray-500 hover:bg-primary/10 hover:text-primary dark:bg-dark-border dark:text-gray-400'
                                                 }`}
                                         >
                                             {k.nama_kelas}

@@ -10,7 +10,7 @@ function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [remember, setRemember] = useState(false);
+    const [remember, setRemember] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -19,12 +19,24 @@ function Login() {
     const [tahunAjaranList, setTahunAjaranList] = useState([]);
     const [loadingTahun, setLoadingTahun] = useState(true);
 
-    const { login, loginWithWebAuthn } = useAuth();
+    const { login, loginWithWebAuthn, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
     // WebAuthn state
     const [webauthnSupported] = useState(isWebAuthnSupported());
     const [webauthnLoading, setWebauthnLoading] = useState(false);
+
+    // Auto-redirect if already authenticated
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            const activeRole = localStorage.getItem('active_role') || 'guru';
+            if (hasAdminAccess(activeRole)) {
+                navigate('/dashboard', { replace: true });
+            } else {
+                navigate('/guru', { replace: true });
+            }
+        }
+    }, [authLoading, isAuthenticated, navigate]);
 
     // Fetch tahun ajaran list on mount
     useEffect(() => {
