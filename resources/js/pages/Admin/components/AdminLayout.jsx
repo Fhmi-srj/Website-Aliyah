@@ -110,12 +110,28 @@ function AdminLayout({ children }) {
     // Check if current path starts with given path
     const isPathActive = (path) => location.pathname.startsWith(path);
 
-    // Bottom navigation items for mobile (simplified: 3 items)
-    const mobileNavItems = [
-        { to: '/dashboard', icon: 'fas fa-home', label: 'Beranda', end: true },
-        { type: 'more' }, // Placeholder for "Menu" dropup
-        { to: '/pengaturan', icon: 'fas fa-cog', label: 'Pengaturan' },
-    ];
+    // Permission checks for bottom nav shortcuts
+    const canSeeTransaksi = isSuperadmin || canAccessAdminPage(activeRole, '/transaksi');
+    const canSeeKegiatan = isSuperadmin || canAccessAdminPage(activeRole, '/data-induk/kegiatan');
+
+    // Bottom navigation items for mobile - dynamically add Transaksi & Kegiatan if permitted
+    const mobileNavItems = useMemo(() => {
+        const items = [
+            { to: '/dashboard', icon: 'fas fa-home', label: 'Beranda', end: true },
+        ];
+        if (canSeeTransaksi) {
+            items.push({ to: '/transaksi', icon: 'fas fa-money-bill-wave', label: 'Transaksi' });
+        }
+        items.push({ type: 'more' }); // Placeholder for "Menu" dropup
+        if (canSeeKegiatan) {
+            items.push({ to: '/data-induk/kegiatan', icon: 'fas fa-tasks', label: 'Kegiatan' });
+        }
+        items.push({ to: '/pengaturan', icon: 'fas fa-cog', label: 'Pengaturan' });
+        return items;
+    }, [canSeeTransaksi, canSeeKegiatan]);
+
+    // Calculate grid columns based on number of mobile nav items
+    const mobileNavCols = mobileNavItems.length;
 
     // All menu items for dropup
     const allMenuItems = [
@@ -301,7 +317,7 @@ function AdminLayout({ children }) {
             {/* Bottom Navigation - Mobile Only */}
             <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
                 <div className="bg-white dark:bg-dark-surface shadow-[0_-2px_10px_rgba(0,0,0,0.1)] border-t border-gray-100 dark:border-dark-border transition-colors duration-300">
-                    <div className="grid grid-cols-3 h-16">
+                    <div className={`grid h-16`} style={{ gridTemplateColumns: `repeat(${mobileNavCols}, minmax(0, 1fr))` }}>
                         {mobileNavItems.map((item, idx) => {
                             if (item.type === 'more') {
                                 const isMenuItemActive = menuItems.some(mi => isPathActive(mi.path));

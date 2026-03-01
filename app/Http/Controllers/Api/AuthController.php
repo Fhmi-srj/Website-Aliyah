@@ -133,8 +133,8 @@ class AuthController extends Controller
         // Load tahun_ajaran data
         $tahunAjaran = \App\Models\TahunAjaran::find($request->tahun_ajaran_id);
 
-        // Token expiration: 2 hours default, 30 days if remember
-        $expiration = $request->remember ? now()->addDays(30) : now()->addHours(2);
+        // Token expiration: 24 hours default, 30 days if remember
+        $expiration = $request->remember ? now()->addDays(30) : now()->addHours(24);
 
         // Revoke old tokens
         $user->tokens()->delete();

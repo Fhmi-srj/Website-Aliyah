@@ -484,6 +484,9 @@ function Beranda() {
                                             {event.type === 'mengajar' ? event.date : event.title}
                                         </p>
                                         <div className="flex items-center gap-2 mt-0.5">
+                                            {event.type === 'mengajar' && event.title && (
+                                                <span className="text-[10px] text-gray-500 font-medium">{event.title}</span>
+                                            )}
                                             {event.type !== 'mengajar' && (
                                                 <span className="text-[10px] text-gray-400">{event.date}</span>
                                             )}

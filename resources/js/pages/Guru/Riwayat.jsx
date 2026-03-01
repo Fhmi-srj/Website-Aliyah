@@ -673,6 +673,10 @@ function Riwayat() {
                                                     <div className="flex-1 min-w-0 text-left">
                                                         {/* Row 1: Mapel */}
                                                         <p className="font-semibold text-gray-800 truncate">{item.mapel}</p>
+                                                        {/* Row 1.5: Keterangan Mapel */}
+                                                        {item.mapel_keterangan && (
+                                                            <p className="text-[11px] text-gray-400 italic truncate">{item.mapel_keterangan}</p>
+                                                        )}
                                                         {/* Row 2: Kelas */}
                                                         <p className="text-xs text-gray-500 truncate">{item.kelas}</p>
                                                         {/* Row 3: Tanggal + Time + Status */}

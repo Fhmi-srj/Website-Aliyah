@@ -1207,7 +1207,7 @@ class GuruDashboardController extends Controller
                     if ($jadwal->hari === $dayName) {
                         $events[] = [
                             'type' => 'mengajar',
-                            'title' => $jadwal->mapel->nama ?? 'Mengajar',
+                            'title' => $jadwal->mapel->nama_mapel ?? 'Mengajar',
                             'subtitle' => $jadwal->kelas->nama_kelas ?? '',
                             'date' => $date->locale('id')->translatedFormat('l, d M'),
                             'date_raw' => $date->toDateString(),

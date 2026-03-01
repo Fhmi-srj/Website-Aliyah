@@ -17,6 +17,7 @@ function ManajemenMapel() {
 
     const [formData, setFormData] = useState({
         nama_mapel: '',
+        keterangan: '',
         kode_mapel: '',
         status: 'Aktif',
         is_non_akademik: false
@@ -156,6 +157,7 @@ function ManajemenMapel() {
         setModalMode('add');
         setFormData({
             nama_mapel: '',
+            keterangan: '',
             kode_mapel: '',
             status: 'Aktif',
             is_non_akademik: false
@@ -169,6 +171,7 @@ function ManajemenMapel() {
         setCurrentItem(item);
         setFormData({
             nama_mapel: item.nama_mapel || '',
+            keterangan: item.keterangan || '',
             kode_mapel: item.kode_mapel || '',
             status: item.status || 'Aktif',
             is_non_akademik: item.is_non_akademik || false
@@ -653,6 +656,16 @@ function ManajemenMapel() {
                                 onChange={(e) => setFormData({ ...formData, nama_mapel: e.target.value })}
                                 className="input-standard"
                                 placeholder="Contoh: Matematika"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Keterangan</label>
+                            <input
+                                type="text"
+                                value={formData.keterangan}
+                                onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+                                className="input-standard"
+                                placeholder="Deskripsi singkat mapel..."
                             />
                         </div>
                         <div className="space-y-1.5">

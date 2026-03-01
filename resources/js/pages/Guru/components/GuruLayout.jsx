@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
-import { getRoleInfo } from '../../../config/roleConfig';
+import { getRoleInfo, canAccessAdminPage } from '../../../config/roleConfig';
 import RoleSwitcher from '../../../components/RoleSwitcher';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
@@ -14,10 +14,11 @@ function GuruLayout({ children }) {
     const [tahunAjaranMenuOpen, setTahunAjaranMenuOpen] = useState(false);
     const navigate = useNavigate();
     // Use AuthContext tahunAjaran with fallback to TahunAjaranContext
-    const { logout, tahunAjaran: authTahunAjaran } = useAuth();
+    const { logout, tahunAjaran: authTahunAjaran, activeRole } = useAuth();
     const { activeTahunAjaran } = useTahunAjaran();
     const tahunAjaran = authTahunAjaran || activeTahunAjaran;
     const profileMenuRef = useRef(null);
+    const canSeeTransaksi = canAccessAdminPage(activeRole, '/transaksi');
 
     const handleAbsensiClick = (type) => {
         setFabOpen(false);
@@ -240,6 +241,39 @@ function GuruLayout({ children }) {
                             </div>
                             <i className="fas fa-chevron-right text-green-500"></i>
                         </button>
+
+                        {/* Conditional: Transaksi & Kegiatan (only if user has /transaksi access) */}
+                        {canSeeTransaksi && (
+                            <>
+                                <div className="border-t border-gray-200/60 my-1.5"></div>
+                                <button
+                                    onClick={() => { setFabOpen(false); navigate('/transaksi'); }}
+                                    className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
+                                >
+                                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i className="fas fa-money-bill-wave text-white text-sm"></i>
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <p className="font-semibold text-gray-800 text-sm">Transaksi</p>
+                                        <p className="text-xs text-gray-500">Pemasukan & Pengeluaran</p>
+                                    </div>
+                                    <i className="fas fa-chevron-right text-amber-500"></i>
+                                </button>
+                                <button
+                                    onClick={() => { setFabOpen(false); navigate('/data-induk/kegiatan'); }}
+                                    className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-100/50 rounded-xl transition-colors"
+                                >
+                                    <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i className="fas fa-tasks text-white text-sm"></i>
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <p className="font-semibold text-gray-800 text-sm">Kegiatan</p>
+                                        <p className="text-xs text-gray-500">Manajemen Kegiatan</p>
+                                    </div>
+                                    <i className="fas fa-chevron-right text-indigo-500"></i>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

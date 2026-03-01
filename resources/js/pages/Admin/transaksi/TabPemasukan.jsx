@@ -26,6 +26,15 @@ export default function TabPemasukan({ isMobile }) {
     const [filterSumber, setFilterSumber] = useState('');
     const [filterAdmin, setFilterAdmin] = useState('');
     const [showFilter, setShowFilter] = useState(false);
+    const [expandedRows, setExpandedRows] = useState(new Set());
+
+    const toggleRowExpand = (idx) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(idx)) next.delete(idx); else next.add(idx);
+            return next;
+        });
+    };
     const [showModal, setShowModal] = useState(false);
     const [mode, setMode] = useState('add');
     const [current, setCurrent] = useState(null);
@@ -179,6 +188,7 @@ export default function TabPemasukan({ isMobile }) {
                     <table className={`admin-table ${isMobile ? 'mobile-table-fixed' : 'min-w-[700px]'}`}>
                         <thead><tr>
                             {!isMobile && <th className="select-none pl-6 py-2.5 w-10 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
+                            {isMobile && <th className="select-none py-2 text-center"></th>}
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Tanggal</th>
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Sumber</th>
                             <th className={`select-none py-2 ${isMobile ? 'px-2 text-[8px]' : 'text-xs'} font-black text-gray-400 uppercase tracking-widest`}>Nominal</th>
@@ -188,23 +198,42 @@ export default function TabPemasukan({ isMobile }) {
                         </tr></thead>
                         <tbody>
                             {filtered.map((item, idx) => (
-                                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0 group">
-                                    {!isMobile && <td className="py-2.5 pl-6 align-middle text-center text-xs font-bold text-gray-400">{idx + 1}</td>}
-                                    <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`text-gray-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>{formatTanggal(item.tanggal, isMobile)}</span></td>
-                                    <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>{item.sumber?.nama || '-'}</span></td>
-                                    <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`font-bold text-emerald-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>Rp {fmt(item.nominal)}</span></td>
-                                    {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold">{item.admin?.name || '-'}</span></td>}
-                                    {!isMobile && <td className="py-2 align-middle text-[11px] text-gray-500 max-w-[200px] truncate">{item.keterangan || '-'}</td>}
-                                    <td className={`py-2 ${isMobile ? 'px-1' : 'px-6'} align-middle text-center`}>
-                                        <div className="flex items-center justify-center gap-1">
-                                            <button onClick={() => openEdit(item)} className={`action-btn rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Edit"><i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
-                                            <button onClick={() => deleteItem(item.id)} className={`action-btn rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Hapus"><i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <React.Fragment key={item.id}>
+                                    <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0 group">
+                                        {!isMobile && <td className="py-2.5 pl-6 align-middle text-center text-xs font-bold text-gray-400">{idx + 1}</td>}
+                                        {isMobile && (
+                                            <td className="py-1 align-middle text-center cursor-pointer px-1" onClick={() => toggleRowExpand(idx)}>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${expandedRows.has(idx) ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <i className={`fas fa-chevron-${expandedRows.has(idx) ? 'up' : 'down'} text-[7px]`}></i>
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`text-gray-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>{formatTanggal(item.tanggal, isMobile)}</span></td>
+                                        <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}>{item.sumber?.nama || '-'}</span></td>
+                                        <td className={`py-2 ${isMobile ? 'px-2' : ''} align-middle`}><span className={`font-bold text-emerald-600 ${isMobile ? 'text-[9px]' : 'text-sm'}`}>Rp {fmt(item.nominal)}</span></td>
+                                        {!isMobile && <td className="py-2 align-middle"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold">{item.admin?.name || '-'}</span></td>}
+                                        {!isMobile && <td className="py-2 align-middle text-[11px] text-gray-500 max-w-[200px] truncate">{item.keterangan || '-'}</td>}
+                                        <td className={`py-2 ${isMobile ? 'px-1' : 'px-6'} align-middle text-center`}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <button onClick={() => openEdit(item)} className={`action-btn rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Edit"><i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
+                                                <button onClick={() => deleteItem(item.id)} className={`action-btn rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Hapus"><i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {isMobile && expandedRows.has(idx) && (
+                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                            <td colSpan="5" className="p-0">
+                                                <div className="mobile-expand-grid">
+                                                    <div className="expand-item"><span className="expand-label">User</span><span className="expand-value">{item.admin?.name || '-'}</span></div>
+                                                    <div className="expand-item full-width"><span className="expand-label">Keterangan</span><span className="expand-value">{item.keterangan || '-'}</span></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             ))}
                             {filtered.length === 0 && (
-                                <tr><td colSpan={isMobile ? 4 : 7} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
+                                <tr><td colSpan={isMobile ? 5 : 7} className={`text-center ${isMobile ? 'py-8' : 'py-20'}`}>
                                     <div className="flex flex-col items-center justify-center gap-2">
                                         <div className={`bg-gray-50 rounded-2xl flex items-center justify-center ${isMobile ? 'w-12 h-12' : 'w-16 h-16'}`}><i className={`fas fa-arrow-down text-gray-300 ${isMobile ? 'text-xl' : 'text-2xl'}`}></i></div>
                                         <p className={`font-bold text-gray-400 ${isMobile ? 'text-[10px]' : 'text-sm'}`}>Belum Ada Pemasukan</p>
