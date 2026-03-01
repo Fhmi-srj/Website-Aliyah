@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-DiBV_SpL.css",
+    "file": "assets/app-7oZ87DKf.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -9,12 +9,12 @@
     "src": "resources/images/logo.png"
   },
   "resources/js/main.jsx": {
-    "file": "assets/main-BNHkfBOL.js",
+    "file": "assets/main-Czi3LbW9.js",
     "name": "main",
     "src": "resources/js/main.jsx",
     "isEntry": true,
     "css": [
-      "assets/app-DiBV_SpL.css"
+      "assets/app-7oZ87DKf.css"
     ],
     "assets": [
       "assets/logo-KVNS57bw.png"
