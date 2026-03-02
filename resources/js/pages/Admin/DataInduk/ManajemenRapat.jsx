@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 import SignatureCanvas from '../../../components/SignatureCanvas';
+import AiTextArea from '../../../components/AiTextArea';
 
 
 function ManajemenRapat() {
@@ -1344,8 +1345,13 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
 
                         {/* Notulensi */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat</label>
-                            <textarea value={formData.notulensi} onChange={e => setFormData({ ...formData, notulensi: e.target.value })} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 min-h-[80px] resize-y" />
+                            <AiTextArea
+                                value={formData.notulensi}
+                                onChange={(val) => setFormData({ ...formData, notulensi: val })}
+                                placeholder="Isi notulensi/hasil rapat..."
+                                context="notulensi"
+                                label="Notulensi Rapat"
+                            />
                         </div>
 
                         {/* Dokumentasi Rapat */}

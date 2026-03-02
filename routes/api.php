@@ -232,6 +232,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/jabatan/remove', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'removeJabatanGuru']);
     });
 
+    // AI Tools
+    Route::post('/ai/rapikan-teks', [\App\Http\Controllers\Api\Admin\AiController::class, 'rapikanTeks']);
+
     // Table PDF Export Routes
     Route::prefix('export-pdf')->group(function () {
         Route::get('guru', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportGuru']);

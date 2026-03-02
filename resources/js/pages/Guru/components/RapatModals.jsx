@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import api from '../../../lib/axios';
 import SignatureCanvas from '../../../components/SignatureCanvas';
+import AiTextArea from '../../../components/AiTextArea';
 
 // Animated Modal Wrapper for smooth transitions
 function AnimatedModalWrapper({ children, onClose, maxWidth = 'max-w-md' }) {
@@ -765,8 +766,14 @@ export function ModalAbsensiRapatPimpinan({ rapat, tanggal, onClose, onSuccess, 
 
                             {/* Notulensi */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat <span className="text-red-500">*</span></label>
-                                <textarea value={notulensi} onChange={e => handleNotulensiChange(e.target.value)} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 min-h-[80px] resize-y" />
+                                <AiTextArea
+                                    value={notulensi}
+                                    onChange={handleNotulensiChange}
+                                    placeholder="Isi notulensi/hasil rapat..."
+                                    context="notulensi"
+                                    label="Notulensi Rapat"
+                                    required
+                                />
                             </div>
 
                             {/* Dokumentasi Rapat */}
@@ -1675,8 +1682,14 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
 
                             {/* Notulensi */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Notulensi Rapat <span className="text-red-500">*</span></label>
-                                <textarea value={notulensi} onChange={e => handleNotulensiChange(e.target.value)} placeholder="Isi notulensi/hasil rapat..." className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 min-h-[80px] resize-y" />
+                                <AiTextArea
+                                    value={notulensi}
+                                    onChange={handleNotulensiChange}
+                                    placeholder="Isi notulensi/hasil rapat..."
+                                    context="notulensi"
+                                    label="Notulensi Rapat"
+                                    required
+                                />
                             </div>
 
                             {/* Dokumentasi Rapat */}

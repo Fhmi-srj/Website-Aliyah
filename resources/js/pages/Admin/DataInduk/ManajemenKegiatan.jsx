@@ -8,6 +8,7 @@ import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
+import AiTextArea from '../../../components/AiTextArea';
 
 
 function ManajemenKegiatan() {
@@ -1054,13 +1055,12 @@ function ManajemenKegiatan() {
                 <div>
                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 px-1">Deskripsi Tambahan</label>
                     <div className="space-y-1.5">
-                        <textarea
-                            rows="4"
+                        <AiTextArea
                             value={formData.deskripsi}
-                            onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
-                            className="input-standard !h-auto py-3 leading-relaxed font-medium"
+                            onChange={(val) => setFormData({ ...formData, deskripsi: val })}
                             placeholder="Informasikan detail kegiatan, perlengkapan yang harus dibawa, atau catatan penting lainnya..."
-                        ></textarea>
+                            context="keterangan"
+                        />
                     </div>
                 </div>
             </CrudModal>
