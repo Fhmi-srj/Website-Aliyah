@@ -144,15 +144,13 @@ function ManajemenRapat() {
     const formatDateTime = (dateStr) => {
         if (!dateStr) return '-';
         try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            const seconds = String(d.getSeconds()).padStart(2, '0');
-            return `${day}-${month}-${year} | ${hours}:${minutes}:${seconds}`;
+            // Parse date string directly to avoid timezone offset issues
+            const parts = dateStr.split(/[-T ]/);
+            if (parts.length < 3) return dateStr;
+            const [year, month, day] = parts;
+            const timePart = parts.length >= 4 ? parts[3] : '';
+            const [hours, minutes, seconds] = timePart ? timePart.split(':') : ['00', '00', '00'];
+            return `${day}-${month}-${year} | ${hours || '00'}:${minutes || '00'}:${seconds || '00'}`;
         } catch (e) {
             return dateStr;
         }
@@ -1158,26 +1156,27 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
     };
 
     const handlePhotoUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formDataUpload = new FormData();
-        formDataUpload.append('foto', file);
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
 
         try {
             setUploading(true);
-            const res = await authFetch(`${API_BASE}/rapat/absensi/upload-foto`, {
-                method: 'POST',
-                body: formDataUpload
-            });
-            const data = await res.json();
-            if (data.success) {
-                setFormData(prev => ({
-                    ...prev,
-                    foto_rapat: [...prev.foto_rapat, data.data.path]
-                }));
-            } else {
-                Swal.fire('Gagal', data.message || 'Gagal upload foto', 'error');
+            for (const file of files) {
+                const formDataUpload = new FormData();
+                formDataUpload.append('foto', file);
+                const res = await authFetch(`${API_BASE}/rapat/absensi/upload-foto`, {
+                    method: 'POST',
+                    body: formDataUpload
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setFormData(prev => ({
+                        ...prev,
+                        foto_rapat: [...prev.foto_rapat, data.data.path]
+                    }));
+                } else {
+                    Swal.fire('Gagal', data.message || 'Gagal upload foto', 'error');
+                }
             }
         } catch (error) {
             console.error('Error uploading photo:', error);

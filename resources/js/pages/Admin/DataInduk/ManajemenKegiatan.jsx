@@ -120,15 +120,13 @@ function ManajemenKegiatan() {
     const formatDateTime = (dateStr) => {
         if (!dateStr) return '-';
         try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
-            const seconds = String(d.getSeconds()).padStart(2, '0');
-            return `${day}-${month}-${year} | ${hours}:${minutes}:${seconds}`;
+            // Parse date string directly to avoid timezone offset issues
+            const parts = dateStr.split(/[-T ]/);
+            if (parts.length < 3) return dateStr;
+            const [year, month, day] = parts;
+            const timePart = parts.length >= 4 ? parts[3] : '';
+            const [hours, minutes, seconds] = timePart ? timePart.split(':') : ['00', '00', '00'];
+            return `${day}-${month}-${year} | ${hours || '00'}:${minutes || '00'}:${seconds || '00'}`;
         } catch (e) {
             return dateStr;
         }
@@ -219,10 +217,13 @@ function ManajemenKegiatan() {
     const toDatetimeLocal = (val) => {
         if (!val) return '';
         try {
-            const d = new Date(val);
-            if (isNaN(d.getTime())) return '';
-            const pad = (n) => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            // Parse directly to avoid timezone offset
+            const parts = val.split(/[-T :.]/);
+            if (parts.length < 3) return '';
+            const [year, month, day] = parts;
+            const hours = parts[3] || '00';
+            const minutes = parts[4] || '00';
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
         } catch { return ''; }
     };
 
