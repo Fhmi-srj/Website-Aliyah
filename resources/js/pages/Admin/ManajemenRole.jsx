@@ -18,7 +18,8 @@ function ManajemenRole() {
         name: '',
         display_name: '',
         description: '',
-        level: 0,
+        allowed_pages: [],
+        fullAccess: false,
     });
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -52,7 +53,7 @@ function ManajemenRole() {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'level' ? parseInt(value) || 0 : value
+            [name]: value
         }));
     };
 
@@ -63,7 +64,8 @@ function ManajemenRole() {
             name: '',
             display_name: '',
             description: '',
-            level: 0,
+            allowed_pages: [],
+            fullAccess: false,
         });
         setShowModal(true);
     };
@@ -71,11 +73,13 @@ function ManajemenRole() {
     // Open edit modal
     const handleEdit = (role) => {
         setSelectedRole(role);
+        const isFullAccess = role.allowed_pages === '*';
         setFormData({
             name: role.name,
             display_name: role.display_name,
             description: role.description || '',
-            level: role.level || 0,
+            allowed_pages: isFullAccess ? allAdminPages.map(p => p.path) : (Array.isArray(role.allowed_pages) ? role.allowed_pages : []),
+            fullAccess: isFullAccess,
         });
         setShowModal(true);
     };
@@ -89,10 +93,18 @@ function ManajemenRole() {
                 : `${API_BASE}/roles`;
             const method = selectedRole ? 'PUT' : 'POST';
 
+            const payload = {
+                name: formData.name,
+                display_name: formData.display_name,
+                description: formData.description,
+                level: formData.fullAccess ? 100 : Math.min(90, Math.round((formData.allowed_pages.length / allAdminPages.length) * 100)),
+                allowed_pages: formData.fullAccess ? '*' : formData.allowed_pages,
+            };
+
             const response = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             const result = await response.json();
@@ -389,19 +401,100 @@ function ManajemenRole() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Level Akses (0-100)
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        Akses Halaman
                                     </label>
-                                    <input
-                                        type="number"
-                                        name="level"
-                                        value={formData.level}
-                                        onChange={handleChange}
-                                        min={0}
-                                        max={100}
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    />
-                                    <p className="text-xs text-gray-400 mt-1">Semakin tinggi, semakin banyak akses</p>
+
+                                    {/* Full Access Toggle */}
+                                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <i className="fas fa-crown text-indigo-500 text-sm"></i>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-800">Akses Penuh</p>
+                                                <p className="text-[10px] text-gray-500">Akses ke semua halaman admin</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.fullAccess}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, fullAccess: e.target.checked }))}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        </label>
+                                    </div>
+
+                                    {/* Page Checkboxes */}
+                                    {!formData.fullAccess && (() => {
+                                        const groups = allAdminPages.reduce((acc, page) => {
+                                            if (!acc[page.group]) acc[page.group] = [];
+                                            acc[page.group].push(page);
+                                            return acc;
+                                        }, {});
+                                        const groupOrder = ['Umum', 'Data Induk', 'Sistem'];
+                                        return (
+                                            <div className="space-y-2">
+                                                {groupOrder.map(groupName => {
+                                                    const groupPages = groups[groupName];
+                                                    if (!groupPages) return null;
+                                                    const allGroupSelected = groupPages.every(p => formData.allowed_pages.includes(p.path));
+                                                    const someGroupSelected = groupPages.some(p => formData.allowed_pages.includes(p.path));
+                                                    const toggleGroup = () => {
+                                                        const groupPaths = groupPages.map(p => p.path);
+                                                        if (allGroupSelected) {
+                                                            setFormData(prev => ({ ...prev, allowed_pages: prev.allowed_pages.filter(p => !groupPaths.includes(p)) }));
+                                                        } else {
+                                                            setFormData(prev => ({ ...prev, allowed_pages: [...new Set([...prev.allowed_pages, ...groupPaths])] }));
+                                                        }
+                                                    };
+                                                    return (
+                                                        <div key={groupName} className="border border-gray-200 rounded-xl overflow-hidden">
+                                                            <button onClick={toggleGroup} type="button"
+                                                                className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
+                                                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${allGroupSelected ? 'bg-green-500 border-green-500'
+                                                                        : someGroupSelected ? 'bg-green-200 border-green-400'
+                                                                            : 'border-gray-300'
+                                                                    }`}>
+                                                                    {allGroupSelected && <i className="fas fa-check text-white text-[8px]"></i>}
+                                                                    {!allGroupSelected && someGroupSelected && <i className="fas fa-minus text-green-700 text-[8px]"></i>}
+                                                                </div>
+                                                                <span className="font-semibold text-gray-700 text-xs">{groupName}</span>
+                                                                <span className="text-[10px] text-gray-400 ml-auto">
+                                                                    {groupPages.filter(p => formData.allowed_pages.includes(p.path)).length}/{groupPages.length}
+                                                                </span>
+                                                            </button>
+                                                            <div className="divide-y divide-gray-100">
+                                                                {groupPages.map(page => (
+                                                                    <label key={page.path}
+                                                                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={formData.allowed_pages.includes(page.path)}
+                                                                            onChange={() => {
+                                                                                setFormData(prev => ({
+                                                                                    ...prev,
+                                                                                    allowed_pages: prev.allowed_pages.includes(page.path)
+                                                                                        ? prev.allowed_pages.filter(p => p !== page.path)
+                                                                                        : [...prev.allowed_pages, page.path]
+                                                                                }));
+                                                                            }}
+                                                                            className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                                                        />
+                                                                        <i className={`fas ${page.icon} text-gray-400 w-4 text-center text-[10px]`}></i>
+                                                                        <span className="text-xs text-gray-700">{page.label}</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <p className="text-[10px] text-gray-400 text-center">
+                                                    {formData.allowed_pages.length} dari {allAdminPages.length} halaman dipilih
+                                                </p>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className="flex gap-3 pt-4">
@@ -590,10 +683,10 @@ function PagePermissionModal({ role, onClose }) {
                                     className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                                 >
                                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${allGroupSelected
-                                            ? 'bg-green-500 border-green-500'
-                                            : someGroupSelected
-                                                ? 'bg-green-200 border-green-400'
-                                                : 'border-gray-300'
+                                        ? 'bg-green-500 border-green-500'
+                                        : someGroupSelected
+                                            ? 'bg-green-200 border-green-400'
+                                            : 'border-gray-300'
                                         }`}>
                                         {allGroupSelected && <i className="fas fa-check text-white text-xs"></i>}
                                         {!allGroupSelected && someGroupSelected && <i className="fas fa-minus text-green-700 text-xs"></i>}

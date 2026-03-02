@@ -225,6 +225,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'showHistory'])->whereNumber('id');
         Route::patch('/history/{id}/lock', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'lockHistory'])->whereNumber('id');
         Route::delete('/history/{id}', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'deleteHistory'])->whereNumber('id');
+
+        // Jabatan — Guru Assignment
+        Route::get('/jabatan/{id}/guru', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'getJabatanGuru'])->whereNumber('id');
+        Route::post('/jabatan/assign', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'assignJabatanGuru']);
+        Route::post('/jabatan/remove', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'removeJabatanGuru']);
     });
 
     // Table PDF Export Routes

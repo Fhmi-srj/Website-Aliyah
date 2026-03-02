@@ -59,6 +59,13 @@ function Bisyaroh() {
     const [rapatBulanData, setRapatBulanData] = useState([]);
     const [loadingOverview, setLoadingOverview] = useState(false);
 
+    // Jabatan Guru Modal state
+    const [jabatanGuruModal, setJabatanGuruModal] = useState(null); // { settingId, label }
+    const [jabatanGuruData, setJabatanGuruData] = useState(null);
+    const [loadingJabatanGuru, setLoadingJabatanGuru] = useState(false);
+    const [togglingGuru, setTogglingGuru] = useState(null); // guru_id being toggled
+    const [jabatanGuruSearch, setJabatanGuruSearch] = useState('');
+
     // History / Riwayat state
     const [histories, setHistories] = useState([]);
     const [loadingHistories, setLoadingHistories] = useState(false);
@@ -310,14 +317,16 @@ function Bisyaroh() {
     const handleAddPotongan = async () => {
         const { value: formValues } = await Swal.fire({
             title: 'Tambah Potongan / Iuran',
-            html: '<input id="swal-label" class="swal2-input" placeholder="Nama (mis: Arisan)">' +
-                '<input id="swal-value" class="swal2-input" type="number" placeholder="Nilai (mis: 20000)">',
+            html: '<input id="swal-label" class="swal2-input" placeholder="Nama (mis: Arisan)" style="font-size:13px">' +
+                '<input id="swal-value" class="swal2-input" type="number" placeholder="Nilai (mis: 20000)" style="font-size:13px">',
             focusConfirm: false,
             showCancelButton: true,
             confirmButtonColor: '#16a34a',
             cancelButtonColor: '#6B7280',
             confirmButtonText: 'Tambah',
             cancelButtonText: 'Batal',
+            width: isMobile ? '90%' : 400,
+            customClass: { popup: 'rounded-2xl', title: 'text-base', htmlContainer: 'text-sm' },
             preConfirm: () => {
                 const label = document.getElementById('swal-label').value.trim();
                 const value = document.getElementById('swal-value').value.trim();
@@ -375,6 +384,111 @@ function Bisyaroh() {
             updated[category] = updated[category].map(s => s.key === key ? { ...s, value: value } : s);
             return updated;
         });
+    };
+
+    // === Jabatan CRUD Handlers ===
+    const handleAddJabatan = async () => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Tambah Jabatan',
+            html: '<input id="swal-label" class="swal2-input" placeholder="Nama Jabatan (mis: Proktor ANBK)" style="font-size:13px">',
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Tambah',
+            cancelButtonText: 'Batal',
+            width: isMobile ? '90%' : 400,
+            customClass: { popup: 'rounded-2xl', title: 'text-base', htmlContainer: 'text-sm' },
+            preConfirm: () => {
+                const label = document.getElementById('swal-label').value.trim();
+                if (!label) { Swal.showValidationMessage('Nama jabatan harus diisi'); return false; }
+                return { label };
+            }
+        });
+        if (!formValues) return;
+        try {
+            const key = 'tunj_' + formValues.label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const res = await authFetch(`${API_BASE}/bisyaroh/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value: '0', type: 'integer', category: 'tunjangan_jabatan', label: formValues.label }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Jabatan baru ditambahkan', timer: 1500, showConfirmButton: false });
+                fetchSettingsData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal!', text: json.message || 'Gagal menambah jabatan', timer: 2000, showConfirmButton: false });
+            }
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: e.message });
+        }
+    };
+
+    const handleDeleteJabatan = async (item) => {
+        const result = await Swal.fire({
+            title: 'Hapus Jabatan?',
+            html: `Hapus <strong>${item.label}</strong> dari daftar jabatan?<br><small class="text-gray-400">Guru yang ter-assign akan otomatis dihapus dari jabatan ini.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await authFetch(`${API_BASE}/bisyaroh/settings/${item.id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.success) {
+                Swal.fire({ icon: 'success', title: 'Dihapus!', text: 'Jabatan berhasil dihapus', timer: 1500, showConfirmButton: false });
+                fetchSettingsData();
+            }
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal!', text: e.message });
+        }
+    };
+
+    const handleOpenJabatanGuru = async (item) => {
+        setJabatanGuruModal({ settingId: item.id, label: item.label });
+        setLoadingJabatanGuru(true);
+        setJabatanGuruData(null);
+        setJabatanGuruSearch('');
+        try {
+            const res = await authFetch(`${API_BASE}/bisyaroh/jabatan/${item.id}/guru`);
+            const json = await res.json();
+            if (json.success) setJabatanGuruData(json.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingJabatanGuru(false);
+        }
+    };
+
+    const handleToggleGuruJabatan = async (guruId, isAssigned) => {
+        setTogglingGuru(guruId);
+        try {
+            const url = isAssigned ? `${API_BASE}/bisyaroh/jabatan/remove` : `${API_BASE}/bisyaroh/jabatan/assign`;
+            const res = await authFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bisyaroh_setting_id: jabatanGuruModal.settingId, guru_id: guruId }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                // Update local state
+                setJabatanGuruData(prev => ({
+                    ...prev,
+                    assigned_guru_ids: isAssigned
+                        ? prev.assigned_guru_ids.filter(id => id !== guruId)
+                        : [...prev.assigned_guru_ids, guruId],
+                }));
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setTogglingGuru(null);
+        }
     };
 
     const handleOpenDetail = async (item) => {
@@ -1112,13 +1226,15 @@ function Bisyaroh() {
                                 CATEGORY_ORDER.filter(cat => settingsData[cat]).map(category => {
                                     const items = settingsData[category];
                                     const isPotongan = category === 'potongan';
+                                    const isJabatan = category === 'tunjangan_jabatan';
+                                    const canAddDelete = isPotongan || isJabatan;
                                     return (
                                         <div key={category}>
                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 flex items-center gap-2">
                                                 <i className={`fas ${CATEGORY_ICONS[category] || 'fa-cog'} ${isPotongan ? 'text-rose-400' : 'text-primary'}`}></i>
                                                 {CATEGORY_LABELS[category] || category}
-                                                {isPotongan && (
-                                                    <button onClick={handleAddPotongan} type="button"
+                                                {canAddDelete && (
+                                                    <button onClick={isPotongan ? handleAddPotongan : handleAddJabatan} type="button"
                                                         className="ml-auto text-[9px] font-bold text-primary hover:text-primary/80 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary/10 transition-all">
                                                         <i className="fas fa-plus text-[8px]"></i> Tambah
                                                     </button>
@@ -1129,6 +1245,13 @@ function Bisyaroh() {
                                                     <div key={s.key} className="flex items-center justify-between gap-3 group">
                                                         <label className="text-xs text-gray-600 font-medium flex-1">{s.label}</label>
                                                         <div className="flex items-center gap-2">
+                                                            {isJabatan && (
+                                                                <button onClick={() => handleOpenJabatanGuru(s)} type="button"
+                                                                    className="w-7 h-7 rounded-lg text-primary hover:bg-primary/10 transition-all flex items-center justify-center"
+                                                                    title={`Kelola guru ${s.label}`}>
+                                                                    <i className="fas fa-users text-[10px]"></i>
+                                                                </button>
+                                                            )}
                                                             <div className="relative">
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">Rp</span>
                                                                 <input
@@ -1138,8 +1261,8 @@ function Bisyaroh() {
                                                                     className="w-40 pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-right font-mono text-gray-800 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none"
                                                                 />
                                                             </div>
-                                                            {isPotongan && (
-                                                                <button onClick={() => handleDeletePotongan(s)} type="button"
+                                                            {canAddDelete && (
+                                                                <button onClick={() => isPotongan ? handleDeletePotongan(s) : handleDeleteJabatan(s)} type="button"
                                                                     className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
                                                                     title={`Hapus ${s.label}`}>
                                                                     <i className="fas fa-trash-alt text-[10px]"></i>
@@ -1584,6 +1707,139 @@ function Bisyaroh() {
                                     </table>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* ============ JABATAN GURU MODAL (Portal) ============ */}
+            {jabatanGuruModal && ReactDOM.createPortal(
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 transition-all duration-300 backdrop-blur-sm"
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={() => setJabatanGuruModal(null)}
+                >
+                    <div
+                        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col relative overflow-hidden ${isMobile ? 'max-w-full max-h-[90vh]' : 'max-w-md max-h-[80vh]'}`}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-primary to-green-600 px-4 py-3 text-white relative flex-shrink-0">
+                            <button onClick={() => setJabatanGuruModal(null)}
+                                className="absolute top-3 right-3 w-7 h-7 text-white/80 hover:text-white cursor-pointer transition flex items-center justify-center rounded-full hover:bg-white/20"
+                                type="button">
+                                <i className="fas fa-times text-sm"></i>
+                            </button>
+                            <h3 className="text-sm font-bold">
+                                <i className="fas fa-users mr-2"></i>Kelola Guru
+                            </h3>
+                            <p className="text-[10px] text-white/70 mt-0.5">{jabatanGuruModal.label}</p>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {loadingJabatanGuru ? (
+                                <div className="flex items-center justify-center py-10">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-700"></div>
+                                    <span className="ml-3 text-gray-600 text-sm">Memuat data...</span>
+                                </div>
+                            ) : jabatanGuruData ? (() => {
+                                const searchLower = jabatanGuruSearch.toLowerCase().trim();
+                                const allGuru = jabatanGuruData.all_guru;
+                                const filteredGuru = searchLower
+                                    ? allGuru.filter(g => g.nama.toLowerCase().includes(searchLower) || (g.nip && g.nip.includes(searchLower)))
+                                    : allGuru;
+                                // Sort: assigned first, then alphabetical
+                                const sortedGuru = [...filteredGuru].sort((a, b) => {
+                                    const aAssigned = jabatanGuruData.assigned_guru_ids.includes(a.id) ? 0 : 1;
+                                    const bAssigned = jabatanGuruData.assigned_guru_ids.includes(b.id) ? 0 : 1;
+                                    if (aAssigned !== bAssigned) return aAssigned - bAssigned;
+                                    return a.nama.localeCompare(b.nama);
+                                });
+
+                                return (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-gray-400 font-medium mb-2">
+                                            <i className="fas fa-check-circle text-primary mr-1"></i>
+                                            {jabatanGuruData.assigned_guru_ids.length} guru ter-assign
+                                        </p>
+
+                                        {/* Search Input */}
+                                        <div className="relative mb-3">
+                                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                            <input
+                                                type="text"
+                                                value={jabatanGuruSearch}
+                                                onChange={e => setJabatanGuruSearch(e.target.value)}
+                                                placeholder="Cari nama atau NIP guru..."
+                                                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none placeholder:text-gray-400"
+                                            />
+                                            {jabatanGuruSearch && (
+                                                <button
+                                                    onClick={() => setJabatanGuruSearch('')}
+                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 transition-all"
+                                                    type="button">
+                                                    <i className="fas fa-times text-[10px]"></i>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Guru List */}
+                                        {sortedGuru.length > 0 ? (
+                                            <div>
+                                                {searchLower && (
+                                                    <p className="text-[10px] text-gray-400 font-medium mb-1 flex items-center gap-1">
+                                                        <i className="fas fa-search text-[8px]"></i>
+                                                        {sortedGuru.length} hasil ditemukan
+                                                    </p>
+                                                )}
+                                                {sortedGuru.map(g => {
+                                                    const isAssigned = jabatanGuruData.assigned_guru_ids.includes(g.id);
+                                                    const isToggling = togglingGuru === g.id;
+                                                    return (
+                                                        <div
+                                                            key={g.id}
+                                                            onClick={() => !isToggling && handleToggleGuruJabatan(g.id, isAssigned)}
+                                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${isAssigned ? 'bg-primary/5 border border-primary/20' : 'hover:bg-gray-50 border border-transparent'}`}
+                                                        >
+                                                            <div className="relative">
+                                                                {isToggling ? (
+                                                                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                                                                ) : (
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${isAssigned ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                                                                        {isAssigned && <i className="fas fa-check text-white text-[8px]"></i>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <span className={`text-xs font-semibold ${isAssigned ? 'text-gray-800' : 'text-gray-600'}`}>{g.nama}</span>
+                                                                {g.nip && <span className="text-[10px] text-gray-400 ml-2">{g.nip}</span>}
+                                                            </div>
+                                                            {isAssigned && <i className="fas fa-check-circle text-primary text-xs"></i>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-400 text-xs">
+                                                <i className="fas fa-search text-gray-300 text-lg mb-2 block"></i>
+                                                Tidak ditemukan guru "{jabatanGuruSearch}"
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })() : (
+                                <div className="text-center py-8 text-gray-400 text-xs">Gagal memuat data.</div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-3 border-t border-gray-100 flex-shrink-0">
+                            <button onClick={() => setJabatanGuruModal(null)}
+                                className="w-full px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all" type="button">
+                                Selesai
+                            </button>
                         </div>
                     </div>
                 </div>,

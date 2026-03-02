@@ -14,6 +14,7 @@ use App\Models\Kegiatan;
 use App\Models\Rapat;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BisyarohController extends Controller
 {
@@ -97,12 +98,98 @@ class BisyarohController extends Controller
     public function deleteSetting($id)
     {
         $setting = BisyarohSetting::findOrFail($id);
+        // Also delete guru assignments if this is a jabatan setting
+        if ($setting->category === 'tunjangan_jabatan') {
+            DB::table('guru_jabatan')->where('bisyaroh_setting_id', $id)->delete();
+        }
         $setting->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Setting berhasil dihapus',
         ]);
+    }
+
+    /**
+     * Get guru assigned to a jabatan setting
+     */
+    public function getJabatanGuru($id)
+    {
+        $setting = BisyarohSetting::findOrFail($id);
+        $assignedGuruIds = DB::table('guru_jabatan')
+            ->where('bisyaroh_setting_id', $id)
+            ->pluck('guru_id')
+            ->toArray();
+
+        $allGuru = Guru::where('status', 'aktif')->orderBy('nama')->get(['id', 'nama', 'nip']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'setting' => $setting,
+                'assigned_guru_ids' => $assignedGuruIds,
+                'all_guru' => $allGuru,
+            ],
+        ]);
+    }
+
+    /**
+     * Assign guru to a jabatan
+     */
+    public function assignJabatanGuru(Request $request)
+    {
+        $request->validate([
+            'bisyaroh_setting_id' => 'required|integer|exists:bisyaroh_settings,id',
+            'guru_id' => 'required|integer|exists:guru,id',
+        ]);
+
+        try {
+            DB::table('guru_jabatan')->updateOrInsert(
+                [
+                    'guru_id' => $request->guru_id,
+                    'bisyaroh_setting_id' => $request->bisyaroh_setting_id,
+                ],
+                ['created_at' => now(), 'updated_at' => now()]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru berhasil ditambahkan ke jabatan',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan guru: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove guru from a jabatan
+     */
+    public function removeJabatanGuru(Request $request)
+    {
+        $request->validate([
+            'bisyaroh_setting_id' => 'required|integer|exists:bisyaroh_settings,id',
+            'guru_id' => 'required|integer|exists:guru,id',
+        ]);
+
+        try {
+            DB::table('guru_jabatan')
+                ->where('guru_id', $request->guru_id)
+                ->where('bisyaroh_setting_id', $request->bisyaroh_setting_id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Guru berhasil dihapus dari jabatan',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus guru: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -116,20 +203,29 @@ class BisyarohController extends Controller
         // Only show bisyaroh for aktif guru
         $aktifGuruIds = Guru::where('status', 'aktif')->pluck('id');
 
-        $bisyaroh = Bisyaroh::with('guru.user.roles')
+        // Pre-fetch jabatan assignments for all guru
+        $jabatanAssignments = DB::table('guru_jabatan')
+            ->join('bisyaroh_settings', 'guru_jabatan.bisyaroh_setting_id', '=', 'bisyaroh_settings.id')
+            ->whereIn('guru_jabatan.guru_id', $aktifGuruIds)
+            ->select('guru_jabatan.guru_id', 'bisyaroh_settings.label')
+            ->get()
+            ->groupBy('guru_id');
+
+        $bisyaroh = Bisyaroh::with('guru')
             ->where('bulan', $bulan)
             ->where('tahun', $tahun)
             ->whereIn('guru_id', $aktifGuruIds)
             ->get()
-            ->map(function ($item) {
-                // Get jabatan from user roles
+            ->map(function ($item) use ($jabatanAssignments) {
+                // Get jabatan from guru_jabatan pivot table
                 $jabatan = '-';
-                if ($item->guru && $item->guru->user) {
-                    $roleNames = $item->guru->user->roles
-                        ->where('name', '!=', 'guru')
-                        ->pluck('display_name')
-                        ->toArray();
-                    $jabatan = !empty($roleNames) ? implode(', ', $roleNames) : 'Guru';
+                if ($item->guru) {
+                    $guruJabatan = $jabatanAssignments->get($item->guru_id);
+                    if ($guruJabatan && $guruJabatan->count() > 0) {
+                        $jabatan = $guruJabatan->pluck('label')->implode(', ');
+                    } else {
+                        $jabatan = 'Guru';
+                    }
                 }
                 return [
                     'id' => $item->id,
@@ -172,16 +268,17 @@ class BisyarohController extends Controller
      */
     public function show($id)
     {
-        $bisyaroh = Bisyaroh::with('guru.user.roles')->findOrFail($id);
+        $bisyaroh = Bisyaroh::with('guru')->findOrFail($id);
 
-        // Get jabatan from user roles
+        // Get jabatan from guru_jabatan pivot table
         $jabatan = '-';
-        if ($bisyaroh->guru && $bisyaroh->guru->user) {
-            $roleNames = $bisyaroh->guru->user->roles
-                ->where('name', '!=', 'guru')
-                ->pluck('display_name')
+        if ($bisyaroh->guru) {
+            $jabatanLabels = DB::table('guru_jabatan')
+                ->join('bisyaroh_settings', 'guru_jabatan.bisyaroh_setting_id', '=', 'bisyaroh_settings.id')
+                ->where('guru_jabatan.guru_id', $bisyaroh->guru_id)
+                ->pluck('bisyaroh_settings.label')
                 ->toArray();
-            $jabatan = !empty($roleNames) ? implode(', ', $roleNames) : 'Guru';
+            $jabatan = !empty($jabatanLabels) ? implode(', ', $jabatanLabels) : 'Guru';
         }
 
         return response()->json([
@@ -240,20 +337,13 @@ class BisyarohController extends Controller
         $transportPerHadir = $settings['transport_per_hadir'] ?? 7500;
         $tunjMasaKerjaPerTahun = $settings['tunjangan_masa_kerja_per_tahun'] ?? 5000;
 
-        // Jabatan mapping: jabatan value => setting key
-        $jabatanMap = [
-            'Kepala Madrasah' => 'tunj_kepala_madrasah',
-            'Tata Administrasi I' => 'tunj_tata_administrasi_i',
-            'Tata Administrasi II' => 'tunj_tata_administrasi_ii',
-            'Tata Administrasi' => 'tunj_tata_administrasi_i',
-            'Waka Kurikulum' => 'tunj_waka_kurikulum',
-            'Wakur' => 'tunj_waka_kurikulum',
-            'Waka Kesiswaan' => 'tunj_waka_kesiswaan',
-            'Wali Kelas' => 'tunj_wali_kelas',
-            'Walas' => 'tunj_wali_kelas',
-            'Proktor ANBK' => 'tunj_proktor_anbk',
-            'Teknisi ANBK' => 'tunj_teknisi_anbk',
-        ];
+        // Load jabatan settings and build guru-to-jabatan lookup from pivot table
+        $jabatanSettings = BisyarohSetting::where('category', 'tunjangan_jabatan')
+            ->orderBy('sort_order')
+            ->get();
+        $jabatanGuruMap = DB::table('guru_jabatan')
+            ->get()
+            ->groupBy('guru_id');
 
         $tunjKoordinatorKegiatan = $settings['tunj_koordinator_kegiatan'] ?? 0;
         $tunjPendampingKegiatan = $settings['tunj_pendamping_kegiatan'] ?? 0;
@@ -326,43 +416,13 @@ class BisyarohController extends Controller
             // === 2. Calculate gaji pokok (FIXED: jam per minggu × tarif) ===
             $gajiPokok = $jumlahJam * $bisyarohPerJam;
 
-            // === 3. Tunjangan struktural (based on user roles) ===
+            // === 3. Tunjangan struktural (from guru_jabatan pivot table) ===
             $tunjStruktural = 0;
-            $matchedJabatan = []; // track to avoid double-counting aliases
-
-            // Map role names to jabatan names for matching
-            $roleToJabatan = [
-                'kepala_madrasah' => 'Kepala Madrasah',
-                'waka_kurikulum' => 'Waka Kurikulum',
-                'waka_kesiswaan' => 'Waka Kesiswaan',
-                'wali_kelas' => 'Wali Kelas',
-                'tata_usaha' => 'Tata Administrasi',
-            ];
-
-            if ($guru->user) {
-                $guruRoles = $guru->user->roles->pluck('name')->toArray();
-                foreach ($guruRoles as $roleName) {
-                    $jabatanName = $roleToJabatan[$roleName] ?? null;
-                    if ($jabatanName && isset($jabatanMap[$jabatanName])) {
-                        $settingKey = $jabatanMap[$jabatanName];
-                        if (!in_array($settingKey, $matchedJabatan)) {
-                            $tunjStruktural += $settings[$settingKey] ?? 0;
-                            $matchedJabatan[] = $settingKey;
-                        }
-                    }
-                }
-            }
-
-            // Also check guru.jabatan field as fallback for extra jabatan like Proktor ANBK
-            $guruJabatan = $guru->jabatan ?? '';
-            if ($guruJabatan) {
-                foreach ($jabatanMap as $jabatanName => $settingKey) {
-                    if (in_array($settingKey, $matchedJabatan))
-                        continue;
-                    if (stripos($guruJabatan, $jabatanName) !== false) {
-                        $tunjStruktural += $settings[$settingKey] ?? 0;
-                        $matchedJabatan[] = $settingKey;
-                    }
+            $guruJabatanAssignments = $jabatanGuruMap->get($guru->id, collect([]));
+            foreach ($guruJabatanAssignments as $assignment) {
+                $jabatanSetting = $jabatanSettings->firstWhere('id', $assignment->bisyaroh_setting_id);
+                if ($jabatanSetting) {
+                    $tunjStruktural += (int) $jabatanSetting->value;
                 }
             }
 
