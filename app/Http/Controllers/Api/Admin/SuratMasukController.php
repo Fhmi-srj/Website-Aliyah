@@ -176,7 +176,7 @@ class SuratMasukController extends Controller
             'image' => 'required|string', // base64 image data
         ]);
 
-        $apiKey = config('services.gemini.api_key');
+        $apiKey = \App\Models\AppSetting::getValue('gemini_api_key') ?: config('services.gemini.api_key');
 
         if (empty($apiKey)) {
             return response()->json([
@@ -192,14 +192,7 @@ class SuratMasukController extends Controller
                 $base64Image = explode(',', $base64Image)[1];
             }
 
-            $response = Http::withoutVerifying()->timeout(30)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={$apiKey}",
-                [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                [
-                                    'text' => 'Kamu adalah asisten yang membaca surat resmi/formal. Dari gambar surat ini, ekstrak informasi berikut dalam format JSON (tanpa markdown code block, hanya plain JSON):
+            $prompt = 'Kamu adalah asisten yang membaca surat resmi/formal. Dari gambar surat ini, ekstrak informasi berikut dalam format JSON (tanpa markdown code block, hanya plain JSON):
 {
     "pengirim": "nama instansi/organisasi/orang yang mengirim surat",
     "perihal": "perihal/tentang surat",
@@ -209,32 +202,60 @@ class SuratMasukController extends Controller
 }
 
 Jika ada informasi yang tidak ditemukan, isi dengan string kosong "".
-Jawab HANYA dengan JSON, tanpa teks tambahan apapun.',
-                                ],
-                                [
-                                    'inlineData' => [
-                                        'mimeType' => 'image/jpeg',
-                                        'data' => $base64Image,
-                                    ],
+Jawab HANYA dengan JSON, tanpa teks tambahan apapun.';
+
+            $payload = [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $prompt],
+                            [
+                                'inlineData' => [
+                                    'mimeType' => 'image/jpeg',
+                                    'data' => $base64Image,
                                 ],
                             ],
                         ],
                     ],
-                    'generationConfig' => [
-                        'temperature' => 0.1,
-                        'maxOutputTokens' => 500,
-                    ],
-                ]
-            );
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.1,
+                    'maxOutputTokens' => 500,
+                ],
+            ];
+
+            // Try primary model first, fallback to lite model on rate limit
+            $models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+            $response = null;
+
+            foreach ($models as $model) {
+                $response = Http::withoutVerifying()->timeout(30)->post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
+                    $payload
+                );
+
+                if ($response->status() !== 429) {
+                    break; // Success or other error, stop retrying
+                }
+
+                Log::warning("Gemini model {$model} rate limited, trying next model...");
+                sleep(1); // Brief pause before trying next model
+            }
 
             if (!$response->successful()) {
                 Log::error('Gemini API Error', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+
+                $message = 'Gagal menghubungi Gemini API: ' . $response->status();
+                if ($response->status() === 429) {
+                    $message = 'Kuota API Gemini habis (rate limit). Tunggu 1-2 menit lalu coba lagi, atau buat API key baru di Google AI Studio.';
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal menghubungi Gemini API: ' . $response->status(),
+                    'message' => $message,
                 ], 500);
             }
 

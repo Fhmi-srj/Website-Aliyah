@@ -105,8 +105,8 @@ function CrudModal({
                 </div>
 
                 {/* Modal Body */}
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide max-h-[70vh]">
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide max-h-[65vh]">
                         {children}
                     </div>
 
