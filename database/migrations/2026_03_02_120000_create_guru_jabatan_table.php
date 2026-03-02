@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->unique(['guru_id', 'bisyaroh_setting_id']);
-            $table->foreign('guru_id')->references('id')->on('gurus')->onDelete('cascade');
+            $table->foreign('guru_id')->references('id')->on('guru')->onDelete('cascade');
             $table->foreign('bisyaroh_setting_id')->references('id')->on('bisyaroh_settings')->onDelete('cascade');
         });
     }
