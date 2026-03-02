@@ -88,7 +88,7 @@ class GuruUlanganController extends Controller
             ->first();
 
         if (!$absensi) {
-            return response()->json(['error' => 'Ulangan tidak ditemukan'], 404);
+            return response()->json(['error' => 'Penilaian tidak ditemukan'], 404);
         }
 
         // Get all siswa in the class for this jadwal
@@ -147,7 +147,7 @@ class GuruUlanganController extends Controller
             ->first();
 
         if (!$absensi) {
-            return response()->json(['error' => 'Ulangan tidak ditemukan'], 404);
+            return response()->json(['error' => 'Penilaian tidak ditemukan'], 404);
         }
 
         $validated = $request->validate([
@@ -172,7 +172,7 @@ class GuruUlanganController extends Controller
         ActivityLog::log(
             'attendance',
             $absensi,
-            "Memperbarui nilai ulangan: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$updated} siswa)"
+            "Memperbarui nilai penilaian: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$updated} siswa)"
         );
 
         return response()->json([
@@ -196,7 +196,7 @@ class GuruUlanganController extends Controller
             ->first();
 
         if (!$absensi) {
-            return response()->json(['error' => 'Ulangan tidak ditemukan'], 404);
+            return response()->json(['error' => 'Penilaian tidak ditemukan'], 404);
         }
 
         $kelasId = $absensi->jadwal?->kelas_id;
@@ -255,11 +255,11 @@ class GuruUlanganController extends Controller
     private function getLabelUlangan(?string $jenis): string
     {
         return match ($jenis) {
-            'ulangan_harian' => 'Ulangan Harian',
+            'ulangan_harian' => 'Penilaian Harian',
             'uts' => 'UTS',
             'uas' => 'UAS',
             'quiz' => 'Quiz',
-            default => 'Ulangan',
+            default => 'Penilaian',
         };
     }
 }

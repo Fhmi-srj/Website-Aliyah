@@ -61,6 +61,28 @@ function ManajemenGuru() {
     const [showSignatureCanvas, setShowSignatureCanvas] = useState(false);
     const ttdInputRef = useRef(null);
 
+    // Modul Ajar popup state
+    const [showModulPopup, setShowModulPopup] = useState(false);
+    const [modulPopupGuru, setModulPopupGuru] = useState(null);
+    const [modulPopupData, setModulPopupData] = useState([]);
+    const [modulPopupLoading, setModulPopupLoading] = useState(false);
+
+    const openModulPopup = async (guru) => {
+        setModulPopupGuru(guru);
+        setShowModulPopup(true);
+        setModulPopupLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE}/guru/${guru.id}/modul`);
+            const result = await res.json();
+            setModulPopupData(result.data || []);
+        } catch (err) {
+            console.error('Error fetching modul:', err);
+            setModulPopupData([]);
+        } finally {
+            setModulPopupLoading(false);
+        }
+    };
+
     // Fetch data from API
     const fetchData = async () => {
         try {
@@ -837,6 +859,9 @@ function ManajemenGuru() {
                                         {!isMobile && <td className="px-1 py-2 align-middle whitespace-nowrap">{renderStatus(item.status)}</td>}
                                         <td className={`text-center ${isMobile ? 'py-1 px-1' : 'px-6'}`}>
                                             <div className="flex items-center justify-center gap-1">
+                                                <button onClick={() => openModulPopup(item)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Lihat Modul Ajar">
+                                                    <i className={`fas fa-book ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
+                                                </button>
                                                 <button onClick={() => openEditModal(item)} className={`action-btn ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95`} title="Edit Data">
                                                     <i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i>
                                                 </button>
@@ -1309,6 +1334,60 @@ function ManajemenGuru() {
                 onSave={handleCanvasTtdSave}
                 title="Tulis Tanda Tangan"
             />
+
+            {/* Modul Ajar Popup */}
+            {showModulPopup && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowModulPopup(false)}>
+                    <div className="bg-white rounded-2xl w-full max-w-lg flex flex-col shadow-2xl overflow-hidden" style={{ maxHeight: '85vh', animation: 'modalIn 0.2s ease-out' }} onClick={e => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-4 flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="font-bold text-lg">Modul Ajar</h2>
+                                    <p className="text-indigo-200 text-xs">{modulPopupGuru?.nama || '-'}</p>
+                                </div>
+                                <button onClick={() => setShowModulPopup(false)} className="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-lg"><i className="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {modulPopupLoading ? (
+                                <div className="flex flex-col items-center justify-center py-8">
+                                    <i className="fas fa-spinner fa-spin text-indigo-500 text-xl mb-2"></i>
+                                    <p className="text-gray-500 text-sm">Memuat modul...</p>
+                                </div>
+                            ) : modulPopupData.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mb-3">
+                                        <i className="fas fa-book text-indigo-300 text-xl"></i>
+                                    </div>
+                                    <p className="text-gray-500 text-sm">Belum ada modul ajar</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {modulPopupData.map(m => (
+                                        <div key={m.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                            <div className="flex items-start justify-between mb-1.5">
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-bold text-gray-800 text-sm truncate">{m.bab_materi}</h4>
+                                                    <p className="text-xs text-gray-500">{m.mapel} • {m.kelas}{m.fase ? ` • Fase ${m.fase}` : ''}</p>
+                                                </div>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ml-2 ${m.status === 'locked' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                    {m.status === 'locked' ? '🔒 Terkunci' : '📝 Draft'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                                                <span>Semester {m.semester}</span>
+                                                <span>{m.created_at}</span>
+                                                {m.locked_at && <span>Dikunci: {m.locked_at}</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

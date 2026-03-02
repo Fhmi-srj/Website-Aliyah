@@ -98,16 +98,17 @@ export default function AiTextArea({ value, onChange, placeholder, context = 'no
                 </button>
             )}
 
-            {/* AI Preview */}
+            {/* AI Preview — editable textarea */}
             {aiPreview && (
-                <div className="mt-2 border border-purple-200 rounded-xl overflow-hidden animate-fadeIn">
+                <div className="mt-2 border-2 border-purple-300 rounded-xl overflow-hidden animate-fadeIn">
                     <div className="bg-purple-50 px-3 py-2 flex items-center gap-2 border-b border-purple-200">
                         <span className="text-xs font-bold text-purple-700">✨ Hasil AI</span>
-                        <span className="text-[10px] text-purple-400">Preview — pilih terima atau tolak</span>
+                        <span className="text-[10px] text-purple-400">Edit jika perlu, lalu terima atau tolak</span>
                     </div>
-                    <div
-                        className="p-3 text-sm text-gray-700 bg-white leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(aiPreview) }}
+                    <textarea
+                        value={aiPreview}
+                        onChange={e => setAiPreview(e.target.value)}
+                        className="w-full p-3 text-sm text-gray-700 bg-purple-50/30 leading-relaxed min-h-[120px] max-h-[250px] resize-y border-0 focus:ring-0 focus:outline-none"
                     />
                     <div className="flex gap-2 p-2 bg-purple-50 border-t border-purple-200">
                         <button

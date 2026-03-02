@@ -4,14 +4,14 @@ import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 
 const LABEL_ULANGAN = {
-    ulangan_harian: 'Ulangan Harian',
+    ulangan_harian: 'Penilaian Harian',
     uts: 'UTS',
     uas: 'UAS',
     quiz: 'Quiz',
 };
 
 const COLOR_ULANGAN = {
-    ulangan_harian: 'bg-purple-100 text-purple-700',
+    ulangan_harian: 'bg-emerald-100 text-emerald-700',
     uts: 'bg-blue-100 text-blue-700',
     uas: 'bg-red-100 text-red-700',
     quiz: 'bg-amber-100 text-amber-700',
@@ -106,7 +106,7 @@ function Ulangan() {
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `nilai_ulangan_${id}.csv`;
+            a.download = `nilai_penilaian_${id}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -124,14 +124,14 @@ function Ulangan() {
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-5 rounded-b-3xl shadow-lg">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-5 rounded-b-3xl shadow-lg">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                         <i className="fas fa-file-signature text-lg"></i>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold">Ulangan</h1>
-                        <p className="text-purple-200 text-xs">Kelola nilai ulangan & ujian</p>
+                        <h1 className="text-lg font-bold">Penilaian</h1>
+                        <p className="text-green-200 text-xs">Kelola nilai penilaian & ujian</p>
                     </div>
                 </div>
 
@@ -143,7 +143,7 @@ function Ulangan() {
                         className="bg-white/20 text-white border-0 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-white/50"
                     >
                         <option value="" className="text-gray-800">Semua Jenis</option>
-                        <option value="ulangan_harian" className="text-gray-800">Ulangan Harian</option>
+                        <option value="ulangan_harian" className="text-gray-800">Penilaian Harian</option>
                         <option value="uts" className="text-gray-800">UTS</option>
                         <option value="uas" className="text-gray-800">UAS</option>
                         <option value="quiz" className="text-gray-800">Quiz</option>
@@ -175,16 +175,16 @@ function Ulangan() {
             <div className="p-4 space-y-3">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-12">
-                        <i className="fas fa-spinner fa-spin text-purple-500 text-2xl mb-3"></i>
-                        <p className="text-gray-500 text-sm">Memuat data ulangan...</p>
+                        <i className="fas fa-spinner fa-spin text-green-500 text-2xl mb-3"></i>
+                        <p className="text-gray-500 text-sm">Memuat data penilaian...</p>
                     </div>
                 ) : list.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                            <i className="fas fa-file-signature text-purple-400 text-2xl"></i>
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                            <i className="fas fa-file-signature text-green-400 text-2xl"></i>
                         </div>
-                        <p className="text-gray-600 font-medium mb-1">Belum Ada Ulangan</p>
-                        <p className="text-gray-400 text-xs">Ulangan akan muncul setelah Anda membuat absensi dengan mode Ulangan</p>
+                        <p className="text-gray-600 font-medium mb-1">Belum Ada Penilaian</p>
+                        <p className="text-gray-400 text-xs">Penilaian akan muncul setelah Anda membuat absensi dengan mode Penilaian</p>
                     </div>
                 ) : list.map(item => (
                     <div
@@ -219,7 +219,7 @@ function Ulangan() {
                                 {item.tanggal}
                             </div>
                             <div className="flex items-center gap-3 text-xs">
-                                <span className="text-purple-600 font-medium">
+                                <span className="text-green-600 font-medium">
                                     <i className="fas fa-pen mr-1"></i>{item.nilai_terisi}/{item.total_siswa}
                                 </span>
                                 {item.rata_rata !== null && (
@@ -249,7 +249,7 @@ function Ulangan() {
                         <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="font-bold">Detail Ulangan</h2>
+                                    <h2 className="font-bold">Detail Penilaian</h2>
                                     {detailData && (
                                         <p className="text-purple-200 text-xs">{detailData.mapel} • {detailData.kelas}</p>
                                     )}
@@ -361,7 +361,7 @@ function Ulangan() {
                             <button
                                 onClick={handleSaveNilai}
                                 disabled={saving}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                className="flex-1 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                             >
                                 {saving ? (
                                     <i className="fas fa-spinner fa-spin"></i>

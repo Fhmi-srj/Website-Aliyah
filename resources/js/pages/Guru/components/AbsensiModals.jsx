@@ -600,28 +600,28 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
-                                    <i className="fas fa-file-signature"></i> Ulangan
+                                    <i className="fas fa-file-signature"></i> Penilaian
                                 </button>
                             </div>
 
-                            {/* Jenis Ulangan Dropdown */}
+                            {/* Jenis Penilaian Dropdown */}
                             {jenisKegiatan === 'ulangan' && (
                                 <>
                                     <div className="mt-3">
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Jenis Ulangan</label>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Jenis Penilaian</label>
                                         <select
                                             value={jenisUlangan}
                                             onChange={e => setJenisUlangan(e.target.value)}
                                             className="w-full border border-purple-200 bg-purple-50 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                                         >
-                                            <option value="ulangan_harian">Ulangan Harian</option>
+                                            <option value="ulangan_harian">Penilaian Harian</option>
                                             <option value="uts">UTS (Ujian Tengah Semester)</option>
                                             <option value="uas">UAS (Ujian Akhir Semester)</option>
                                             <option value="quiz">Quiz</option>
                                         </select>
                                     </div>
                                     <div className="mt-3">
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Judul/Materi Ulangan</label>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Judul/Materi Penilaian</label>
                                         <input
                                             type="text"
                                             value={judulUlangan}
@@ -772,7 +772,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                             {/* Disabled nilai indicator for non-hadir siswa in ulangan mode */}
                                             {jenisKegiatan === 'ulangan' && siswa.status !== 'H' && (
                                                 <div className="mt-2 flex items-center gap-2">
-                                                    <span className="text-xs text-gray-400 italic"><i className="fas fa-lock text-[0.6rem] mr-1"></i>Nilai diisi via menu Ulangan (susulan)</span>
+                                                    <span className="text-xs text-gray-400 italic"><i className="fas fa-lock text-[0.6rem] mr-1"></i>Nilai diisi via menu Penilaian (susulan)</span>
                                                 </div>
                                             )}
                                         </div>
@@ -801,7 +801,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                         ) : (
                             <>
                                 <i className={`fas ${jenisKegiatan === 'ulangan' ? 'fa-file-signature' : 'fa-save'}`}></i>
-                                {jenisKegiatan === 'ulangan' ? 'Simpan Ulangan' : 'Simpan Absensi'}
+                                {jenisKegiatan === 'ulangan' ? 'Simpan Penilaian' : 'Simpan Absensi'}
                             </>
                         )}
                     </button>

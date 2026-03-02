@@ -688,7 +688,7 @@ function Riwayat() {
                                                             <div className="flex items-center gap-1">
                                                                 {item.jenis_kegiatan === 'ulangan' && (
                                                                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-                                                                        Ulangan
+                                                                        Penilaian
                                                                     </span>
                                                                 )}
                                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.labelBg}`}>

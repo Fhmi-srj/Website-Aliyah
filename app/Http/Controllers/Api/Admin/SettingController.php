@@ -77,14 +77,10 @@ class SettingController extends Controller
      */
     public function update(Request $request, $key)
     {
-        $setting = AppSetting::where('key', $key)->first();
-
-        if (!$setting) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Setting not found',
-            ], 404);
-        }
+        $setting = AppSetting::firstOrCreate(
+            ['key' => $key],
+            ['type' => 'string', 'value' => '', 'description' => '']
+        );
 
         $value = $request->input('value');
 

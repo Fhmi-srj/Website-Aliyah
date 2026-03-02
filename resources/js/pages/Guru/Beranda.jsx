@@ -311,7 +311,7 @@ function Beranda() {
                         >
                             <i className="fas fa-file-signature text-xl"></i>
                             <span className="text-[10px] font-medium">
-                                Ulangan
+                                Penilaian
                             </span>
                         </button>
                         <button

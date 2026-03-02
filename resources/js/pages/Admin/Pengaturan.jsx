@@ -29,7 +29,9 @@ function Pengaturan() {
 
     // AI / Gemini settings
     const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [geminiApiKey2, setGeminiApiKey2] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
+    const [showApiKey2, setShowApiKey2] = useState(false);
     const [savingApiKey, setSavingApiKey] = useState(false);
 
     // Institution settings
@@ -121,8 +123,9 @@ function Pengaturan() {
             if (data.success) {
                 setUnlockAllAttendance(data.data.unlock_all_attendance?.value || false);
 
-                // Set Gemini API key
+                // Set Gemini API keys
                 setGeminiApiKey(data.data.gemini_api_key?.value || '');
+                setGeminiApiKey2(data.data.gemini_api_key_2?.value || '');
 
                 // Set institution data
                 setInstitutionData({
@@ -1003,12 +1006,13 @@ function Pengaturan() {
                                 <div className={`w-3 h-3 rounded-full ${geminiApiKey ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
                                 <span className={`text-sm font-medium ${geminiApiKey ? 'text-green-700' : 'text-gray-500'}`}>
                                     {geminiApiKey ? 'API Key terkonfigurasi' : 'API Key belum diatur'}
+                                    {geminiApiKey && geminiApiKey2 && <span className="ml-2 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">+ Cadangan</span>}
                                 </span>
                             </div>
                         </div>
                         {/* API Key Input */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key (Utama)</label>
                             <div className="relative">
                                 <input type={showApiKey ? 'text' : 'password'} value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)}
                                     className="w-full px-4 py-2.5 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm font-mono" placeholder="AIzaSy..." />
@@ -1017,8 +1021,20 @@ function Pengaturan() {
                                     <i className={`fas ${showApiKey ? 'fa-eye-slash' : 'fa-eye'} mr-1`}></i>{showApiKey ? 'Sembunyikan' : 'Tampilkan'}
                                 </button>
                             </div>
+                        </div>
+                        {/* Backup API Key */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Gemini API Key (Cadangan) <span className="text-xs text-gray-400 font-normal">— Dipakai saat key utama kena limit</span></label>
+                            <div className="relative">
+                                <input type={showApiKey2 ? 'text' : 'password'} value={geminiApiKey2} onChange={(e) => setGeminiApiKey2(e.target.value)}
+                                    className="w-full px-4 py-2.5 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm font-mono" placeholder="AIzaSy... (opsional)" />
+                                <button type="button" onClick={() => setShowApiKey2(!showApiKey2)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                                    <i className={`fas ${showApiKey2 ? 'fa-eye-slash' : 'fa-eye'} mr-1`}></i>{showApiKey2 ? 'Sembunyikan' : 'Tampilkan'}
+                                </button>
+                            </div>
                             <p className="text-xs text-gray-400 mt-2">
-                                Dapatkan API key dari <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">Google AI Studio</a>
+                                Dapatkan API key dari <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">Google AI Studio</a> (gratis, bisa buat banyak key)
                             </p>
                         </div>
                         {/* Save Button */}
@@ -1027,8 +1043,11 @@ function Pengaturan() {
                                 onClick={async () => {
                                     setSavingApiKey(true);
                                     try {
-                                        const ok = await saveInstitutionSetting('gemini_api_key', geminiApiKey);
-                                        if (ok) { Swal.fire({ icon: 'success', title: 'Berhasil', text: 'API Key Gemini berhasil disimpan', timer: 1500, showConfirmButton: false }); }
+                                        const [ok1, ok2] = await Promise.all([
+                                            saveInstitutionSetting('gemini_api_key', geminiApiKey),
+                                            saveInstitutionSetting('gemini_api_key_2', geminiApiKey2),
+                                        ]);
+                                        if (ok1 && ok2) { Swal.fire({ icon: 'success', title: 'Berhasil', text: 'API Key Gemini berhasil disimpan', timer: 1500, showConfirmButton: false }); }
                                         else { Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan API Key' }); }
                                     } catch { Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan' }); }
                                     finally { setSavingApiKey(false); }
@@ -1042,8 +1061,9 @@ function Pengaturan() {
                         <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                             <h4 className="font-medium text-purple-800 flex items-center gap-2 mb-2"><i className="fas fa-info-circle"></i> Tentang Integrasi AI</h4>
                             <ul className="text-sm text-purple-700 space-y-1">
-                                <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>AI akan digunakan untuk <strong>membaca undangan</strong> dan auto-fill data surat</span></li>
-                                <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>Membantu <strong>generate konten surat</strong> dari template dan laporan</span></li>
+                                <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>AI untuk <strong>membaca surat masuk</strong> dan auto-fill data</span></li>
+                                <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>AI untuk <strong>merapikan notulensi rapat</strong> dan keterangan kegiatan</span></li>
+                                <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>Key cadangan otomatis dipakai jika key utama <strong>kena rate limit (429)</strong></span></li>
                                 <li className="flex items-start gap-2"><i className="fas fa-check text-purple-500 mt-0.5"></i><span>API key disimpan secara aman di server</span></li>
                             </ul>
                         </div>

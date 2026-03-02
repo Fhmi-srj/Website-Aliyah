@@ -177,6 +177,7 @@ class SuratMasukController extends Controller
         ]);
 
         $apiKey = \App\Models\AppSetting::getValue('gemini_api_key') ?: config('services.gemini.api_key');
+        $apiKey2 = \App\Models\AppSetting::getValue('gemini_api_key_2');
 
         if (empty($apiKey)) {
             return response()->json([
@@ -224,22 +225,25 @@ Jawab HANYA dengan JSON, tanpa teks tambahan apapun.';
                 ],
             ];
 
-            // Try primary model first, fallback to lite model on rate limit
+            // Build list of keys to try: primary first, then backup
+            $apiKeys = array_filter([$apiKey, $apiKey2]);
             $models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
             $response = null;
 
-            foreach ($models as $model) {
-                $response = Http::withoutVerifying()->timeout(30)->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
-                    $payload
-                );
+            foreach ($apiKeys as $key) {
+                foreach ($models as $model) {
+                    $response = Http::withoutVerifying()->timeout(30)->post(
+                        "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}",
+                        $payload
+                    );
 
-                if ($response->status() !== 429) {
-                    break; // Success or other error, stop retrying
+                    if ($response->status() !== 429) {
+                        break 2;
+                    }
+
+                    Log::warning("Gemini model {$model} rate limited, trying next...");
                 }
-
-                Log::warning("Gemini model {$model} rate limited, trying next model...");
-                sleep(1); // Brief pause before trying next model
+                Log::warning("All models rate limited for key, trying backup key...");
             }
 
             if (!$response->successful()) {

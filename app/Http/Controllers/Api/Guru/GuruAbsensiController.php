@@ -322,10 +322,10 @@ class GuruAbsensiController extends Controller
                     $ringkasanMateriUpd = $validated['ringkasan_materi'] ?? null;
 
                     if ($jenisKegiatanUpd === 'ulangan' && empty($ringkasanMateriUpd)) {
-                        $labelUlangan = ['ulangan_harian' => 'Ulangan Harian', 'uts' => 'UTS', 'uas' => 'UAS', 'quiz' => 'Quiz'];
+                        $labelUlangan = ['ulangan_harian' => 'Penilaian Harian', 'uts' => 'UTS', 'uas' => 'UAS', 'quiz' => 'Quiz'];
                         $judulUpd = $validated['judul_ulangan'] ?? null;
                         $suffix = !empty($judulUpd) ? $judulUpd : ($jadwal->mapel->nama_mapel ?? 'Mapel');
-                        $ringkasanMateriUpd = ($labelUlangan[$jenisUlanganUpd] ?? 'Ulangan') . ': ' . $suffix;
+                        $ringkasanMateriUpd = ($labelUlangan[$jenisUlanganUpd] ?? 'Penilaian') . ': ' . $suffix;
                     }
 
                     // Update record - also update jadwal_id if it was null (historical import data)
@@ -368,13 +368,13 @@ class GuruAbsensiController extends Controller
 
                     // Log activity for attendance update
                     $logMsgUpd = $jenisKegiatanUpd === 'ulangan'
-                        ? "Mengubah ulangan: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})"
+                        ? "Mengubah penilaian: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})"
                         : "Mengubah absensi mengajar: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})";
                     ActivityLog::log('attendance', $absensi, $logMsgUpd, $oldAbsensiValues, $absensi->toArray());
 
                     return response()->json([
                         'success' => true,
-                        'message' => $jenisKegiatanUpd === 'ulangan' ? 'Ulangan berhasil diperbarui' : 'Absensi berhasil diperbarui',
+                        'message' => $jenisKegiatanUpd === 'ulangan' ? 'Penilaian berhasil diperbarui' : 'Absensi berhasil diperbarui',
                         'data' => $absensi->load('nilaiSiswa'),
                     ], 200);
                 } else {
@@ -388,10 +388,10 @@ class GuruAbsensiController extends Controller
             $ringkasanMateri = $validated['ringkasan_materi'] ?? null;
 
             if ($jenisKegiatan === 'ulangan' && empty($ringkasanMateri)) {
-                $labelUlangan = ['ulangan_harian' => 'Ulangan Harian', 'uts' => 'UTS', 'uas' => 'UAS', 'quiz' => 'Quiz'];
+                $labelUlangan = ['ulangan_harian' => 'Penilaian Harian', 'uts' => 'UTS', 'uas' => 'UAS', 'quiz' => 'Quiz'];
                 $judul = $validated['judul_ulangan'] ?? null;
                 $suffix = !empty($judul) ? $judul : ($jadwal->mapel->nama_mapel ?? 'Mapel');
-                $ringkasanMateri = ($labelUlangan[$jenisUlangan] ?? 'Ulangan') . ': ' . $suffix;
+                $ringkasanMateri = ($labelUlangan[$jenisUlangan] ?? 'Penilaian') . ': ' . $suffix;
             }
 
             // Create new absensi mengajar with guru_status and snapshot
@@ -441,13 +441,13 @@ class GuruAbsensiController extends Controller
 
             // Log activity for new attendance
             $logMessage = $jenisKegiatan === 'ulangan'
-                ? "Menyimpan ulangan: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})"
+                ? "Menyimpan penilaian: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})"
                 : "Menyimpan absensi mengajar: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})";
             ActivityLog::log('attendance', $absensi, $logMessage);
 
             return response()->json([
                 'success' => true,
-                'message' => $jenisKegiatan === 'ulangan' ? 'Ulangan berhasil disimpan' : 'Absensi berhasil disimpan',
+                'message' => $jenisKegiatan === 'ulangan' ? 'Penilaian berhasil disimpan' : 'Absensi berhasil disimpan',
                 'data' => $absensi->load('nilaiSiswa'),
             ], 201);
         } catch (\Exception $e) {

@@ -22,6 +22,7 @@ class AiController extends Controller
         ]);
 
         $apiKey = \App\Models\AppSetting::getValue('gemini_api_key') ?: config('services.gemini.api_key');
+        $apiKey2 = \App\Models\AppSetting::getValue('gemini_api_key_2');
 
         if (empty($apiKey)) {
             return response()->json([
@@ -37,7 +38,7 @@ class AiController extends Controller
 Aturan:
 - Perbaiki ejaan, tanda baca, dan huruf kapital
 - Susun poin-poin menjadi numbered list yang konsisten
-- Gunakan format markdown (bold untuk judul/kata kunci penting, numbered list untuk poin)
+- Untuk judul dan sub judul gunakan format WhatsApp bold yaitu *satu bintang* (BUKAN **dua bintang**)
 - Hilangkan karakter aneh atau tidak konsisten (·, /, dll)
 - JANGAN mengubah makna atau menambah informasi baru
 - JANGAN menambahkan paragraf pembuka/penutup yang tidak ada di teks asli
@@ -58,25 +59,29 @@ Teks asli:
                 ],
                 'generationConfig' => [
                     'temperature' => 0.2,
-                    'maxOutputTokens' => 1000,
+                    'maxOutputTokens' => 4096,
                 ],
             ];
 
+            // Build list of keys to try: primary first, then backup
+            $apiKeys = array_filter([$apiKey, $apiKey2]);
             $models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
             $response = null;
 
-            foreach ($models as $model) {
-                $response = Http::withoutVerifying()->timeout(30)->post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
-                    $payload
-                );
+            foreach ($apiKeys as $key) {
+                foreach ($models as $model) {
+                    $response = Http::withoutVerifying()->timeout(30)->post(
+                        "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}",
+                        $payload
+                    );
 
-                if ($response->status() !== 429) {
-                    break;
+                    if ($response->status() !== 429) {
+                        break 2; // Success or other error, stop all loops
+                    }
+
+                    Log::warning("Gemini model {$model} rate limited, trying next...");
                 }
-
-                Log::warning("Gemini model {$model} rate limited, trying next model...");
-                sleep(1);
+                Log::warning("All models rate limited for key, trying backup key...");
             }
 
             if (!$response->successful()) {

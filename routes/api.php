@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('guru/{guru}/link-user', [GuruController::class, 'linkUser']);
     Route::post('guru/bulk-delete', [GuruController::class, 'bulkDelete']);
     Route::post('guru/{guru}/upload-ttd', [GuruController::class, 'uploadTtd']);
+    Route::get('guru/{guru}/modul', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'modulByGuru']);
     Route::apiResource('siswa', SiswaController::class);
     Route::post('siswa/bulk-delete', [SiswaController::class, 'bulkDelete']);
     Route::apiResource('jadwal', JadwalController::class);
@@ -324,6 +325,17 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::post('ulangan/{id}/nilai', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'updateNilai']);
     Route::get('ulangan/{id}/export', [\App\Http\Controllers\Api\Guru\GuruUlanganController::class, 'export']);
 
+    // Modul Ajar
+    Route::get('modul', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'index']);
+    Route::post('modul', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'store']);
+    Route::get('modul/{id}', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'show']);
+    Route::put('modul/{id}', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'update']);
+    Route::delete('modul/{id}', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'destroy']);
+    Route::post('modul/{id}/lock', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'lock']);
+    Route::post('modul/{id}/unlock', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'unlock']);
+    Route::post('modul/{id}/duplicate', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'duplicate']);
+    Route::post('modul/generate-ai', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'generateAI']);
+
     // Push Notifications
     Route::prefix('push')->group(function () {
         Route::get('vapid-key', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'vapidKey']);
@@ -342,6 +354,7 @@ Route::prefix('guru-panel')->middleware('token_auth')->group(function () {
     Route::get('print/hasil-kegiatan/{absensiId}', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'hasilKegiatan']);
     Route::get('print/hasil-kegiatan-bulk', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'hasilKegiatanBulk']);
     Route::get('print/profil', [\App\Http\Controllers\Api\Guru\GuruPrintController::class, 'profilGuru']);
+    Route::get('modul/{id}/pdf', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'exportPdf']);
 });
 
 // Admin Print Routes - separate group with token_auth middleware
