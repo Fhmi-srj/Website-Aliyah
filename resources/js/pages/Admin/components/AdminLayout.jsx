@@ -5,9 +5,10 @@ import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import AdminSidebar from './AdminSidebar';
 import RoleSwitcher from '../../../components/RoleSwitcher';
 import { API_BASE } from '../../../config/api';
-import { canAccessAdminPage, getRoleInfo } from '../../../config/roleConfig';
+import { canAccessAdminPage, getRoleInfo, hasAdminAccess } from '../../../config/roleConfig';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
+import { showSwitchRolePopup } from '../../../utils/switchRolePopup';
 
 function AdminLayout({ children }) {
     const navigate = useNavigate();
@@ -114,7 +115,7 @@ function AdminLayout({ children }) {
     const canSeeTransaksi = isSuperadmin || canAccessAdminPage(activeRole, '/transaksi');
     const canSeeKegiatan = isSuperadmin || canAccessAdminPage(activeRole, '/data-induk/kegiatan');
 
-    // Bottom navigation items for mobile - dynamically add Transaksi & Kegiatan if permitted
+    // Bottom navigation items for mobile - dynamically add Transaksi if permitted
     const mobileNavItems = useMemo(() => {
         const items = [
             { to: '/dashboard', icon: 'fas fa-home', label: 'Beranda', end: true },
@@ -123,12 +124,19 @@ function AdminLayout({ children }) {
             items.push({ to: '/transaksi', icon: 'fas fa-money-bill-wave', label: 'Transaksi' });
         }
         items.push({ type: 'more' }); // Placeholder for "Menu" dropup
-        if (canSeeKegiatan) {
-            items.push({ to: '/data-induk/kegiatan', icon: 'fas fa-tasks', label: 'Kegiatan' });
-        }
         items.push({ to: '/pengaturan', icon: 'fas fa-cog', label: 'Pengaturan' });
+        items.push({ type: 'switch-role', icon: 'fas fa-exchange-alt', label: 'Ganti Peran' });
         return items;
-    }, [canSeeTransaksi, canSeeKegiatan]);
+    }, [canSeeTransaksi]);
+
+    const handleSwitchRole = () => {
+        showSwitchRolePopup({
+            userRoles: user?.roles || [],
+            activeRole,
+            switchRole,
+            navigate,
+        });
+    };
 
     // Calculate grid columns based on number of mobile nav items
     const mobileNavCols = mobileNavItems.length;
@@ -332,6 +340,18 @@ function AdminLayout({ children }) {
                                         </button>
                                         <span className="absolute bottom-1 text-[9px] font-medium text-gray-500">Menu</span>
                                     </div>
+                                );
+                            }
+                            if (item.type === 'switch-role') {
+                                return (
+                                    <button
+                                        key="switch-role"
+                                        onClick={handleSwitchRole}
+                                        className="flex flex-col items-center justify-center py-2 transition-colors text-gray-400 dark:text-gray-500 hover:text-green-500 cursor-pointer"
+                                    >
+                                        <i className={`${item.icon} text-xl`}></i>
+                                        <span className="text-[10px] mt-1 font-medium">{item.label}</span>
+                                    </button>
                                 );
                             }
                             const isActive = item.end

@@ -5,6 +5,7 @@ import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import { canAccessAdminPage, getRoleInfo } from '../../../config/roleConfig';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
+import RoleSwitcher from '../../../components/RoleSwitcher';
 
 const menuItems = [
     {
@@ -332,6 +333,20 @@ function AdminSidebar({ onClose, isCollapsed, onToggleCollapse, institutionName,
 
                 {/* Bottom Section */}
                 <div className="flex-shrink-0 pt-6 border-t border-gray-100 dark:border-dark-border">
+                    {/* Role Switcher */}
+                    {!isCollapsed && (
+                        <div className="mb-3 bg-white dark:bg-dark-card rounded-xl border border-gray-100 dark:border-dark-border overflow-hidden">
+                            <RoleSwitcher compact={true} onSwitch={() => window.location.reload()} />
+                        </div>
+                    )}
+                    {isCollapsed && (
+                        <div className="mb-3 flex justify-center" title="Ganti Peran">
+                            <button onClick={() => window.location.reload()} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors cursor-pointer">
+                                <i className="fas fa-exchange-alt text-sm"></i>
+                            </button>
+                        </div>
+                    )}
+
                     {/* User Profile Info - Expanded version */}
                     {!isCollapsed && (
                         <div className="mb-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl relative overflow-hidden group">

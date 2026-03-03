@@ -6,7 +6,21 @@ import { BerandaSkeleton } from "./components/Skeleton";
 import { AnimatedTabs } from "./components/AnimatedTabs";
 
 function Beranda() {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const navigate = useNavigate();
+
+    // On desktop, redirect to Riwayat (Beranda only shows on mobile)
+    useEffect(() => {
+        if (!isMobile) {
+            navigate('/guru/riwayat', { replace: true });
+        }
+    }, [isMobile, navigate]);
     const { user } = useAuth();
 
     // State for dashboard data
@@ -110,6 +124,25 @@ function Beranda() {
         alpha: 0,
         percentage: 0,
     };
+
+    // Desktop: sections are shown in layout panels, only show welcome
+    if (!isMobile) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8">
+                <div className="text-center max-w-md">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fas fa-home text-green-600 text-2xl"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 mb-2">Selamat Datang, {userData.name || user?.name || 'Guru'}</h2>
+                    <p className="text-gray-500 text-sm">Gunakan menu di samping untuk navigasi ke berbagai fitur.</p>
+                    <p className="text-gray-400 text-xs mt-3">
+                        <i className="fas fa-calendar-alt mr-1"></i>
+                        {today?.date || new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
@@ -315,57 +348,12 @@ function Beranda() {
                             </span>
                         </button>
                         <button
-                            onClick={() => navigate("/guru/sertifikat")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                        >
-                            <i className="fas fa-certificate text-xl"></i>
-                            <span className="text-[10px] font-medium">
-                                Sertifikat
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => navigate("/guru/sppd")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                        >
-                            <i className="fas fa-file-alt text-xl"></i>
-                            <span className="text-[10px] font-medium">
-                                SPPD
-                            </span>
-                        </button>
-                        <button
                             onClick={() => navigate("/guru/modul")}
                             className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
                             <i className="fas fa-book text-xl"></i>
                             <span className="text-[10px] font-medium">
                                 Modul
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => navigate("/guru/download")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                        >
-                            <i className="fas fa-download text-xl"></i>
-                            <span className="text-[10px] font-medium">
-                                Download
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => navigate("/guru/jurnal-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                        >
-                            <i className="fas fa-book-open text-xl"></i>
-                            <span className="text-[10px] font-medium">
-                                Jurnal Kelas
-                            </span>
-                        </button>
-                        <button
-                            onClick={() => navigate("/guru/absen-kelas")}
-                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                        >
-                            <i className="fas fa-clipboard-list text-xl"></i>
-                            <span className="text-[10px] font-medium">
-                                Absen Kelas
                             </span>
                         </button>
                         <button
