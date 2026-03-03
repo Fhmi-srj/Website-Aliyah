@@ -62,7 +62,7 @@ class WaSendScheduleDaily extends Command
             foreach ($jadwals as $jadwal) {
                 $jam = substr($jadwal->jam_mulai, 0, 5);
                 $guru = $jadwal->guru->nama ?? '-';
-                $mapel = $jadwal->mapel->nama ?? '-';
+                $mapel = $jadwal->mapel->nama_mapel ?? '-';
                 $daftarJadwal .= "{$jam} | {$guru} | {$mapel}\n";
             }
 

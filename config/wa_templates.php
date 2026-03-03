@@ -170,4 +170,23 @@ Kepala MA Alhikam
 *NB.*
 Penanggung Jawab : {penanggung_jawab}
 TPL,
+
+    // Pengingat kegiatan hari H
+    'pengingat_kegiatan' => <<<'TPL'
+*PENGINGAT KEGIATAN HARI INI*
+Yth. Segenap Dewan Guru MA Alhikam
+
+Assalamu'alaikum warahmatullahi wabarakatuh.
+Mengingatkan kegiatan hari ini:
+
+🏛️ : {tempat}
+📌 : {nama_kegiatan}
+⏰ : {waktu} WIB - Selesai
+
+Mohon hadir tepat waktu. 🙏
+Wassalamu'alaikum warahmatullahi wabarakatuh.
+
+*NB.*
+Penanggung Jawab : {penanggung_jawab}
+TPL,
 ];
