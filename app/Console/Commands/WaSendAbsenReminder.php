@@ -13,6 +13,7 @@ use App\Models\Guru;
 use App\Models\TahunAjaran;
 use App\Services\WhatsappService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class WaSendAbsenReminder extends Command
@@ -39,6 +40,27 @@ class WaSendAbsenReminder extends Command
         Carbon::SATURDAY => 'Sabtu',
         Carbon::SUNDAY => 'Minggu',
     ];
+
+    /**
+     * Check if a reminder was already sent today for a given key.
+     * Uses file-based cache to prevent duplicate sends within the 5-minute window.
+     */
+    protected function alreadySentToday(string $key): bool
+    {
+        $cacheKey = "wa_reminder_{$key}_" . Carbon::now()->format('Y-m-d');
+        return Cache::has($cacheKey);
+    }
+
+    /**
+     * Mark a reminder as sent for today.
+     */
+    protected function markAsSent(string $key): void
+    {
+        $cacheKey = "wa_reminder_{$key}_" . Carbon::now()->format('Y-m-d');
+        // Cache until end of day
+        $minutesUntilEndOfDay = Carbon::now()->diffInMinutes(Carbon::now()->endOfDay());
+        Cache::put($cacheKey, true, now()->addMinutes(max($minutesUntilEndOfDay, 1)));
+    }
 
     public function handle()
     {
@@ -112,6 +134,12 @@ class WaSendAbsenReminder extends Command
             if ($alreadyAbsen)
                 continue;
 
+            // Prevent duplicate sends: check if already sent today for this jadwal+guru
+            $reminderKey = "mengajar_{$jadwal->id}_{$jadwal->guru_id}";
+            if ($this->alreadySentToday($reminderKey)) {
+                continue;
+            }
+
             // Generate token link
             $link = $wa->generateAttendanceToken(
                 $jadwal->guru_id,
@@ -122,8 +150,8 @@ class WaSendAbsenReminder extends Command
 
             $message = $wa->renderTemplate('reminder_mengajar', [
                 'guru_nama' => $jadwal->guru->nama,
-                'mapel' => $jadwal->mapel->nama ?? '-',
-                'kelas' => $jadwal->kelas->nama ?? '-',
+                'mapel' => $jadwal->mapel->nama_mapel ?? '-',
+                'kelas' => $jadwal->kelas->nama_kelas ?? '-',
                 'jam' => $jadwal->jam_mulai . ' - ' . $jadwal->jam_selesai,
                 'hari' => $hariIni,
                 'tanggal' => Carbon::parse($today)->translatedFormat('d F Y'),
@@ -131,10 +159,11 @@ class WaSendAbsenReminder extends Command
             ]);
 
             if ($dryRun) {
-                $mapelNama = $jadwal->mapel->nama ?? '-';
+                $mapelNama = $jadwal->mapel->nama_mapel ?? '-';
                 $this->line("[DRY] → {$jadwal->guru->nama} ({$jadwal->guru->kontak}): Mengajar {$mapelNama}");
             } else {
                 $wa->sendMessage($jadwal->guru->kontak, $message);
+                $this->markAsSent($reminderKey);
                 usleep(500000);
             }
             $sent++;
@@ -185,6 +214,12 @@ class WaSendAbsenReminder extends Command
                 ->get();
 
             foreach ($guruList as $guru) {
+                // Prevent duplicate sends
+                $reminderKey = "kegiatan_{$kegiatan->id}_{$guru->id}";
+                if ($this->alreadySentToday($reminderKey)) {
+                    continue;
+                }
+
                 $link = $wa->generateAttendanceToken(
                     $guru->id,
                     'kegiatan',
@@ -205,6 +240,7 @@ class WaSendAbsenReminder extends Command
                     $this->line("[DRY] → {$guru->nama} ({$guru->kontak}): Kegiatan {$kegiatan->nama_kegiatan}");
                 } else {
                     $wa->sendMessage($guru->kontak, $message);
+                    $this->markAsSent($reminderKey);
                     usleep(500000);
                 }
                 $sent++;
@@ -255,6 +291,12 @@ class WaSendAbsenReminder extends Command
                 ->get();
 
             foreach ($guruList as $guru) {
+                // Prevent duplicate sends
+                $reminderKey = "rapat_{$rapat->id}_{$guru->id}";
+                if ($this->alreadySentToday($reminderKey)) {
+                    continue;
+                }
+
                 $link = $wa->generateAttendanceToken(
                     $guru->id,
                     'rapat',
@@ -275,6 +317,7 @@ class WaSendAbsenReminder extends Command
                     $this->line("[DRY] → {$guru->nama} ({$guru->kontak}): Rapat {$rapat->agenda_rapat}");
                 } else {
                     $wa->sendMessage($guru->kontak, $message);
+                    $this->markAsSent($reminderKey);
                     usleep(500000);
                 }
                 $sent++;
