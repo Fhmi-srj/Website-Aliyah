@@ -33,6 +33,8 @@ class Rapat extends Model
         'tanggal' => 'date',
         'peserta_rapat' => 'array',
         'peserta_eksternal' => 'array',
+        'pimpinan_id' => 'integer',
+        'sekretaris_id' => 'integer',
     ];
 
     /**

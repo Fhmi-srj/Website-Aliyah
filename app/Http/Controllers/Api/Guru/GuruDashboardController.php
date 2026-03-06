@@ -108,7 +108,7 @@ class GuruDashboardController extends Controller
             ->map(function ($kegiatan) use ($currentTime, $guru, $today) {
                 $startTime = Carbon::parse($kegiatan->waktu_mulai)->setTimezone('Asia/Jakarta')->format('H:i');
                 $endTime = Carbon::parse($kegiatan->waktu_berakhir)->setTimezone('Asia/Jakarta')->format('H:i');
-                $isPJ = $kegiatan->penanggung_jawab_id === $guru->id;
+                $isPJ = $kegiatan->penanggung_jawab_id == $guru->id;
 
                 // Get actual attendance status (same logic as GuruKegiatanController)
                 $absensi = AbsensiKegiatan::where('kegiatan_id', $kegiatan->id)->first();
@@ -200,9 +200,9 @@ class GuruDashboardController extends Controller
             ->map(function ($rapat) use ($currentTime, $guru, $today) {
                 // Determine role
                 $role = 'peserta';
-                if ($rapat->pimpinan_id === $guru->id) {
+                if ($rapat->pimpinan_id == $guru->id) {
                     $role = 'pimpinan';
-                } elseif ($rapat->sekretaris_id === $guru->id) {
+                } elseif ($rapat->sekretaris_id == $guru->id) {
                     $role = 'sekretaris';
                 }
 
@@ -1252,18 +1252,18 @@ class GuruDashboardController extends Controller
         }
 
         // 3. Get rapat for next 7 days
-        $rapatQuery = Rapat::where('status', 'Aktif')
+        $rapatQuery = Rapat::where('status', 'Dijadwalkan')
             ->whereBetween('tanggal', [$today, $endDate]);
 
         $rapats = $rapatQuery->get();
 
         foreach ($rapats as $rapat) {
-            // Check if this guru is related (pimpinan, sekretaris, notulis, or in peserta_rapat array)
+            // Check if this guru is related (pimpinan, sekretaris, or in peserta_rapat array)
             $pesertaRapat = $rapat->peserta_rapat ?? [];
             $isRelated = $rapat->pimpinan_id == $guru->id ||
                 $rapat->sekretaris_id == $guru->id ||
-                $rapat->notulis_id == $guru->id ||
-                in_array($guru->id, $pesertaRapat);
+                in_array($guru->id, $pesertaRapat) ||
+                in_array((string) $guru->id, $pesertaRapat);
 
             if ($isRelated) {
                 $events[] = [

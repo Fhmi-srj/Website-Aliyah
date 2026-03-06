@@ -26,7 +26,11 @@ use Illuminate\Session\Middleware\StartSession;
 Route::post('auth/login', [AuthController::class, 'login']);
 
 // === WebAuthn Public Routes (login with fingerprint) - needs session for challenge storage ===
-Route::middleware([StartSession::class])->group(function () {
+Route::middleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    StartSession::class,
+])->group(function () {
     Route::post('webauthn/login/options', [WebAuthnController::class, 'loginOptions']);
     Route::post('webauthn/login', [WebAuthnController::class, 'login']);
     Route::post('webauthn/has-credentials', [WebAuthnController::class, 'hasCredentials']);
@@ -47,7 +51,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
     // === WebAuthn Authenticated Routes (register fingerprint) - needs session for challenge storage ===
-    Route::middleware([StartSession::class])->group(function () {
+    Route::middleware([
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        StartSession::class,
+    ])->group(function () {
         Route::post('webauthn/register/options', [WebAuthnController::class, 'registerOptions']);
         Route::post('webauthn/register', [WebAuthnController::class, 'register']);
     });

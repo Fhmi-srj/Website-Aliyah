@@ -102,6 +102,10 @@ class WebAuthnController extends Controller
      */
     public function loginOptions(AssertionRequest $request): Responsable
     {
+        \Log::info('WebAuthn Login Options', [
+            'session_id' => session()->getId(),
+        ]);
+
         // toVerify(null) = discoverable credential: browser tampilkan semua credential terdaftar
         // tanpa perlu username - user langsung scan jari
         return $request->toVerify(null);
@@ -116,6 +120,29 @@ class WebAuthnController extends Controller
         $request->validate([
             'tahun_ajaran_id' => 'required|exists:tahun_ajaran,id',
         ]);
+
+        // Pre-check: is challenge available in session?
+        $challengeKey = config('webauthn.challenge.key', '_webauthn');
+        $hasChallenge = session()->has($challengeKey);
+
+        \Log::info('WebAuthn Login Attempt', [
+            'session_id' => session()->getId(),
+            'has_challenge' => $hasChallenge,
+            'request_id' => $request->input('id'),
+            'origin' => $request->header('Origin') ?? $request->header('Referer'),
+        ]);
+
+        if (!$hasChallenge) {
+            \Log::error('WebAuthn: Challenge not found in session', [
+                'session_id' => session()->getId(),
+                'session_all_keys' => array_keys(session()->all()),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi challenge tidak ditemukan. Silakan coba lagi.',
+            ], 401);
+        }
 
         // Use the web guard to validate the assertion
         $authenticatable = $request->login();

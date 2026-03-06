@@ -591,10 +591,10 @@ export function ModalAbsensiRapatPimpinan({ rapat, tanggal, onClose, onSuccess, 
     };
 
     const pesertaCounts = {
-        hadir: absensiPeserta.filter(g => g.status === 'H').length,
-        sakit: absensiPeserta.filter(g => g.status === 'S').length,
-        izin: absensiPeserta.filter(g => g.status === 'I').length,
-        alpha: absensiPeserta.filter(g => g.status === 'A').length,
+        hadir: absensiPeserta.filter(g => g.status === 'H').length + (pimpinanStatus === 'H' ? 1 : 0) + (sekretarisStatus === 'H' ? 1 : 0),
+        sakit: absensiPeserta.filter(g => g.status === 'S').length + (pimpinanStatus === 'S' ? 1 : 0) + (sekretarisStatus === 'S' ? 1 : 0),
+        izin: absensiPeserta.filter(g => g.status === 'I').length + (pimpinanStatus === 'I' ? 1 : 0) + (sekretarisStatus === 'I' ? 1 : 0),
+        alpha: absensiPeserta.filter(g => g.status === 'A').length + (pimpinanStatus === 'A' ? 1 : 0) + (sekretarisStatus === 'A' ? 1 : 0),
     };
 
     const canSubmit = fotoRapat.length >= 2 && notulensi.trim();
@@ -1508,10 +1508,10 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
     };
 
     const pesertaCounts = {
-        hadir: absensiPeserta.filter(g => g.status === 'H').length,
-        sakit: absensiPeserta.filter(g => g.status === 'S').length,
-        izin: absensiPeserta.filter(g => g.status === 'I').length,
-        alpha: absensiPeserta.filter(g => g.status === 'A').length,
+        hadir: absensiPeserta.filter(g => g.status === 'H').length + (pimpinanStatus === 'H' ? 1 : 0) + (sekretarisStatus === 'H' ? 1 : 0),
+        sakit: absensiPeserta.filter(g => g.status === 'S').length + (pimpinanStatus === 'S' ? 1 : 0) + (sekretarisStatus === 'S' ? 1 : 0),
+        izin: absensiPeserta.filter(g => g.status === 'I').length + (pimpinanStatus === 'I' ? 1 : 0) + (sekretarisStatus === 'I' ? 1 : 0),
+        alpha: absensiPeserta.filter(g => g.status === 'A').length + (pimpinanStatus === 'A' ? 1 : 0) + (sekretarisStatus === 'A' ? 1 : 0),
     };
 
     const canSubmit = fotoRapat.length >= 2 && notulensi.trim();
