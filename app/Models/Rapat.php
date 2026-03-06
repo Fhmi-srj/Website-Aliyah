@@ -30,12 +30,21 @@ class Rapat extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
         'peserta_rapat' => 'array',
         'peserta_eksternal' => 'array',
         'pimpinan_id' => 'integer',
         'sekretaris_id' => 'integer',
     ];
+
+    /**
+     * Ensure tanggal is always serialized as Y-m-d without timezone offset
+     */
+    public function getTanggalAttribute($value)
+    {
+        if (!$value)
+            return null;
+        return \Carbon\Carbon::parse($value)->format('Y-m-d');
+    }
 
     /**
      * Get the notulis (guru) for this rapat.

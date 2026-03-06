@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import api from '../../../lib/axios';
+import { APP_BASE } from '../../../config/api';
 import SignatureCanvas from '../../../components/SignatureCanvas';
 import AiTextArea from '../../../components/AiTextArea';
+
+// Helper to resolve photo URLs - handles both base64 (guru upload) and file paths (admin upload)
+const resolvePhotoUrl = (photo) => {
+    if (!photo) return '';
+    if (photo.startsWith('data:image')) return photo; // base64
+    if (photo.startsWith('http')) return photo; // full URL
+    // Relative storage path (e.g., rapat/dokumentasi/xxx.jpg)
+    const base = APP_BASE || '';
+    return `${base}/storage/${photo}`;
+};
 
 // Animated Modal Wrapper for smooth transitions
 function AnimatedModalWrapper({ children, onClose, maxWidth = 'max-w-md' }) {
@@ -273,9 +284,9 @@ export function ModalRapatSudahAbsen({ rapat, onClose }) {
                                             <div
                                                 key={index}
                                                 className="aspect-video rounded-lg overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                onClick={() => setSelectedPhoto(photo)}
+                                                onClick={() => setSelectedPhoto(resolvePhotoUrl(photo))}
                                             >
-                                                <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                                <img src={resolvePhotoUrl(photo)} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
                                             </div>
                                         ))}
                                     </div>
@@ -813,7 +824,7 @@ export function ModalAbsensiRapatPimpinan({ rapat, tanggal, onClose, onSuccess, 
                                     <div className="grid grid-cols-2 gap-2 mb-2">
                                         {fotoRapat.map((photo, index) => (
                                             <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
-                                                <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                                <img src={resolvePhotoUrl(photo)} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
                                                 <button onClick={() => removePhoto(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"><i className="fas fa-times"></i></button>
                                             </div>
                                         ))}
@@ -1170,9 +1181,9 @@ export function ModalAbsensiRapatPeserta({ rapat, tanggal, role, onClose, onSucc
                                             <div
                                                 key={index}
                                                 className="aspect-video rounded-lg overflow-hidden bg-gray-200 cursor-pointer hover:opacity-90"
-                                                onClick={() => setSelectedPhoto(photo)}
+                                                onClick={() => setSelectedPhoto(resolvePhotoUrl(photo))}
                                             >
-                                                <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                                <img src={resolvePhotoUrl(photo)} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
                                             </div>
                                         ))}
                                     </div>
@@ -1729,7 +1740,7 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
                                     <div className="grid grid-cols-2 gap-2 mb-2">
                                         {fotoRapat.map((photo, index) => (
                                             <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
-                                                <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                                <img src={resolvePhotoUrl(photo)} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
                                                 <button onClick={() => removePhoto(index)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"><i className="fas fa-times"></i></button>
                                             </div>
                                         ))}
