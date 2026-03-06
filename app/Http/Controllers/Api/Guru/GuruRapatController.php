@@ -49,8 +49,8 @@ class GuruRapatController extends Controller
                 ->get()
                 ->map(function ($item) use ($guru, $today) {
                     // Determine role
-                    $isPimpinan = $item->pimpinan_id === $guru->id;
-                    $isSekretaris = $item->sekretaris_id === $guru->id;
+                    $isPimpinan = $item->pimpinan_id == $guru->id;
+                    $isSekretaris = $item->sekretaris_id == $guru->id;
                     $pesertaRapat = is_array($item->peserta_rapat) ? $item->peserta_rapat : [];
                     $isPeserta = in_array($guru->id, $pesertaRapat) || in_array((string) $guru->id, $pesertaRapat);
 
@@ -209,8 +209,8 @@ class GuruRapatController extends Controller
                 $dateStr = Carbon::parse($item->tanggal)->format('Y-m-d');
 
                 // Determine role
-                $isPimpinan = $item->pimpinan_id === $guru->id;
-                $isSekretaris = $item->sekretaris_id === $guru->id;
+                $isPimpinan = $item->pimpinan_id == $guru->id;
+                $isSekretaris = $item->sekretaris_id == $guru->id;
                 $role = 'peserta';
                 if ($isPimpinan)
                     $role = 'pimpinan';
@@ -285,7 +285,7 @@ class GuruRapatController extends Controller
         $selesai = Carbon::parse($rapatDate . ' ' . $rapat->waktu_selesai);
 
         if ($absensi) {
-            if ($isSekretaris && $absensi->status === 'submitted') {
+            if ($isSekretaris && ($absensi->status === 'submitted' || $absensi->sekretaris_status !== null)) {
                 return 'sudah_absen';
             }
             if ($isPimpinan && $absensi->pimpinan_self_attended) {
@@ -321,7 +321,7 @@ class GuruRapatController extends Controller
 
         // Check if already attended
         if ($absensi) {
-            if ($isSekretaris && $absensi->status === 'submitted') {
+            if ($isSekretaris && ($absensi->status === 'submitted' || $absensi->sekretaris_status !== null)) {
                 return 'sudah_absen';
             }
             if ($isPimpinan && $absensi->pimpinan_self_attended) {
@@ -425,7 +425,7 @@ class GuruRapatController extends Controller
         $rapat = Rapat::find($validated['rapat_id']);
 
         // Verify guru is the pimpinan
-        if ($rapat->pimpinan_id !== $guru->id) {
+        if ($rapat->pimpinan_id != $guru->id) {
             return response()->json(['error' => 'Anda bukan pimpinan rapat ini'], 403);
         }
 
@@ -473,7 +473,7 @@ class GuruRapatController extends Controller
     }
 
     /**
-     * Peserta self-attend
+     * Peserta/Pimpinan/Sekretaris self-attend
      */
     public function absensiPeserta(Request $request): JsonResponse
     {
@@ -491,6 +491,87 @@ class GuruRapatController extends Controller
         ]);
 
         $rapat = Rapat::find($validated['rapat_id']);
+
+        // Check if guru is pimpinan
+        $isPimpinan = $rapat->pimpinan_id == $guru->id;
+        // Check if guru is sekretaris
+        $isSekretaris = $rapat->sekretaris_id == $guru->id;
+
+        // If pimpinan, handle via pimpinan-specific fields
+        if ($isPimpinan) {
+            $today = Carbon::today('Asia/Jakarta');
+            $absensi = AbsensiRapat::where('rapat_id', $rapat->id)->first();
+
+            if ($absensi) {
+                $absensi->update([
+                    'pimpinan_status' => $validated['status'],
+                    'pimpinan_keterangan' => $validated['keterangan'] ?? null,
+                    'pimpinan_self_attended' => true,
+                    'pimpinan_attended_at' => now(),
+                ]);
+            } else {
+                $absensi = AbsensiRapat::create([
+                    'rapat_id' => $rapat->id,
+                    'tanggal' => $today,
+                    'pimpinan_status' => $validated['status'],
+                    'pimpinan_keterangan' => $validated['keterangan'] ?? null,
+                    'pimpinan_self_attended' => true,
+                    'pimpinan_attended_at' => now(),
+                    'status' => 'draft',
+                ]);
+            }
+
+            ActivityLog::log(
+                'attendance',
+                $absensi,
+                "Absensi pimpinan rapat: {$rapat->agenda_rapat} (Status: {$validated['status']})"
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Absensi pimpinan berhasil disimpan',
+                'data' => [
+                    'status' => $validated['status'],
+                    'keterangan' => $validated['keterangan'] ?? null,
+                ]
+            ]);
+        }
+
+        // If sekretaris, handle via sekretaris-specific fields
+        if ($isSekretaris) {
+            $today = Carbon::today('Asia/Jakarta');
+            $absensi = AbsensiRapat::where('rapat_id', $rapat->id)->first();
+
+            if ($absensi) {
+                $absensi->update([
+                    'sekretaris_status' => $validated['status'],
+                    'sekretaris_keterangan' => $validated['keterangan'] ?? null,
+                ]);
+            } else {
+                $absensi = AbsensiRapat::create([
+                    'rapat_id' => $rapat->id,
+                    'tanggal' => $today,
+                    'sekretaris_status' => $validated['status'],
+                    'sekretaris_keterangan' => $validated['keterangan'] ?? null,
+                    'status' => 'draft',
+                ]);
+            }
+
+            ActivityLog::log(
+                'attendance',
+                $absensi,
+                "Absensi sekretaris rapat: {$rapat->agenda_rapat} (Status: {$validated['status']})"
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Absensi sekretaris berhasil disimpan',
+                'data' => [
+                    'status' => $validated['status'],
+                    'keterangan' => $validated['keterangan'] ?? null,
+                ]
+            ]);
+        }
 
         // Verify guru is a peserta
         $pesertaRapat = is_array($rapat->peserta_rapat) ? $rapat->peserta_rapat : [];
@@ -557,7 +638,7 @@ class GuruRapatController extends Controller
         ActivityLog::log(
             'attendance',
             $absensi,
-            "Absensi peserta rapat: {$rapat->nama_rapat} (Status: {$validated['status']})"
+            "Absensi peserta rapat: {$rapat->agenda_rapat} (Status: {$validated['status']})"
         );
 
         return response()->json([
@@ -650,7 +731,7 @@ class GuruRapatController extends Controller
         }
 
         // Verify guru is the sekretaris or pimpinan
-        if ($rapat->sekretaris_id !== $guru->id && $rapat->pimpinan_id !== $guru->id) {
+        if ($rapat->sekretaris_id != $guru->id && $rapat->pimpinan_id != $guru->id) {
             return response()->json(['error' => 'Hanya sekretaris atau pimpinan yang bisa menyimpan absensi'], 403);
         }
 
@@ -794,8 +875,8 @@ class GuruRapatController extends Controller
         }
 
         // Check based on role
-        $isPimpinan = $rapat->pimpinan_id === $guru->id;
-        $isSekretaris = $rapat->sekretaris_id === $guru->id;
+        $isPimpinan = $rapat->pimpinan_id == $guru->id;
+        $isSekretaris = $rapat->sekretaris_id == $guru->id;
 
         if ($isPimpinan) {
             // Check if pimpinan self-attended OR sekretaris submitted
@@ -810,7 +891,7 @@ class GuruRapatController extends Controller
             }
         }
 
-        if ($isSekretaris && $absensi->status === 'submitted') {
+        if ($isSekretaris && ($absensi->status === 'submitted' || $absensi->sekretaris_status !== null)) {
             return response()->json([
                 'success' => true,
                 'attended' => true,
@@ -847,9 +928,9 @@ class GuruRapatController extends Controller
 
     private function getUserRole($rapat, $guru): string
     {
-        if ($rapat->pimpinan_id === $guru->id)
+        if ($rapat->pimpinan_id == $guru->id)
             return 'pimpinan';
-        if ($rapat->sekretaris_id === $guru->id)
+        if ($rapat->sekretaris_id == $guru->id)
             return 'sekretaris';
         return 'peserta';
     }
@@ -873,8 +954,8 @@ class GuruRapatController extends Controller
         }
 
         // Check if guru is authorized (pimpinan, sekretaris, or peserta)
-        $isPimpinan = $rapat->pimpinan_id === $guru->id;
-        $isSekretaris = $rapat->sekretaris_id === $guru->id;
+        $isPimpinan = $rapat->pimpinan_id == $guru->id;
+        $isSekretaris = $rapat->sekretaris_id == $guru->id;
         $isPeserta = in_array($guru->id, $rapat->peserta ?? []);
 
         if (!$isPimpinan && !$isSekretaris && !$isPeserta) {

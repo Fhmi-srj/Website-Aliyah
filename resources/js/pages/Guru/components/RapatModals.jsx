@@ -44,34 +44,64 @@ function AnimatedModalWrapper({ children, onClose, maxWidth = 'max-w-md' }) {
 }
 // Image compression utility
 const compressImage = (file, maxWidth = 800, quality = 0.6) => {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
+    return new Promise((resolve, reject) => {
+        // Use createImageBitmap for better EXIF orientation handling (camera photos)
+        createImageBitmap(file).then((bitmap) => {
+            const canvas = document.createElement('canvas');
+            let width = bitmap.width;
+            let height = bitmap.height;
 
-                // Scale down if larger than maxWidth
-                if (width > maxWidth) {
-                    height = (height * maxWidth) / width;
-                    width = maxWidth;
-                }
+            // Scale down if larger than maxWidth
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
 
-                canvas.width = width;
-                canvas.height = height;
+            canvas.width = width;
+            canvas.height = height;
 
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
+            const ctx = canvas.getContext('2d');
+            // Fill with white background to prevent black areas from PNG transparency
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(bitmap, 0, 0, width, height);
+            bitmap.close();
 
-                // Convert to base64 with compression
-                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-                resolve(compressedBase64);
+            // Convert to base64 with compression
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        }).catch(() => {
+            // Fallback to FileReader if createImageBitmap fails
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    resolve(compressedBase64);
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = e.target.result;
             };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
     });
 };
 
