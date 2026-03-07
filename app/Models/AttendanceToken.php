@@ -26,11 +26,21 @@ class AttendanceToken extends Model
     ];
 
     /**
-     * Check if the token is still valid (not expired and not used)
+     * Check if the token is still valid (not expired, and either unused or used today for same-day edit)
      */
     public function isValid(): bool
     {
-        return !$this->used_at && $this->expires_at->isFuture();
+        if ($this->expires_at->isPast()) {
+            return false;
+        }
+
+        // Not used yet = valid
+        if (!$this->used_at) {
+            return true;
+        }
+
+        // Used today = still valid (allow same-day edit)
+        return $this->used_at->isToday();
     }
 
     /**
