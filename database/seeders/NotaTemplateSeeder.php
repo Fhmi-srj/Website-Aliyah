@@ -9,59 +9,107 @@ class NotaTemplateSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── BRI m-Commerce Template ────────────────────────────────
-        NotaTemplate::create([
-            'nama' => 'BRI m-Commerce',
-            'fields' => [
-                ['key' => 'no_transaksi', 'label' => 'No Transaksi', 'type' => 'text', 'required' => true],
-                ['key' => 'tanggal', 'label' => 'Tanggal & Waktu', 'type' => 'text', 'required' => true],
-                ['key' => 'referensi', 'label' => 'Kode Referensi', 'type' => 'text', 'required' => true],
-                ['key' => 'nama_pelanggan', 'label' => 'Nama Pelanggan', 'type' => 'text', 'required' => true],
-                ['key' => 'id_pelanggan', 'label' => 'No ID Pelanggan', 'type' => 'text', 'required' => false],
-                ['key' => 'no_rekening', 'label' => 'No Rekening', 'type' => 'text', 'required' => false],
-                ['key' => 'jenis_transaksi', 'label' => 'Jenis Transaksi', 'type' => 'text', 'required' => true],
-                ['key' => 'nominal', 'label' => 'Nominal (Rp)', 'type' => 'text', 'required' => true],
-                ['key' => 'admin_fee', 'label' => 'Admin Fee (Rp)', 'type' => 'text', 'required' => false],
-                ['key' => 'keterangan', 'label' => 'Keterangan Tambahan', 'type' => 'textarea', 'required' => false],
-            ],
-            'layout_html' => <<<'HTML'
-<div style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 380px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        // ── BRI Transaksi Berhasil Template ─────────────────────────
+        NotaTemplate::updateOrCreate(
+            ['nama' => 'BRI Mobile Banking'],
+            [
+                'fields' => [
+                    ['key' => 'tanggal', 'label' => 'Tanggal', 'type' => 'text', 'required' => true],
+                    ['key' => 'no_referensi', 'label' => 'No. Referensi', 'type' => 'text', 'required' => true],
+                    ['key' => 'sumber_nama', 'label' => 'Sumber Dana - Nama', 'type' => 'text', 'required' => true],
+                    ['key' => 'sumber_rekening', 'label' => 'Sumber Dana - No Rekening', 'type' => 'text', 'required' => true],
+                    ['key' => 'jenis_transaksi', 'label' => 'Jenis Transaksi', 'type' => 'text', 'required' => true],
+                    ['key' => 'nama', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                    ['key' => 'nomor_pelanggan', 'label' => 'Nomor Pelanggan', 'type' => 'text', 'required' => false],
+                    ['key' => 'kode_regional', 'label' => 'Kode Regional', 'type' => 'text', 'required' => false],
+                    ['key' => 'jumlah_tagihan', 'label' => 'Jumlah Tagihan', 'type' => 'text', 'required' => false],
+                    ['key' => 'nomor_resi', 'label' => 'Nomor Resi/Bukti', 'type' => 'text', 'required' => false],
+                    ['key' => 'nominal', 'label' => 'Nominal (Rp)', 'type' => 'text', 'required' => true],
+                    ['key' => 'biaya_admin', 'label' => 'Biaya Admin (Rp)', 'type' => 'text', 'required' => false],
+                    ['key' => 'total', 'label' => 'Total (Rp)', 'type' => 'text', 'required' => true],
+                ],
+                'layout_html' => <<<'HTML'
+<div style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 380px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
     <!-- Header -->
-    <div style="background: #003d79; color: white; text-align: center; padding: 16px;">
-        <div style="font-size: 18px; font-weight: bold;">m-Commerce</div>
+    <div style="background: linear-gradient(135deg, #0066cc 0%, #004a99 100%); color: white; text-align: center; padding: 24px 16px 20px;">
+        <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 24px;">✓</span>
+        </div>
+        <div style="font-size: 18px; font-weight: 700;">Transaksi Berhasil</div>
     </div>
 
-    <!-- Body -->
-    <div style="padding: 20px; font-size: 13px; line-height: 1.8; color: #1f2937;">
-        <div style="font-weight: 600; color: #003d79; margin-bottom: 4px;">m-Commerce:</div>
-        <div>No {no_transaksi}</div>
-        <div>{tanggal}</div>
-        <div>{referensi}</div>
-        <div style="font-weight: 600;">{nama_pelanggan}</div>
-        <div>{id_pelanggan}</div>
-        <div>{no_rekening}</div>
-        <div>{jenis_transaksi}</div>
-        <div style="font-weight: bold; font-size: 15px; margin: 6px 0;">RP {nominal}</div>
-        <div>{keterangan}</div>
-        <div>ADM RP {admin_fee}</div>
-    </div>
-
-    <!-- Footer -->
-    <div style="padding: 16px 20px; border-top: 1px solid #e5e7eb;">
-        <div style="color: #2563eb; font-size: 12px; line-height: 1.6;">
-            Biaya Termasuk PPN (Bila ada)<br>
-            PT. BANK RAKYAT INDONESIA TBK.<br>
+    <!-- Info rows -->
+    <div style="padding: 16px 20px; font-size: 13px; color: #666; border-bottom: 1px solid #f0f0f0;">
+        <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span>Tanggal</span>
+            <span style="color: #222; font-weight: 500; text-align: right;">{tanggal}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+            <span>No. Referensi</span>
+            <span style="color: #222; font-weight: 500;">{no_referensi}</span>
         </div>
     </div>
 
-    <!-- OK Button -->
-    <div style="text-align: center; padding: 0 20px 20px;">
-        <div style="background: #003d79; color: white; padding: 10px 40px; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 14px;">OK</div>
+    <!-- Sumber Dana -->
+    <div style="padding: 12px 20px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-size: 12px; color: #999; margin-bottom: 4px;">Sumber Dana</div>
+        <div style="font-size: 14px; font-weight: 600; color: #222;">{sumber_nama}</div>
+        <div style="font-size: 13px; color: #666;">{sumber_rekening}</div>
+    </div>
+
+    <!-- Detail Transaksi -->
+    <div style="padding: 12px 20px; font-size: 13px; color: #666; border-bottom: 1px solid #f0f0f0;">
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Jenis Transaksi</span>
+            <span style="color: #222; font-weight: 500;">{jenis_transaksi}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Nama</span>
+            <span style="color: #222; font-weight: 600;">{nama}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Nomor Pelanggan</span>
+            <span style="color: #222;">{nomor_pelanggan}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Kode Regional</span>
+            <span style="color: #222;">{kode_regional}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Jumlah Tagihan</span>
+            <span style="color: #222;">{jumlah_tagihan}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+            <span>Nomor Resi/Bukti</span>
+            <span style="color: #222;">{nomor_resi}</span>
+        </div>
+    </div>
+
+    <!-- Lihat Lebih Sedikit -->
+    <div style="text-align: center; padding: 8px;">
+        <span style="color: #0066cc; font-size: 12px; font-weight: 500;">Lihat Lebih Sedikit ∧</span>
+    </div>
+
+    <!-- Total Section -->
+    <div style="padding: 12px 20px 20px; background: #f8fafc;">
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px;">
+            <span style="color: #666;">Nominal</span>
+            <span style="color: #222; font-weight: 500;">Rp{nominal}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px;">
+            <span style="color: #666;">Biaya Admin</span>
+            <span style="color: #222; font-weight: 500;">Rp{biaya_admin}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; margin-top: 6px; border-top: 1px solid #e2e8f0;">
+            <span style="font-size: 14px; color: #222; font-weight: 600;">Total</span>
+            <span style="font-size: 18px; color: #0066cc; font-weight: 700;">Rp{total}</span>
+        </div>
     </div>
 </div>
 HTML,
-            'is_active' => true,
-        ]);
+                'is_active' => true,
+            ]
+        );
 
         // ── Shopee Template ────────────────────────────────────────
         NotaTemplate::create([
