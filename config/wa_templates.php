@@ -21,7 +21,7 @@ Pengingat absensi mengajar:
 Silakan isi absensi melalui link berikut (berlaku sampai jam 23:59 hari ini):
 🔗 {link}
 
-_Pesan otomatis dari SIMAKA_
+_Pesan otomatis dari MAHAKAM APP_
 TPL,
 
     'reminder_kegiatan' => <<<'TPL'
@@ -36,7 +36,7 @@ Pengingat absensi kegiatan:
 Silakan isi absensi melalui link berikut:
 🔗 {link}
 
-_Pesan otomatis dari SIMAKA_
+_Pesan otomatis dari MAHAKAM APP_
 TPL,
 
     'reminder_rapat' => <<<'TPL'
@@ -51,7 +51,7 @@ Pengingat absensi rapat:
 Silakan isi absensi melalui link berikut:
 🔗 {link}
 
-_Pesan otomatis dari SIMAKA_
+_Pesan otomatis dari MAHAKAM APP_
 TPL,
 
     // === GRUP ===

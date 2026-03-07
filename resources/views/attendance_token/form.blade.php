@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Absensi - SIMAKA</title>
+    <title>Absensi - MAHAKAM APP</title>
 
     @php
         $logoLembaga = \App\Models\AppSetting::getValue('logo_lembaga');
         $logoUrl = $logoLembaga ? asset('storage/' . $logoLembaga) : asset('images/logo.png');
         $namaLembaga = \App\Models\AppSetting::getValue('nama_lembaga', 'MA Al-Hikam');
-        $namaAplikasi = \App\Models\AppSetting::getValue('nama_aplikasi', 'SIMAKA');
+        $namaAplikasi = \App\Models\AppSetting::getValue('nama_aplikasi', 'MAHAKAM APP');
     @endphp
 
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v=1.1">

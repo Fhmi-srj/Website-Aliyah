@@ -21,14 +21,14 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:title" content="{{ $namaLembaga }} - SIMAKA">
+    <meta property="og:title" content="{{ $namaLembaga }} - MAHAKAM APP">
     <meta property="og:description" content="{{ $motoLembaga }}">
     <meta property="og:image" content="{{ $logoUrl }}">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="{{ url()->current() }}">
-    <meta property="twitter:title" content="{{ $namaLembaga }} - SIMAKA">
+    <meta property="twitter:title" content="{{ $namaLembaga }} - MAHAKAM APP">
     <meta property="twitter:description" content="{{ $motoLembaga }}">
     <meta property="twitter:image" content="{{ $logoUrl }}">
 

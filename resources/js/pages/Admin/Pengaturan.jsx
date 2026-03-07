@@ -973,7 +973,7 @@ function Pengaturan() {
                             <div className="bg-gradient-to-br from-green-400 to-green-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg">
                                 <i className="fas fa-school text-white text-3xl"></i>
                             </div>
-                            <h2 className="text-xl font-bold text-gray-800">SIMAKA</h2>
+                            <h2 className="text-xl font-bold text-gray-800">MAHAKAM APP</h2>
                             <p className="text-gray-500 text-sm">Sistem Informasi MA Al-Hikam</p>
                             <p className="text-gray-400 text-xs mt-1">Versi 1.0.0</p>
                         </div>
