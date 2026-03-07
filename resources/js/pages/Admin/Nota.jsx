@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 const API_BASE = '/api';
 
 function Nota() {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [activeTab, setActiveTab] = useState('generate');
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -58,6 +59,13 @@ function Nota() {
 
     useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
     useEffect(() => { if (activeTab === 'riwayat') fetchHistory(); }, [activeTab, fetchHistory]);
+
+    // Mobile detection
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // ── Preset handlers ─────────────────────────────────────────────
     const handleSelectPreset = (preset) => {
@@ -288,54 +296,75 @@ function Nota() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className={isMobile ? 'space-y-3 pb-4' : 'space-y-6'}>
             {/* Header */}
-            <header className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
-                            <i className="fas fa-receipt text-white text-xl"></i>
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-black text-gray-800 uppercase tracking-tight">Generate Nota</h1>
-                            <p className="text-xs text-gray-400 mt-0.5 font-medium uppercase tracking-widest">
-                                Buat nota dan struk untuk laporan
-                            </p>
-                        </div>
+            <header className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`${isMobile ? 'w-10 h-10 rounded-xl' : 'w-12 h-12 rounded-2xl'} bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-200`}>
+                        <i className={`fas fa-receipt text-white ${isMobile ? 'text-base' : 'text-xl'}`}></i>
+                    </div>
+                    <div>
+                        <h1 className={`${isMobile ? 'text-base' : 'text-xl'} font-black text-gray-800 uppercase tracking-tight`}>Generate Nota</h1>
+                        <p className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-0.5 font-medium uppercase tracking-widest`}>
+                            Buat nota dan struk untuk laporan
+                        </p>
                     </div>
                 </div>
             </header>
 
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm p-1.5 flex gap-1">
+            <div className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-1' : 'p-1.5'} flex gap-1`}>
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id
+                        className={`flex-1 flex items-center justify-center gap-1.5 ${isMobile ? 'px-2 py-2 text-xs' : 'px-4 py-2.5 text-sm'} rounded-lg font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                             }`}
                     >
-                        <i className={`fas ${tab.icon}`}></i>
-                        <span>{tab.label}</span>
+                        <i className={`fas ${tab.icon} ${isMobile ? 'text-xs' : ''}`}></i>
+                        <span>{isMobile ? tab.label.split(' ')[0] : tab.label}</span>
                     </button>
                 ))}
             </div>
 
             {/* ═══════════════ TAB: GENERATE ═══════════════ */}
             {activeTab === 'generate' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className={`grid grid-cols-1 md:grid-cols-3 ${isMobile ? 'gap-3' : 'gap-6'}`}>
                     {/* Left: Template selection */}
-                    <div className="bg-white rounded-xl shadow-sm p-5">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <div className={`bg-white rounded-xl shadow-sm ${isMobile ? 'p-3' : 'p-5'}`}>
+                        <h3 className={`font-bold text-gray-800 ${isMobile ? 'mb-2 text-sm' : 'mb-4'} flex items-center gap-2`}>
                             <i className="fas fa-list text-amber-500"></i> Pilih Template
                         </h3>
                         {loading ? (
-                            <div className="flex justify-center py-8">
+                            <div className="flex justify-center py-6">
                                 <div className="animate-spin rounded-full h-8 w-8 border-4 border-amber-400 border-t-transparent"></div>
                             </div>
+                        ) : isMobile ? (
+                            /* Mobile: horizontal scrolling template chips */
+                            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                                {templates.filter(t => t.is_active).map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => { setSelectedTemplate(t); setSelectedPreset(null); setFormData({}); }}
+                                        className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs font-medium transition-all cursor-pointer ${selectedTemplate?.id === t.id
+                                            ? 'border-amber-400 bg-amber-50 text-amber-800'
+                                            : 'border-gray-100 text-gray-600'
+                                            }`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${selectedTemplate?.id === t.id ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                            <i className="fas fa-file-invoice text-[10px]"></i>
+                                        </div>
+                                        {t.nama}
+                                    </button>
+                                ))}
+                                {templates.filter(t => t.is_active).length === 0 && (
+                                    <p className="text-center text-gray-400 text-xs py-4 w-full">Belum ada template</p>
+                                )}
+                            </div>
                         ) : (
+                            /* Desktop: vertical list */
                             <div className="space-y-2">
                                 {templates.filter(t => t.is_active).map(t => (
                                     <button
@@ -347,8 +376,7 @@ function Nota() {
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedTemplate?.id === t.id ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-400'
-                                                }`}>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedTemplate?.id === t.id ? 'bg-amber-400 text-white' : 'bg-gray-100 text-gray-400'}`}>
                                                 <i className="fas fa-file-invoice text-sm"></i>
                                             </div>
                                             <div>
@@ -366,11 +394,11 @@ function Nota() {
                     </div>
 
                     {/* Right: Form */}
-                    <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-5">
+                    <div className={`md:col-span-2 bg-white rounded-xl shadow-sm ${isMobile ? 'p-3' : 'p-5'}`}>
                         {selectedTemplate ? (
                             <>
-                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                                    <i className="fas fa-edit text-amber-500"></i>
+                                <h3 className={`font-bold text-gray-800 ${isMobile ? 'mb-2 text-sm' : 'mb-3'} flex items-center gap-2`}>
+                                    <i className={`fas fa-edit text-amber-500 ${isMobile ? 'text-xs' : ''}`}></i>
                                     Isi Data — {selectedTemplate.nama}
                                 </h3>
 
@@ -378,7 +406,7 @@ function Nota() {
                                 {(() => {
                                     const presets = selectedTemplate.presets || [];
                                     return presets.length > 0 || true ? (
-                                        <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
+                                        <div className={`${isMobile ? 'mb-3 p-2.5' : 'mb-4 p-3'} bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-100`}>
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
                                                     <i className="fas fa-bookmark"></i> Preset Tersimpan
@@ -396,8 +424,8 @@ function Nota() {
                                                             <button
                                                                 onClick={() => handleSelectPreset(p)}
                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${selectedPreset?.id === p.id
-                                                                        ? 'bg-amber-500 text-white shadow-md'
-                                                                        : 'bg-white text-gray-600 hover:bg-amber-100 hover:text-amber-700 border border-gray-200'
+                                                                    ? 'bg-amber-500 text-white shadow-md'
+                                                                    : 'bg-white text-gray-600 hover:bg-amber-100 hover:text-amber-700 border border-gray-200'
                                                                     }`}
                                                             >
                                                                 <i className="fas fa-bookmark text-[10px]"></i>
@@ -420,19 +448,19 @@ function Nota() {
                                     ) : null;
                                 })()}
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className={`grid grid-cols-1 ${isMobile ? 'gap-2.5' : 'md:grid-cols-2 gap-4'}`}>
                                     {(selectedTemplate.fields || []).map(field => (
-                                        <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                                        <div key={field.key} className={!isMobile && field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                                            <label className={`block ${isMobile ? 'text-[11px]' : 'text-xs'} font-semibold text-gray-600 mb-1`}>
                                                 {field.label}
-                                                {field.required && <span className="text-red-500 ml-1">*</span>}
+                                                {field.required && <span className="text-red-500 ml-0.5">*</span>}
                                             </label>
                                             {field.type === 'textarea' ? (
                                                 <textarea
                                                     value={formData[field.key] || ''}
                                                     onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent text-sm"
-                                                    rows={3}
+                                                    className={`w-full border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent ${isMobile ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'}`}
+                                                    rows={isMobile ? 2 : 3}
                                                     placeholder={field.label}
                                                 />
                                             ) : (
@@ -440,7 +468,7 @@ function Nota() {
                                                     type={field.type === 'number' ? 'number' : 'text'}
                                                     value={formData[field.key] || ''}
                                                     onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent text-sm"
+                                                    className={`w-full border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent ${isMobile ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'}`}
                                                     placeholder={field.label}
                                                 />
                                             )}
@@ -448,17 +476,17 @@ function Nota() {
                                     ))}
                                 </div>
 
-                                <div className="mt-6 flex items-center justify-between">
+                                <div className={`${isMobile ? 'mt-4' : 'mt-6'} flex ${isMobile ? 'flex-col gap-2' : 'items-center justify-between'}`}>
                                     <button
                                         onClick={handleSaveAsPreset}
-                                        className="px-4 py-2 bg-white border border-amber-300 text-amber-700 rounded-xl text-sm font-medium hover:bg-amber-50 transition-all cursor-pointer flex items-center gap-2"
+                                        className={`bg-white border border-amber-300 text-amber-700 rounded-xl font-medium hover:bg-amber-50 transition-all cursor-pointer flex items-center justify-center gap-2 ${isMobile ? 'px-3 py-2 text-xs w-full order-2' : 'px-4 py-2 text-sm'}`}
                                     >
                                         <i className="fas fa-bookmark"></i> Simpan Preset
                                     </button>
                                     <button
                                         onClick={handleGenerate}
                                         disabled={generating}
-                                        className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold text-sm shadow-lg shadow-orange-200 hover:shadow-xl transition-all duration-200 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                                        className={`bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold shadow-lg shadow-orange-200 hover:shadow-xl transition-all duration-200 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 ${isMobile ? 'px-4 py-2.5 text-sm w-full order-1' : 'px-6 py-2.5 text-sm'}`}
                                     >
                                         {generating ? (
                                             <><i className="fas fa-spinner fa-spin"></i> Memproses...</>
@@ -469,10 +497,10 @@ function Nota() {
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                                <i className="fas fa-hand-pointer text-5xl mb-4"></i>
-                                <p className="font-medium">Pilih template di sebelah kiri</p>
-                                <p className="text-sm">untuk mulai mengisi nota</p>
+                            <div className={`flex flex-col items-center justify-center ${isMobile ? 'py-8' : 'py-16'} text-gray-400`}>
+                                <i className={`fas fa-hand-pointer ${isMobile ? 'text-3xl' : 'text-5xl'} mb-3`}></i>
+                                <p className={`font-medium ${isMobile ? 'text-sm' : ''}`}>{isMobile ? 'Pilih template di atas' : 'Pilih template di sebelah kiri'}</p>
+                                <p className={`${isMobile ? 'text-xs' : 'text-sm'}`}>untuk mulai mengisi nota</p>
                             </div>
                         )}
                     </div>
@@ -550,56 +578,86 @@ function Nota() {
                         </div>
                     ) : history.length > 0 ? (
                         <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Tanggal</th>
-                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Template</th>
-                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Data</th>
-                                            <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {history.map(h => (
-                                            <tr key={h.id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                            {isMobile ? (
+                                /* Mobile: card layout */
+                                <div className="divide-y divide-gray-100">
+                                    {history.map(h => (
+                                        <div key={h.id} className="p-3">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
+                                                    <i className="fas fa-file-invoice"></i> {h.template?.nama || '-'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400">
                                                     {new Date(h.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                                                        <i className="fas fa-file-invoice"></i>
-                                                        {h.template?.nama || '-'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
-                                                    {h.data ? Object.entries(h.data).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(', ') : '-'}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        <button onClick={() => handleReprint(h.id)} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer" title="Cetak Ulang">
-                                                            <i className="fas fa-print"></i>
-                                                        </button>
-                                                        <button onClick={() => handleDeleteHistory(h.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Hapus">
-                                                            <i className="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mb-2 line-clamp-1">
+                                                {h.data ? Object.entries(h.data).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ') : '-'}
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleReprint(h.id)} className="flex-1 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-medium cursor-pointer flex items-center justify-center gap-1.5">
+                                                    <i className="fas fa-print"></i> Cetak
+                                                </button>
+                                                <button onClick={() => handleDeleteHistory(h.id)} className="px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-xs cursor-pointer">
+                                                    <i className="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                /* Desktop: table layout */
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Tanggal</th>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Template</th>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">Data</th>
+                                                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase">Aksi</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {history.map(h => (
+                                                <tr key={h.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                                        {new Date(h.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                                            <i className="fas fa-file-invoice"></i>
+                                                            {h.template?.nama || '-'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">
+                                                        {h.data ? Object.entries(h.data).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(', ') : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <div className="flex justify-center gap-2">
+                                                            <button onClick={() => handleReprint(h.id)} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer" title="Cetak Ulang">
+                                                                <i className="fas fa-print"></i>
+                                                            </button>
+                                                            <button onClick={() => handleDeleteHistory(h.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Hapus">
+                                                                <i className="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
 
                             {/* Pagination */}
                             {historyPagination.last_page > 1 && (
-                                <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
-                                    <p className="text-sm text-gray-500">{history.length} dari {historyPagination.total} nota</p>
+                                <div className={`${isMobile ? 'px-3 py-2' : 'px-4 py-2.5'} border-t border-gray-100 flex items-center justify-between`}>
+                                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500`}>{history.length} dari {historyPagination.total} nota</p>
                                     <div className="flex gap-1.5 items-center">
                                         <button onClick={() => fetchHistory(historyPagination.current_page - 1)} disabled={historyPagination.current_page === 1} className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 cursor-pointer">
                                             <i className="fas fa-chevron-left"></i>
                                         </button>
-                                        <span className="px-3 py-1 text-sm text-gray-600">{historyPagination.current_page}/{historyPagination.last_page}</span>
+                                        <span className={`px-3 py-1 ${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>{historyPagination.current_page}/{historyPagination.last_page}</span>
                                         <button onClick={() => fetchHistory(historyPagination.current_page + 1)} disabled={historyPagination.current_page === historyPagination.last_page} className="px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50 cursor-pointer">
                                             <i className="fas fa-chevron-right"></i>
                                         </button>
@@ -608,10 +666,10 @@ function Nota() {
                             )}
                         </>
                     ) : (
-                        <div className="text-center py-12 text-gray-400">
-                            <i className="fas fa-receipt text-5xl mb-3"></i>
-                            <p className="font-medium">Belum ada riwayat nota</p>
-                            <p className="text-sm">Generate nota pertama Anda di tab "Generate Nota"</p>
+                        <div className={`text-center ${isMobile ? 'py-8' : 'py-12'} text-gray-400`}>
+                            <i className={`fas fa-receipt ${isMobile ? 'text-3xl' : 'text-5xl'} mb-3`}></i>
+                            <p className={`font-medium ${isMobile ? 'text-sm' : ''}`}>Belum ada riwayat nota</p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Generate nota pertama Anda di tab "Generate Nota"</p>
                         </div>
                     )}
                 </div>
