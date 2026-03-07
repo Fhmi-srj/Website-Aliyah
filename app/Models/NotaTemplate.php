@@ -25,4 +25,9 @@ class NotaTemplate extends Model
     {
         return $this->hasMany(NotaHistory::class);
     }
+
+    public function presets()
+    {
+        return $this->hasMany(NotaPreset::class);
+    }
 }

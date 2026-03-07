@@ -15,6 +15,9 @@ function Nota() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
 
+    // Preset state
+    const [selectedPreset, setSelectedPreset] = useState(null);
+
     // Template CRUD modal state
     const [showTemplateModal, setShowTemplateModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
@@ -55,6 +58,75 @@ function Nota() {
 
     useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
     useEffect(() => { if (activeTab === 'riwayat') fetchHistory(); }, [activeTab, fetchHistory]);
+
+    // ── Preset handlers ─────────────────────────────────────────────
+    const handleSelectPreset = (preset) => {
+        setSelectedPreset(preset);
+        setFormData(preset.data || {});
+    };
+
+    const handleClearPreset = () => {
+        setSelectedPreset(null);
+        setFormData({});
+    };
+
+    const handleSaveAsPreset = async () => {
+        if (!selectedTemplate) return;
+        const hasData = Object.values(formData).some(v => v?.toString().trim());
+        if (!hasData) {
+            Swal.fire({ icon: 'warning', title: 'Form masih kosong', text: 'Isi data terlebih dahulu sebelum menyimpan sebagai preset' });
+            return;
+        }
+
+        const { value: nama } = await Swal.fire({
+            title: 'Simpan sebagai Preset',
+            input: 'text',
+            inputLabel: 'Nama Preset (contoh: Listrik PLN, Indihome, Toko ABC)',
+            inputPlaceholder: 'Masukkan nama preset...',
+            showCancelButton: true,
+            confirmButtonColor: '#F59E0B',
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            inputValidator: (value) => { if (!value) return 'Nama preset wajib diisi'; },
+        });
+
+        if (nama) {
+            try {
+                const response = await authFetch(`${API_BASE}/nota/presets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nota_template_id: selectedTemplate.id, nama, data: formData }),
+                });
+                const preset = await response.json();
+                if (preset.id) {
+                    Swal.fire({ icon: 'success', title: `Preset "${nama}" tersimpan!`, timer: 1500, showConfirmButton: false });
+                    fetchTemplates(); // refresh presets
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Gagal menyimpan preset', text: e.message });
+            }
+        }
+    };
+
+    const handleDeletePreset = async (presetId, presetName) => {
+        const result = await Swal.fire({
+            title: `Hapus preset "${presetName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#EF4444',
+            confirmButtonText: 'Hapus',
+            cancelButtonText: 'Batal',
+        });
+        if (result.isConfirmed) {
+            try {
+                await authFetch(`${API_BASE}/nota/presets/${presetId}`, { method: 'DELETE' });
+                if (selectedPreset?.id === presetId) { setSelectedPreset(null); }
+                fetchTemplates();
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: e.message });
+            }
+        }
+    };
 
     // ── Generate Nota ──────────────────────────────────────────────
     const handleGenerate = async () => {
@@ -241,8 +313,8 @@ function Nota() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${activeTab === tab.id
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                             }`}
                     >
                         <i className={`fas ${tab.icon}`}></i>
@@ -268,10 +340,10 @@ function Nota() {
                                 {templates.filter(t => t.is_active).map(t => (
                                     <button
                                         key={t.id}
-                                        onClick={() => { setSelectedTemplate(t); setFormData({}); }}
+                                        onClick={() => { setSelectedTemplate(t); setSelectedPreset(null); setFormData({}); }}
                                         className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 cursor-pointer ${selectedTemplate?.id === t.id
-                                                ? 'border-amber-400 bg-amber-50 text-amber-800'
-                                                : 'border-gray-100 hover:border-amber-200 hover:bg-amber-50/50 text-gray-700'
+                                            ? 'border-amber-400 bg-amber-50 text-amber-800'
+                                            : 'border-gray-100 hover:border-amber-200 hover:bg-amber-50/50 text-gray-700'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -297,10 +369,57 @@ function Nota() {
                     <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-5">
                         {selectedTemplate ? (
                             <>
-                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                                     <i className="fas fa-edit text-amber-500"></i>
                                     Isi Data — {selectedTemplate.nama}
                                 </h3>
+
+                                {/* ── Preset Selector ── */}
+                                {(() => {
+                                    const presets = selectedTemplate.presets || [];
+                                    return presets.length > 0 || true ? (
+                                        <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <i className="fas fa-bookmark"></i> Preset Tersimpan
+                                                </span>
+                                                {selectedPreset && (
+                                                    <button onClick={handleClearPreset} className="text-[10px] text-gray-400 hover:text-gray-600 cursor-pointer flex items-center gap-1">
+                                                        <i className="fas fa-times"></i> Reset
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {presets.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {presets.map(p => (
+                                                        <div key={p.id} className="group relative">
+                                                            <button
+                                                                onClick={() => handleSelectPreset(p)}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${selectedPreset?.id === p.id
+                                                                        ? 'bg-amber-500 text-white shadow-md'
+                                                                        : 'bg-white text-gray-600 hover:bg-amber-100 hover:text-amber-700 border border-gray-200'
+                                                                    }`}
+                                                            >
+                                                                <i className="fas fa-bookmark text-[10px]"></i>
+                                                                {p.nama}
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeletePreset(p.id, p.nama); }}
+                                                                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow"
+                                                                title="Hapus preset"
+                                                            >
+                                                                <i className="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-[11px] text-amber-600/60">Belum ada preset. Isi form → klik "Simpan Preset" untuk menyimpan data yang sering dipakai.</p>
+                                            )}
+                                        </div>
+                                    ) : null;
+                                })()}
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {(selectedTemplate.fields || []).map(field => (
                                         <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
@@ -329,7 +448,13 @@ function Nota() {
                                     ))}
                                 </div>
 
-                                <div className="mt-6 flex justify-end">
+                                <div className="mt-6 flex items-center justify-between">
+                                    <button
+                                        onClick={handleSaveAsPreset}
+                                        className="px-4 py-2 bg-white border border-amber-300 text-amber-700 rounded-xl text-sm font-medium hover:bg-amber-50 transition-all cursor-pointer flex items-center gap-2"
+                                    >
+                                        <i className="fas fa-bookmark"></i> Simpan Preset
+                                    </button>
                                     <button
                                         onClick={handleGenerate}
                                         disabled={generating}

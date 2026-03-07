@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\NotaTemplate;
 use App\Models\NotaHistory;
+use App\Models\NotaPreset;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -14,7 +15,7 @@ class NotaController extends Controller
 
     public function getTemplates(): JsonResponse
     {
-        $templates = NotaTemplate::orderBy('nama')->get();
+        $templates = NotaTemplate::with('presets')->orderBy('nama')->get();
         return response()->json($templates);
     }
 
@@ -61,6 +62,42 @@ class NotaController extends Controller
         $template = NotaTemplate::findOrFail($id);
         $template->delete();
         return response()->json(['message' => 'Template berhasil dihapus']);
+    }
+
+    // ── Presets ──────────────────────────────────────────────────────
+
+    public function getPresets($templateId): JsonResponse
+    {
+        $presets = NotaPreset::where('nota_template_id', $templateId)
+            ->orderBy('nama')
+            ->get();
+        return response()->json($presets);
+    }
+
+    public function storePreset(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'nota_template_id' => 'required|exists:nota_templates,id',
+            'nama' => 'required|string|max:255',
+            'data' => 'required|array',
+        ]);
+
+        $preset = NotaPreset::create($validated);
+        return response()->json($preset, 201);
+    }
+
+    public function updatePreset(Request $request, $id): JsonResponse
+    {
+        $preset = NotaPreset::findOrFail($id);
+        $preset->update($request->only(['nama', 'data']));
+        return response()->json($preset);
+    }
+
+    public function deletePreset($id): JsonResponse
+    {
+        $preset = NotaPreset::findOrFail($id);
+        $preset->delete();
+        return response()->json(['message' => 'Preset berhasil dihapus']);
     }
 
     // ── Generate & History ──────────────────────────────────────────

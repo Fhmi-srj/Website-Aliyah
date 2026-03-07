@@ -161,6 +161,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('nota/history', [NotaController::class, 'getHistory']);
     Route::get('nota/history/{id}', [NotaController::class, 'getHistoryItem']);
     Route::delete('nota/history/{id}', [NotaController::class, 'deleteHistory']);
+    Route::get('nota/presets/{templateId}', [NotaController::class, 'getPresets']);
+    Route::post('nota/presets', [NotaController::class, 'storePreset']);
+    Route::put('nota/presets/{id}', [NotaController::class, 'updatePreset']);
+    Route::delete('nota/presets/{id}', [NotaController::class, 'deletePreset']);
 
     // WhatsApp MPWA Routes
     Route::get('whatsapp/status', [WhatsappController::class, 'getStatus']);
