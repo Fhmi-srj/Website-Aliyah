@@ -60,6 +60,12 @@ const menuItems = [
         path: '/log-aktivitas',
     },
     {
+        id: 'generate-nota',
+        label: 'Generate Nota',
+        icon: 'fa-receipt',
+        path: '/generate-nota',
+    },
+    {
         id: 'profil',
         label: 'Profil',
         icon: 'fa-user',

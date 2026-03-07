@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Admin\SuratMasukController;
 use App\Http\Controllers\Api\Admin\TemplateSuratController;
 use App\Http\Controllers\Api\AttendanceTokenController;
 use App\Http\Controllers\Api\WebAuthnController;
+use App\Http\Controllers\Api\Admin\NotaController;
 use Illuminate\Session\Middleware\StartSession;
 
 // Public Auth Routes
@@ -150,6 +151,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('settings/{key}', [SettingController::class, 'update']);
     Route::post('settings/upload-logo', [SettingController::class, 'uploadLogo']);
     Route::post('settings/upload-kop', [SettingController::class, 'uploadKop']);
+
+    // Nota Templates & History Routes
+    Route::get('nota/templates', [NotaController::class, 'getTemplates']);
+    Route::post('nota/templates', [NotaController::class, 'storeTemplate']);
+    Route::put('nota/templates/{id}', [NotaController::class, 'updateTemplate']);
+    Route::delete('nota/templates/{id}', [NotaController::class, 'deleteTemplate']);
+    Route::post('nota/generate', [NotaController::class, 'generate']);
+    Route::get('nota/history', [NotaController::class, 'getHistory']);
+    Route::get('nota/history/{id}', [NotaController::class, 'getHistoryItem']);
+    Route::delete('nota/history/{id}', [NotaController::class, 'deleteHistory']);
 
     // WhatsApp MPWA Routes
     Route::get('whatsapp/status', [WhatsappController::class, 'getStatus']);
@@ -306,6 +317,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('rapat/{id}/absensi-peserta', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'getAbsensiPeserta']);
     Route::get('rapat/{id}/check-status', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'checkPesertaStatus']);
     Route::get('rapat/{id}/absensi', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'getAbsensiRapat']);
+    Route::post('rapat/upload-foto', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'uploadFotoRapat']);
 
     // Riwayat
     Route::get('riwayat/mengajar', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatMengajar']);
@@ -370,5 +382,6 @@ Route::middleware('token_auth')->group(function () {
     Route::get('supervisi/{supervisi}/print-supervisi', [\App\Http\Controllers\Api\Admin\SupervisiController::class, 'printSupervisi']);
     Route::get('bisyaroh/print-rekap', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'printRekap']);
     Route::get('bisyaroh/{id}/print-rincian', [\App\Http\Controllers\Api\Admin\BisyarohController::class, 'printRincian']);
+    Route::get('nota/print/{id}', [NotaController::class, 'printNota']);
 });
 
