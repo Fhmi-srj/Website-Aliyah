@@ -615,12 +615,24 @@ export function ModalAbsensiRapatPimpinan({ rapat, tanggal, onClose, onSuccess, 
         if (filesToProcess.length === 0) { alert('Maksimal 4 foto'); return; }
         setUploadingPhoto(true);
         try {
-            const compressedPhotos = await Promise.all(filesToProcess.map(file => compressImage(file, 800, 0.6)));
-            setFotoRapat(prev => [...prev, ...compressedPhotos]);
-            autoHadirPimpinan();
+            const uploadedPaths = [];
+            for (const file of filesToProcess) {
+                const formData = new FormData();
+                formData.append('foto', file);
+                const response = await api.post('/guru-panel/rapat/upload-foto', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (response.data.success) {
+                    uploadedPaths.push(response.data.data.path);
+                }
+            }
+            if (uploadedPaths.length > 0) {
+                setFotoRapat(prev => [...prev, ...uploadedPaths]);
+                autoHadirPimpinan();
+            }
         } catch (err) {
-            console.error('Error compressing photos:', err);
-            alert('Gagal memproses foto');
+            console.error('Error uploading photos:', err);
+            alert('Gagal upload foto');
         } finally {
             setUploadingPhoto(false);
         }
@@ -1532,12 +1544,24 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
         if (filesToProcess.length === 0) { alert('Maksimal 4 foto'); return; }
         setUploadingPhoto(true);
         try {
-            const compressedPhotos = await Promise.all(filesToProcess.map(file => compressImage(file, 800, 0.6)));
-            setFotoRapat(prev => [...prev, ...compressedPhotos]);
-            autoHadirSekretaris();
+            const uploadedPaths = [];
+            for (const file of filesToProcess) {
+                const formData = new FormData();
+                formData.append('foto', file);
+                const response = await api.post('/guru-panel/rapat/upload-foto', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (response.data.success) {
+                    uploadedPaths.push(response.data.data.path);
+                }
+            }
+            if (uploadedPaths.length > 0) {
+                setFotoRapat(prev => [...prev, ...uploadedPaths]);
+                autoHadirSekretaris();
+            }
         } catch (err) {
-            console.error('Error compressing photos:', err);
-            alert('Gagal memproses foto');
+            console.error('Error uploading photos:', err);
+            alert('Gagal upload foto');
         } finally {
             setUploadingPhoto(false);
         }
