@@ -42,6 +42,17 @@ class GalleryController extends Controller
         // Collect photos — always collect ALL for stats, then filter for display
         $allPhotos = collect();
 
+        // Helper to normalize photo URL - relative paths need /storage/ prefix
+        $normalizeUrl = function ($url) {
+            if (!$url) return $url;
+            // Already a full URL or base64 data URI - return as-is
+            if (str_starts_with($url, 'http') || str_starts_with($url, 'data:') || str_starts_with($url, '/storage/')) {
+                return $url;
+            }
+            // Relative path - prepend /storage/
+            return asset('storage/' . ltrim($url, '/'));
+        };
+
         // 1. Photos from Absensi Mengajar (mengajar + penilaian)
         $mengajarQuery = AbsensiMengajar::with(['guru:id,nama', 'jadwal.mapel', 'jadwal.kelas'])
             ->whereNotNull('foto_mengajar')
@@ -73,7 +84,7 @@ class GalleryController extends Controller
                 $allPhotos->push([
                     'id' => "mengajar_{$absensi->id}_" . md5($url),
                     'type' => $photoType,
-                    'url' => $url,
+                    'url' => $normalizeUrl($url),
                     'guru_nama' => $displayInfo['guru_nama'],
                     'label' => $displayInfo['mapel'] . ' - ' . $displayInfo['kelas'],
                     'sublabel' => $absensi->ringkasan_materi,
@@ -110,7 +121,7 @@ class GalleryController extends Controller
                 $allPhotos->push([
                     'id' => "kegiatan_{$absensi->id}_" . md5($url),
                     'type' => 'kegiatan',
-                    'url' => $url,
+                    'url' => $normalizeUrl($url),
                     'guru_nama' => $kegiatan?->penanggungJawab?->nama ?? '-',
                     'label' => $kegiatan?->nama_kegiatan ?? '-',
                     'sublabel' => $kegiatan?->tempat,
@@ -147,7 +158,7 @@ class GalleryController extends Controller
                 $allPhotos->push([
                     'id' => "rapat_{$absensi->id}_" . md5($url),
                     'type' => 'rapat',
-                    'url' => $url,
+                    'url' => $normalizeUrl($url),
                     'guru_nama' => $rapat?->pimpinan?->nama ?? '-',
                     'label' => $rapat?->agenda_rapat ?? '-',
                     'sublabel' => $rapat?->tempat,
