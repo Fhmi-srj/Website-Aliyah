@@ -4,6 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useTahunAjaran } from '../../../contexts/TahunAjaranContext';
 import AdminSidebar from './AdminSidebar';
 import RoleSwitcher from '../../../components/RoleSwitcher';
+import ScrollToTop from '../../../components/ScrollToTop';
 import { API_BASE } from '../../../config/api';
 import { canAccessAdminPage, getRoleInfo, hasAdminAccess } from '../../../config/roleConfig';
 import Swal from 'sweetalert2';
@@ -13,6 +14,7 @@ import { showSwitchRolePopup } from '../../../utils/switchRolePopup';
 function AdminLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const mainRef = useRef(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -272,7 +274,8 @@ function AdminLayout({ children }) {
                     </header>
 
                     {/* Main Content Area */}
-                    <main className={`flex-1 overflow-y-auto ${isMobile ? 'px-2 py-2' : 'px-4 py-4 md:py-6 md:px-8'} bg-transparent pb-24 md:pb-8`}>
+                    <main ref={mainRef} className={`flex-1 overflow-y-auto ${isMobile ? 'px-2 py-2' : 'px-4 py-4 md:py-6 md:px-8'} bg-transparent pb-24 md:pb-8`}>
+                        <ScrollToTop containerRef={mainRef} />
                         {children}
                     </main>
                 </div>

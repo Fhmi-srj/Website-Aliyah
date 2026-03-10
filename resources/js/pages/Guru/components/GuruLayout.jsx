@@ -6,6 +6,7 @@ import { getRoleInfo, canAccessAdminPage, hasAdminAccess, roleLabels, roleIcons 
 import RoleSwitcher from '../../../components/RoleSwitcher';
 import { DesktopLeftPanel, DesktopRightPanel } from './GuruDesktopPanels';
 import api from '../../../lib/axios';
+import ScrollToTop from '../../../components/ScrollToTop';
 import Swal from 'sweetalert2';
 import logoImage from '../../../../images/logo.png';
 import InstallPrompt from '../../../components/InstallPrompt';
@@ -21,6 +22,7 @@ function GuruLayout({ children }) {
     const { activeTahunAjaran } = useTahunAjaran();
     const tahunAjaran = authTahunAjaran || activeTahunAjaran;
     const profileMenuRef = useRef(null);
+    const mainRef = useRef(null);
     const canSeeTransaksi = canAccessAdminPage(activeRole, '/transaksi');
     const currentRoleInfo = getRoleInfo(activeRole);
 
@@ -226,7 +228,8 @@ function GuruLayout({ children }) {
                     </div>
 
                     {/* Kolom 2: Dynamic Content */}
-                    <div className="min-w-0 overflow-y-auto bg-white custom-scrollbar">
+                    <div ref={mainRef} className="min-w-0 overflow-y-auto bg-white custom-scrollbar">
+                        <ScrollToTop containerRef={mainRef} />
                         {children}
                     </div>
 
@@ -297,7 +300,8 @@ function GuruLayout({ children }) {
                 </header>
 
                 {/* Mobile Main Content */}
-                <main className="flex-1 overflow-auto pb-24">
+                <main ref={mainRef} className="flex-1 overflow-auto pb-24">
+                    <ScrollToTop containerRef={mainRef} />
                     {children}
                 </main>
             </div>
