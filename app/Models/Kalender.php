@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Kalender extends Model
@@ -49,6 +50,20 @@ class Kalender extends Model
     public function kegiatanRef()
     {
         return $this->belongsTo(Kegiatan::class, 'kegiatan_id');
+    }
+
+    /**
+     * Check if a given date falls within a KBM Libur period.
+     * Returns true if the date is a holiday (no KBM), false otherwise.
+     */
+    public static function isLiburKbm($date = null): bool
+    {
+        $checkDate = $date ? Carbon::parse($date)->startOfDay() : Carbon::now()->startOfDay();
+
+        return static::where('status_kbm', 'Libur')
+            ->whereDate('tanggal_mulai', '<=', $checkDate)
+            ->whereDate('tanggal_berakhir', '>=', $checkDate)
+            ->exists();
     }
 }
 

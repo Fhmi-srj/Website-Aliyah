@@ -59,40 +59,45 @@ class GuruDashboardController extends Controller
         $currentTime = Carbon::now('Asia/Jakarta')->format('H:i');
 
         // Get today's teaching schedule with actual attendance status
-        $todaySchedule = Jadwal::with(['mapel', 'kelas'])
-            ->where('guru_id', $guru->id)
-            ->where('hari', $dayName)
-            ->where('status', 'Aktif')
-            ->orderBy('jam_mulai')
-            ->get()
-            ->map(function ($jadwal) use ($currentTime, $today) {
-                // Check if already attended today
-                $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
-                    ->where('tanggal', $today->toDateString())
-                    ->first();
+        // If today is KBM libur, return empty schedule
+        $isTodayLibur = \App\Models\Kalender::isLiburKbm($today);
 
-                $now = Carbon::now('Asia/Jakarta');
-                $jamMulai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_mulai);
-                $jamSelesai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_selesai);
+        $todaySchedule = $isTodayLibur
+            ? collect([])
+            : Jadwal::with(['mapel', 'kelas'])
+                ->where('guru_id', $guru->id)
+                ->where('hari', $dayName)
+                ->where('status', 'Aktif')
+                ->orderBy('jam_mulai')
+                ->get()
+                ->map(function ($jadwal) use ($currentTime, $today) {
+                    // Check if already attended today
+                    $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)
+                        ->where('tanggal', $today->toDateString())
+                        ->first();
 
-                $status = 'belum_mulai';
-                if ($absensi) {
-                    $status = 'sudah_absen';
-                } elseif ($now->greaterThan($jamSelesai)) {
-                    $status = 'terlewat';
-                } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
-                    $status = 'sedang_berlangsung';
-                }
+                    $now = Carbon::now('Asia/Jakarta');
+                    $jamMulai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_mulai);
+                    $jamSelesai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_selesai);
 
-                return [
-                    'id' => $jadwal->id,
-                    'time' => substr($jadwal->jam_mulai, 0, 5),
-                    'endTime' => substr($jadwal->jam_selesai, 0, 5),
-                    'subject' => $jadwal->mapel?->nama_mapel ?? 'Mata Pelajaran',
-                    'class' => $jadwal->kelas?->nama_kelas ?? 'Kelas',
-                    'status' => $status,
-                ];
-            });
+                    $status = 'belum_mulai';
+                    if ($absensi) {
+                        $status = 'sudah_absen';
+                    } elseif ($now->greaterThan($jamSelesai)) {
+                        $status = 'terlewat';
+                    } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
+                        $status = 'sedang_berlangsung';
+                    }
+
+                    return [
+                        'id' => $jadwal->id,
+                        'time' => substr($jadwal->jam_mulai, 0, 5),
+                        'endTime' => substr($jadwal->jam_selesai, 0, 5),
+                        'subject' => $jadwal->mapel?->nama_mapel ?? 'Mata Pelajaran',
+                        'class' => $jadwal->kelas?->nama_kelas ?? 'Kelas',
+                        'status' => $status,
+                    ];
+                });
 
         // Get today's activities where guru is PJ or pendamping (synced with AbsensiKegiatan)
         $todayActivities = Kegiatan::where('status', 'Aktif')
@@ -270,10 +275,25 @@ class GuruDashboardController extends Controller
             ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->get();
 
+        // Preload all libur KBM periods to skip holiday dates
+        $liburPeriods = \App\Models\Kalender::where('status_kbm', 'Libur')
+            ->where('tanggal_berakhir', '>=', $startDate)
+            ->get();
+
+        $isLiburDate = function ($date) use ($liburPeriods) {
+            foreach ($liburPeriods as $libur) {
+                if ($date->between($libur->tanggal_mulai->startOfDay(), $libur->tanggal_berakhir->endOfDay())) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // Calculate all teaching dates this month based on jadwal
         $mengajarTotal = 0;
         $mengajarHadir = 0;
         $mengajarIzin = 0;
+        $mengajarSakit = 0;
         $mengajarAlpha = 0;
 
         $dayMapping = [
@@ -295,6 +315,12 @@ class GuruDashboardController extends Controller
             $currentDate = $startDate->copy();
             while ($currentDate->lte($today) && $currentDate->lte($endDate)) {
                 if ($currentDate->dayOfWeek === $dayOfWeek) {
+                    // Skip KBM libur dates
+                    if ($isLiburDate($currentDate)) {
+                        $currentDate->addDay();
+                        continue;
+                    }
+
                     $mengajarTotal++;
 
                     // Check if absensi exists for this date
@@ -306,6 +332,8 @@ class GuruDashboardController extends Controller
                         // Check guru status from absensi record
                         if ($absensi->guru_status === 'I') {
                             $mengajarIzin++;
+                        } elseif ($absensi->guru_status === 'S') {
+                            $mengajarSakit++;
                         } else {
                             $mengajarHadir++;
                         }
@@ -477,23 +505,23 @@ class GuruDashboardController extends Controller
 
         $stats = [
             'mengajar' => [
-                'total' => $mengajarTotal,
                 'hadir' => $mengajarHadir,
                 'izin' => $mengajarIzin,
+                'sakit' => $mengajarSakit,
                 'alpha' => $mengajarAlpha,
                 'percentage' => $mengajarTotal > 0 ? round($mengajarHadir / $mengajarTotal * 100) : 0,
             ],
             'kegiatan' => [
-                'total' => $kegiatanTotal,
                 'hadir' => $kegiatanHadir,
                 'izin' => $kegiatanIzin,
+                'sakit' => 0,
                 'alpha' => $kegiatanAlpha,
                 'percentage' => $kegiatanTotal > 0 ? round($kegiatanHadir / $kegiatanTotal * 100) : 0,
             ],
             'rapat' => [
-                'total' => $rapatTotal,
                 'hadir' => $rapatHadir,
                 'izin' => $rapatIzin,
+                'sakit' => 0,
                 'alpha' => $rapatAlpha,
                 'percentage' => $rapatTotal > 0 ? round($rapatHadir / $rapatTotal * 100) : 0,
             ],
@@ -516,6 +544,103 @@ class GuruDashboardController extends Controller
             ],
             'stats' => $stats,
             'reminders' => $reminders,
+        ]);
+    }
+
+    /**
+     * Get live attendance data for all teachers today
+     * Shows all jadwal for today with guru attendance status
+     */
+    public function liveAttendance(Request $request)
+    {
+        $today = Carbon::today('Asia/Jakarta');
+        $dayName = $this->getDayName($today->dayOfWeek);
+        $now = Carbon::now('Asia/Jakarta');
+
+        // Check if today is a KBM holiday
+        if (\App\Models\Kalender::isLiburKbm($today)) {
+            $liburEvent = \App\Models\Kalender::where('status_kbm', 'Libur')
+                ->whereDate('tanggal_mulai', '<=', $today)
+                ->whereDate('tanggal_berakhir', '>=', $today)
+                ->first();
+
+            return response()->json([
+                'success' => true,
+                'is_libur' => true,
+                'libur_keterangan' => $liburEvent->kegiatan ?? 'Hari Libur',
+                'libur_tanggal_mulai' => $liburEvent ? $liburEvent->tanggal_mulai->locale('id')->translatedFormat('d M Y') : null,
+                'libur_tanggal_berakhir' => $liburEvent ? $liburEvent->tanggal_berakhir->locale('id')->translatedFormat('d M Y') : null,
+                'data' => [],
+                'stats' => ['total' => 0, 'hadir' => 0, 'belum' => 0],
+            ]);
+        }
+
+        // Get active tahun ajaran
+        $tahunAjaran = TahunAjaran::where('is_active', true)->first();
+        if (!$tahunAjaran) {
+            return response()->json(['success' => true, 'data' => [], 'stats' => ['total' => 0, 'hadir' => 0, 'belum' => 0]]);
+        }
+
+        // Get all active jadwal for today's day
+        $jadwals = Jadwal::with(['mapel', 'kelas', 'guru'])
+            ->where('hari', $dayName)
+            ->where('status', 'Aktif')
+            ->where('tahun_ajaran_id', $tahunAjaran->id)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        // Batch load today's absensi for all jadwal IDs
+        $jadwalIds = $jadwals->pluck('id')->toArray();
+        $absensiMap = AbsensiMengajar::whereIn('jadwal_id', $jadwalIds)
+            ->where('tanggal', $today->toDateString())
+            ->get()
+            ->keyBy('jadwal_id');
+
+        $items = [];
+        $totalHadir = 0;
+        $totalBelum = 0;
+
+        foreach ($jadwals as $jadwal) {
+            if (!$jadwal->guru)
+                continue;
+
+            $absensi = $absensiMap->get($jadwal->id);
+            $jamMulai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_mulai, 'Asia/Jakarta');
+            $jamSelesai = Carbon::parse($today->toDateString() . ' ' . $jadwal->jam_selesai, 'Asia/Jakarta');
+
+            $status = 'belum_mulai';
+            if ($absensi) {
+                $status = 'sudah_absen';
+                $totalHadir++;
+            } elseif ($now->greaterThan($jamSelesai)) {
+                $status = 'terlewat';
+                $totalBelum++;
+            } elseif ($now->greaterThanOrEqualTo($jamMulai) && $now->lessThanOrEqualTo($jamSelesai)) {
+                $status = 'sedang_berlangsung';
+                $totalBelum++;
+            }
+
+            $items[] = [
+                'jadwal_id' => $jadwal->id,
+                'guru_nama' => $jadwal->guru->nama ?? '-',
+                'guru_foto' => $jadwal->guru->foto ? asset('storage/' . $jadwal->guru->foto) : null,
+                'mapel' => $jadwal->mapel->nama_mapel ?? '-',
+                'kelas' => $jadwal->kelas->nama_kelas ?? '-',
+                'jam_mulai' => substr($jadwal->jam_mulai, 0, 5),
+                'jam_selesai' => substr($jadwal->jam_selesai, 0, 5),
+                'status' => $status,
+                'guru_status' => $absensi->guru_status ?? null,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+            'stats' => [
+                'total' => count($items),
+                'hadir' => $totalHadir,
+                'belum' => $totalBelum,
+            ],
         ]);
     }
 
@@ -1193,6 +1318,20 @@ class GuruDashboardController extends Controller
         $events = [];
 
         // 1. Get jadwal (mengajar) for next 7 days based on day of week
+        // Preload libur KBM periods to exclude mengajar on holiday dates
+        $liburPeriods = \App\Models\Kalender::where('status_kbm', 'Libur')
+            ->where('tanggal_berakhir', '>=', $today)
+            ->get();
+
+        $isLiburDate = function ($date) use ($liburPeriods) {
+            foreach ($liburPeriods as $libur) {
+                if ($date->between($libur->tanggal_mulai->startOfDay(), $libur->tanggal_berakhir->endOfDay())) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         if ($tahunAjaran) {
             $jadwals = Jadwal::with(['mapel', 'kelas'])
                 ->where('guru_id', $guru->id)
@@ -1201,6 +1340,11 @@ class GuruDashboardController extends Controller
 
             // Loop through next 7 days
             for ($date = $today->copy(); $date->lte($endDate); $date->addDay()) {
+                // Skip libur KBM dates for mengajar
+                if ($isLiburDate($date)) {
+                    continue;
+                }
+
                 $dayName = $this->getDayName($date->dayOfWeek);
 
                 foreach ($jadwals as $jadwal) {
@@ -1230,7 +1374,7 @@ class GuruDashboardController extends Controller
                     });
             });
 
-        $kegiatans = $kegiatanQuery->get();
+        $kegiatans = $kegiatanQuery->with('penanggungJawab')->get();
 
         foreach ($kegiatans as $kegiatan) {
             // Check if this guru is related: penanggung_jawab_id OR in guru_pendamping array
@@ -1243,6 +1387,7 @@ class GuruDashboardController extends Controller
                     'type' => 'kegiatan',
                     'title' => $kegiatan->nama_kegiatan ?? $kegiatan->nama ?? 'Kegiatan',
                     'subtitle' => $kegiatan->tempat ?? '',
+                    'koordinator' => $kegiatan->penanggungJawab->nama ?? null,
                     'date' => Carbon::parse($kegiatan->waktu_mulai)->locale('id')->translatedFormat('l, d M'),
                     'date_raw' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateString() : null,
                     'time' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('H:i') : null,
@@ -1255,7 +1400,7 @@ class GuruDashboardController extends Controller
         $rapatQuery = Rapat::where('status', 'Dijadwalkan')
             ->whereBetween('tanggal', [$today, $endDate]);
 
-        $rapats = $rapatQuery->get();
+        $rapats = $rapatQuery->with('pimpinan')->get();
 
         foreach ($rapats as $rapat) {
             // Check if this guru is related (pimpinan, sekretaris, or in peserta_rapat array)
@@ -1270,6 +1415,7 @@ class GuruDashboardController extends Controller
                     'type' => 'rapat',
                     'title' => $rapat->agenda_rapat ?? $rapat->nama ?? 'Rapat',
                     'subtitle' => $rapat->tempat ?? '',
+                    'pimpinan' => $rapat->pimpinan->nama ?? null,
                     'date' => Carbon::parse($rapat->tanggal)->locale('id')->translatedFormat('l, d M'),
                     'date_raw' => $rapat->tanggal,
                     'time' => $rapat->waktu_mulai ? substr($rapat->waktu_mulai, 0, 5) : null,

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
+use App\Models\Kalender;
 use App\Models\TahunAjaran;
 use App\Services\WhatsappService;
 use Illuminate\Support\Carbon;
@@ -35,6 +36,12 @@ class WaSendScheduleDaily extends Command
             return Command::SUCCESS;
         }
 
+        // Skip if KBM Libur (e.g. Ramadhan, Idul Fitri)
+        if (Kalender::isLiburKbm($now)) {
+            $this->info('Hari ini KBM Libur — jadwal harian tidak dikirim');
+            return Command::SUCCESS;
+        }
+
         $tahunAjaran = TahunAjaran::where('is_active', true)->first();
 
         $jadwalList = Jadwal::with(['guru', 'mapel', 'kelas'])
@@ -61,8 +68,8 @@ class WaSendScheduleDaily extends Command
 
             foreach ($jadwals as $jadwal) {
                 $jam = substr($jadwal->jam_mulai, 0, 5);
-                $guru = $jadwal->guru->nama ?? '-';
-                $mapel = $jadwal->mapel->nama_mapel ?? '-';
+                $guru = $jadwal->guru->inisial ?? $jadwal->guru->nama ?? '-';
+                $mapel = $jadwal->mapel->kode_mapel ?? $jadwal->mapel->nama_mapel ?? '-';
                 $daftarJadwal .= "{$jam} | {$guru} | {$mapel}\n";
             }
 

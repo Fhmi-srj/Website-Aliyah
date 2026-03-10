@@ -236,8 +236,8 @@ class WhatsappController extends Controller
         foreach ($grouped as $kelas => $items) {
             $daftarJadwal .= "*Kelas {$kelas}*\n";
             foreach ($items as $j) {
-                $guru = $j->guru->nama ?? '-';
-                $mapel = $j->mapel->nama_mapel ?? '-';
+                $guru = $j->guru->inisial ?? $j->guru->nama ?? '-';
+                $mapel = $j->mapel->kode_mapel ?? $j->mapel->nama_mapel ?? '-';
                 $jam = substr($j->jam_mulai, 0, 5) . '-' . substr($j->jam_selesai, 0, 5);
                 $daftarJadwal .= "• {$mapel} - {$guru} ({$jam})\n";
             }
@@ -292,8 +292,8 @@ class WhatsappController extends Controller
         $totalBelum = 0;
 
         foreach ($jadwalList as $j) {
-            $guru = $j->guru->nama ?? '-';
-            $mapel = $j->mapel->nama_mapel ?? '-';
+            $guru = $j->guru->inisial ?? $j->guru->nama ?? '-';
+            $mapel = $j->mapel->kode_mapel ?? $j->mapel->nama_mapel ?? '-';
             $kelas = $j->kelas->nama_kelas ?? '-';
             $jam = substr($j->jam_mulai, 0, 5);
 

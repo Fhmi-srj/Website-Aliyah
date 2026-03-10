@@ -413,14 +413,22 @@ class AdminAbsensiController extends Controller
 
     /**
      * Upload photo for rapat documentation.
+     * Auto-compresses to ~100-200KB using ImageService.
      */
     public function uploadFotoRapat(Request $request): JsonResponse
     {
         $request->validate([
-            'foto' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'foto' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
         ]);
 
-        $path = $request->file('foto')->store('rapat/dokumentasi', 'public');
+        $file = $request->file('foto');
+        $filename = 'rapat_' . time() . '_' . uniqid() . '.jpg';
+        $path = \App\Services\ImageService::compressAndStore($file, 'rapat/dokumentasi', $filename);
+
+        if (!$path) {
+            // Fallback to raw store if compression fails
+            $path = $file->store('rapat/dokumentasi', 'public');
+        }
 
         return response()->json([
             'success' => true,
@@ -434,18 +442,53 @@ class AdminAbsensiController extends Controller
 
     /**
      * Upload photo for kegiatan documentation.
+     * Auto-compresses to ~100-200KB using ImageService.
      */
     public function uploadFotoKegiatan(Request $request): JsonResponse
     {
         $request->validate([
-            'foto' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'foto' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
         ]);
 
-        $path = $request->file('foto')->store('kegiatan/dokumentasi', 'public');
+        $file = $request->file('foto');
+        $filename = 'kegiatan_' . time() . '_' . uniqid() . '.jpg';
+        $path = \App\Services\ImageService::compressAndStore($file, 'kegiatan/dokumentasi', $filename);
+
+        if (!$path) {
+            $path = $file->store('kegiatan/dokumentasi', 'public');
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Foto dokumentasi kegiatan berhasil diupload',
+            'data' => [
+                'path' => $path,
+                'url' => asset('storage/' . $path),
+            ],
+        ]);
+    }
+
+    /**
+     * Upload photo for mengajar/penilaian documentation.
+     * Auto-compresses to ~100-200KB using ImageService.
+     */
+    public function uploadFotoMengajar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'foto' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+        ]);
+
+        $file = $request->file('foto');
+        $filename = 'mengajar_' . time() . '_' . uniqid() . '.jpg';
+        $path = \App\Services\ImageService::compressAndStore($file, 'mengajar/dokumentasi', $filename);
+
+        if (!$path) {
+            $path = $file->store('mengajar/dokumentasi', 'public');
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Foto dokumentasi berhasil diupload',
             'data' => [
                 'path' => $path,
                 'url' => asset('storage/' . $path),

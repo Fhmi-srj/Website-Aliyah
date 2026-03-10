@@ -119,6 +119,10 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
     const [guruList, setGuruList] = useState([]);
     const [loadingGuru, setLoadingGuru] = useState(false);
 
+    // Photo upload fields
+    const [fotoMengajar, setFotoMengajar] = useState([]);
+    const [uploadingFoto, setUploadingFoto] = useState(false);
+
 
     useEffect(() => {
         // In unlocked mode with existing absensi record, always fetch to get guru_status and existing data
@@ -186,6 +190,11 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
 
                 // Set tugas siswa (task for students)
                 setTugasSiswa(data.tugas_siswa || '');
+
+                // Set existing photos
+                if (data.foto_mengajar && Array.isArray(data.foto_mengajar)) {
+                    setFotoMengajar(data.foto_mengajar);
+                }
 
                 // Pre-populate ulangan fields
                 if (data.jenis_kegiatan) {
@@ -341,6 +350,7 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                 jenis_kegiatan: jenisKegiatan,
                 jenis_ulangan: jenisKegiatan === 'ulangan' ? jenisUlangan : null,
                 judul_ulangan: jenisKegiatan === 'ulangan' ? judulUlangan : null,
+                foto_mengajar: fotoMengajar.length > 0 ? fotoMengajar : null,
                 absensi_siswa: guruStatus === 'H' ? absensiSiswa.map(s => ({
                     siswa_id: s.siswa_id,
                     status: s.status,
@@ -658,6 +668,107 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                 placeholder="Isi berita acara pembelajaran..."
                                 className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent min-h-[80px] resize-y"
                             />
+                        </div>
+                    )}
+
+                    {/* Foto Dokumentasi - show when guru is present */}
+                    {guruStatus === 'H' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Foto Dokumentasi <span className="text-gray-400 text-xs">(opsional, maks 5 foto)</span>
+                            </label>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {fotoMengajar.map((url, idx) => (
+                                    <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group">
+                                        <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setFotoMengajar(prev => prev.filter((_, i) => i !== idx))}
+                                            className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[0.6rem] opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                                        >
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                                {fotoMengajar.length < 5 && !uploadingFoto && (
+                                    <div className="flex gap-2">
+                                        {/* Camera Capture Button */}
+                                        <label className="w-20 h-20 rounded-lg border-2 border-dashed border-green-300 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all bg-green-50/30">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (!file) return;
+                                                    setUploadingFoto(true);
+                                                    try {
+                                                        const formData = new FormData();
+                                                        formData.append('foto', file);
+                                                        const res = await api.post('/guru-panel/mengajar/upload-foto', formData, {
+                                                            headers: { 'Content-Type': 'multipart/form-data' }
+                                                        });
+                                                        if (res.data.success) {
+                                                            setFotoMengajar(prev => [...prev, res.data.data.url]);
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Upload foto gagal:', err);
+                                                        alert('Gagal mengupload foto');
+                                                    } finally {
+                                                        setUploadingFoto(false);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                            <i className="fas fa-camera text-green-500 text-lg"></i>
+                                            <span className="text-[0.55rem] text-green-600 mt-1 font-medium">Ambil Foto</span>
+                                        </label>
+                                        {/* File Gallery Button */}
+                                        <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const files = Array.from(e.target.files);
+                                                    if (files.length === 0) return;
+                                                    const remaining = 5 - fotoMengajar.length;
+                                                    const toUpload = files.slice(0, remaining);
+                                                    setUploadingFoto(true);
+                                                    try {
+                                                        for (const file of toUpload) {
+                                                            const formData = new FormData();
+                                                            formData.append('foto', file);
+                                                            const res = await api.post('/guru-panel/mengajar/upload-foto', formData, {
+                                                                headers: { 'Content-Type': 'multipart/form-data' }
+                                                            });
+                                                            if (res.data.success) {
+                                                                setFotoMengajar(prev => [...prev, res.data.data.url]);
+                                                            }
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Upload foto gagal:', err);
+                                                        alert('Gagal mengupload foto');
+                                                    } finally {
+                                                        setUploadingFoto(false);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                            <i className="fas fa-images text-gray-400 text-lg"></i>
+                                            <span className="text-[0.55rem] text-gray-500 mt-1 font-medium">Pilih File</span>
+                                        </label>
+                                    </div>
+                                )}
+                                {uploadingFoto && (
+                                    <div className="flex items-center gap-2 text-gray-500 py-2">
+                                        <i className="fas fa-spinner fa-spin"></i>
+                                        <span className="text-xs">Memproses foto...</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 

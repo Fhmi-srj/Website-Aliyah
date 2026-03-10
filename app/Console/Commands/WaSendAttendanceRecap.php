@@ -69,8 +69,8 @@ class WaSendAttendanceRecap extends Command
 
             foreach ($jadwals as $jadwal) {
                 $jam = substr($jadwal->jam_mulai, 0, 5);
-                $guru = $jadwal->guru->nama ?? '-';
-                $mapel = $jadwal->mapel->nama_mapel ?? '-';
+                $guru = $jadwal->guru->inisial ?? $jadwal->guru->nama ?? '-';
+                $mapel = $jadwal->mapel->kode_mapel ?? $jadwal->mapel->nama_mapel ?? '-';
 
                 // Check attendance
                 $absensi = AbsensiMengajar::where('jadwal_id', $jadwal->id)

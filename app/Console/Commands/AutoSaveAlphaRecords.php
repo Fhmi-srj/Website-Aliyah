@@ -9,6 +9,7 @@ use App\Models\Rapat;
 use App\Models\AbsensiMengajar;
 use App\Models\AbsensiKegiatan;
 use App\Models\AbsensiRapat;
+use App\Models\Kalender;
 use Illuminate\Support\Carbon;
 
 class AutoSaveAlphaRecords extends Command
@@ -100,6 +101,12 @@ class AutoSaveAlphaRecords extends Command
             while ($checkDate->lte($cutoffDate)) {
                 $endTime = Carbon::parse($checkDate->format('Y-m-d') . ' ' . $jadwal->jam_selesai);
                 if ($endTime->gt($today)) {
+                    $checkDate->addWeek();
+                    continue;
+                }
+
+                // Skip KBM Libur days (e.g. Ramadhan, Idul Fitri)
+                if (Kalender::isLiburKbm($checkDate)) {
                     $checkDate->addWeek();
                     continue;
                 }

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\PushSubscription;
 use App\Models\Guru;
 use App\Models\Jadwal;
+use App\Models\Kalender;
 use App\Models\Kegiatan;
 use App\Models\Rapat;
 use App\Models\TahunAjaran;
@@ -20,7 +21,7 @@ class SendPushReminders extends Command
 
     public function handle()
     {
-        $now = Carbon::now();
+        $now = Carbon::now('Asia/Jakarta');
         $today = $now->format('Y-m-d');
         $currentTime = $now->format('H:i');
         $dayOfWeek = $now->dayOfWeek; // 0=Sunday
@@ -37,8 +38,12 @@ class SendPushReminders extends Command
 
         $notifications = [];
 
-        // 1. Check jadwal mengajar starting in ~15 minutes
-        $this->checkJadwalMengajar($dayName, $currentTime, $tahunAjaran, $notifications);
+        // 1. Check jadwal mengajar starting in ~15 minutes (skip if KBM Libur)
+        if (Kalender::isLiburKbm($today)) {
+            $this->info('Hari ini KBM Libur — push jadwal mengajar dilewati');
+        } else {
+            $this->checkJadwalMengajar($dayName, $today, $currentTime, $tahunAjaran, $notifications);
+        }
 
         // 2. Check kegiatan starting in ~30 minutes
         $this->checkKegiatan($today, $currentTime, $tahunAjaran, $notifications);
@@ -55,7 +60,7 @@ class SendPushReminders extends Command
         $this->sendPushNotifications($notifications);
     }
 
-    private function checkJadwalMengajar(string $dayName, string $currentTime, $tahunAjaran, array &$notifications)
+    private function checkJadwalMengajar(string $dayName, string $today, string $currentTime, $tahunAjaran, array &$notifications)
     {
         // Find jadwal that starts in ~15 minutes
         $jadwals = Jadwal::where('hari', $dayName)
@@ -64,12 +69,12 @@ class SendPushReminders extends Command
             ->get();
 
         foreach ($jadwals as $jadwal) {
-            $startTime = Carbon::createFromFormat('H:i:s', $jadwal->jam_mulai);
-            $now = Carbon::createFromFormat('H:i', $currentTime);
+            $startTime = Carbon::createFromFormat('H:i:s', $jadwal->jam_mulai, 'Asia/Jakarta');
+            $now = Carbon::now('Asia/Jakarta');
             $diffMinutes = $now->diffInMinutes($startTime, false);
 
-            // Send notification if class starts in 13-17 minutes (window around 15 min)
-            if ($diffMinutes >= 13 && $diffMinutes <= 17) {
+            // Send notification if class starts in 14-16 minutes (window around 15 min)
+            if ($diffMinutes >= 14 && $diffMinutes <= 16) {
                 $guruId = $jadwal->guru_id;
                 $guru = $jadwal->guru;
                 if (!$guru)
@@ -85,7 +90,7 @@ class SendPushReminders extends Command
                     'title' => '📚 Jadwal Mengajar 15 Menit Lagi',
                     'body' => "{$mapelName} - {$kelasName} pukul {$jamMulai}",
                     'url' => '/guru/absensi/mengajar',
-                    'tag' => "jadwal-{$jadwal->id}-{$currentTime}",
+                    'tag' => "jadwal-{$jadwal->id}-{$today}",
                 ];
             }
         }
@@ -102,8 +107,8 @@ class SendPushReminders extends Command
             if (!$kegiatan->waktu_mulai)
                 continue;
 
-            $startTime = Carbon::parse($kegiatan->waktu_mulai);
-            $now = Carbon::now();
+            $startTime = Carbon::parse($kegiatan->waktu_mulai)->setTimezone('Asia/Jakarta');
+            $now = Carbon::now('Asia/Jakarta');
             $diffMinutes = $now->diffInMinutes($startTime, false);
 
             // Send notification if kegiatan starts in 28-32 minutes (window around 30 min)
@@ -122,7 +127,7 @@ class SendPushReminders extends Command
                         'title' => '📋 Kegiatan 30 Menit Lagi',
                         'body' => "{$kegiatan->nama_kegiatan} pukul {$jamMulai}",
                         'url' => '/guru/absensi/kegiatan',
-                        'tag' => "kegiatan-{$kegiatan->id}-{$currentTime}",
+                        'tag' => "kegiatan-{$kegiatan->id}-{$today}",
                     ];
                 }
             }
@@ -139,8 +144,8 @@ class SendPushReminders extends Command
             if (!$rapat->waktu_mulai)
                 continue;
 
-            $startTime = Carbon::createFromFormat('H:i:s', $rapat->waktu_mulai);
-            $now = Carbon::createFromFormat('H:i', $currentTime);
+            $startTime = Carbon::createFromFormat('H:i:s', $rapat->waktu_mulai, 'Asia/Jakarta');
+            $now = Carbon::now('Asia/Jakarta');
             $diffMinutes = $now->diffInMinutes($startTime, false);
 
             // Send notification if rapat starts in 28-32 minutes (window around 30 min)
@@ -159,7 +164,7 @@ class SendPushReminders extends Command
                         'title' => '🤝 Rapat 30 Menit Lagi',
                         'body' => "{$rapat->agenda_rapat} - {$rapat->tempat} pukul {$jamMulai}",
                         'url' => '/guru/absensi/rapat',
-                        'tag' => "rapat-{$rapat->id}-{$currentTime}",
+                        'tag' => "rapat-{$rapat->id}-{$today}",
                     ];
                 }
             }

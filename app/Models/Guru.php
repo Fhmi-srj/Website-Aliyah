@@ -16,6 +16,7 @@ class Guru extends Model
         'username',
         'password',
         'nama',
+        'inisial',
         'nip',
         'email',
         'sk',

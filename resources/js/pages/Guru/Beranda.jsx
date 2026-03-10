@@ -39,8 +39,15 @@ function Beranda() {
 
     // State for upcoming events (next 7 days)
     const [upcomingEvents, setUpcomingEvents] = useState([]);
-
     const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+
+    // State for live attendance
+    const [liveAttendance, setLiveAttendance] = useState([]);
+    const [liveStats, setLiveStats] = useState({ total: 0, hadir: 0, belum: 0 });
+    const [loadingLive, setLoadingLive] = useState(true);
+    const [isLibur, setIsLibur] = useState(false);
+    const [liburKeterangan, setLiburKeterangan] = useState('');
+    const [liburDateRange, setLiburDateRange] = useState('');
 
     // Stats tab state
     const [statsTab, setStatsTab] = useState("mengajar");
@@ -84,8 +91,37 @@ function Beranda() {
             }
         };
 
+        // Fetch live attendance for all teachers today
+        const fetchLiveAttendance = async () => {
+            try {
+                setLoadingLive(true);
+                const response = await api.get('/guru-panel/live-attendance');
+                if (response.data.is_libur) {
+                    setIsLibur(true);
+                    setLiburKeterangan(response.data.libur_keterangan || 'Hari Libur');
+                    const mulai = response.data.libur_tanggal_mulai;
+                    const akhir = response.data.libur_tanggal_berakhir;
+                    setLiburDateRange(mulai && akhir ? `${mulai} - ${akhir}` : '');
+                    setLiveAttendance([]);
+                } else {
+                    setIsLibur(false);
+                    setLiveAttendance(response.data.data || []);
+                }
+                setLiveStats(response.data.stats || { total: 0, hadir: 0, belum: 0 });
+            } catch (err) {
+                console.error('Error fetching live attendance:', err);
+            } finally {
+                setLoadingLive(false);
+            }
+        };
+
         fetchDashboard();
         fetchUpcomingEvents();
+        fetchLiveAttendance();
+
+        // Auto-refresh live attendance every 60 seconds
+        const liveInterval = setInterval(fetchLiveAttendance, 60000);
+        return () => clearInterval(liveInterval);
     }, []);
 
 
@@ -118,9 +154,9 @@ function Beranda() {
 
     // Get current tab's stats
     const currentStats = stats?.[statsTab] || {
-        total: 0,
         hadir: 0,
         izin: 0,
+        sakit: 0,
         alpha: 0,
         percentage: 0,
     };
@@ -290,14 +326,14 @@ function Beranda() {
                                 </p>
                             </div>
                             <div
-                                className="bg-gray-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-gray-100 transition-colors hover:scale-[1.02]"
+                                className="bg-blue-50 rounded-xl p-2.5 text-center cursor-pointer hover:bg-blue-100 transition-colors hover:scale-[1.02]"
                                 onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}
                             >
-                                <p className="text-gray-600 font-bold text-lg">
-                                    {currentStats.total}
+                                <p className="text-blue-600 font-bold text-lg">
+                                    {currentStats.sakit}
                                 </p>
                                 <p className="text-gray-500 text-[10px]">
-                                    Total
+                                    Sakit
                                 </p>
                             </div>
                         </div>
@@ -365,6 +401,15 @@ function Beranda() {
                                 Supervisi
                             </span>
                         </button>
+                        <button
+                            onClick={() => navigate("/guru/galeri")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-images text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Galeri
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -428,6 +473,98 @@ function Beranda() {
                         </div>
                     </div>
                 )}
+
+                {/* Live Kehadiran Mengajar Guru */}
+                <div className="mb-4">
+                    <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        </span>
+                        Kehadiran Mengajar Hari Ini
+                        {!loadingLive && (
+                            <span className="ml-auto text-[10px] font-normal text-gray-400">
+                                {liveStats.hadir}/{liveStats.total} hadir
+                            </span>
+                        )}
+                    </h3>
+                    {loadingLive ? (
+                        <div className="space-y-2">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="bg-gray-100 rounded-xl h-14 animate-pulse"></div>
+                            ))}
+                        </div>
+                    ) : isLibur ? (
+                        <div className="text-center py-8 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100">
+                            <div className="text-4xl mb-3"><i className="fas fa-school text-amber-400"></i></div>
+                            <p className="text-sm font-semibold text-amber-700">KBM Libur</p>
+                            <p className="text-xs text-amber-500 mt-1">{liburKeterangan}</p>
+                            {liburDateRange && (
+                                <p className="text-[10px] text-amber-400 mt-1">
+                                    <i className="fas fa-calendar-alt mr-1"></i>{liburDateRange}
+                                </p>
+                            )}
+                            <p className="text-[10px] text-amber-400 mt-2">Tidak ada jadwal mengajar hari ini</p>
+                        </div>
+                    ) : liveAttendance.length === 0 ? (
+                        <div className="text-center py-6 text-gray-400 text-sm">
+                            <i className="fas fa-coffee text-2xl mb-2 block"></i>
+                            Tidak ada jadwal mengajar hari ini
+                        </div>
+                    ) : (
+                        <>
+                            {/* Summary Bar */}
+                            <div className="flex gap-2 mb-2.5">
+                                <div className="flex-1 bg-green-50 rounded-lg px-3 py-2 text-center">
+                                    <p className="text-lg font-bold text-green-600">{liveStats.hadir}</p>
+                                    <p className="text-[9px] text-green-500 font-medium">Sudah Absen</p>
+                                </div>
+                                <div className="flex-1 bg-amber-50 rounded-lg px-3 py-2 text-center">
+                                    <p className="text-lg font-bold text-amber-600">{liveStats.belum}</p>
+                                    <p className="text-[9px] text-amber-500 font-medium">Belum Absen</p>
+                                </div>
+                                <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-center">
+                                    <p className="text-lg font-bold text-gray-600">{liveStats.total}</p>
+                                    <p className="text-[9px] text-gray-500 font-medium">Total Jadwal</p>
+                                </div>
+                            </div>
+                            {/* Attendance List */}
+                            <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                                {liveAttendance.map((item, idx) => {
+                                    const statusConfig = {
+                                        sudah_absen: { bg: 'bg-green-100', text: 'text-green-700', label: 'Hadir', icon: 'fa-check-circle' },
+                                        sedang_berlangsung: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Berlangsung', icon: 'fa-clock' },
+                                        terlewat: { bg: 'bg-red-100', text: 'text-red-700', label: 'Belum Absen', icon: 'fa-exclamation-circle' },
+                                        belum_mulai: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Belum Mulai', icon: 'fa-hourglass-half' },
+                                    };
+                                    const cfg = statusConfig[item.status] || statusConfig.belum_mulai;
+                                    return (
+                                        <div key={idx} className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                {item.guru_foto ? (
+                                                    <img src={item.guru_foto} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <i className="fas fa-user text-green-500 text-xs"></i>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-gray-800 truncate">{item.guru_nama}</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] text-gray-400">{item.jam_mulai}-{item.jam_selesai}</span>
+                                                    <span className="text-[10px] text-gray-400 truncate">{item.mapel}</span>
+                                                    <span className="text-[9px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">{item.kelas}</span>
+                                                </div>
+                                            </div>
+                                            <span className={`flex-shrink-0 text-[9px] px-2 py-1 rounded-full font-semibold ${cfg.bg} ${cfg.text}`}>
+                                                <i className={`fas ${cfg.icon} mr-0.5`}></i> {cfg.label}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 {/* Agenda Mendatang - Next 7 Days */}
                 <div>
@@ -493,7 +630,19 @@ function Beranda() {
                                             )}
                                         </div>
                                         {event.type !== 'mengajar' && event.subtitle && (
-                                            <p className="text-xs text-gray-500 truncate mt-0.5">{event.subtitle}</p>
+                                            <p className="text-xs text-gray-500 truncate mt-0.5">
+                                                <i className="fas fa-map-marker-alt text-red-400 mr-1"></i>{event.subtitle}
+                                            </p>
+                                        )}
+                                        {event.type === 'rapat' && event.pimpinan && (
+                                            <p className="text-[10px] text-gray-400 truncate">
+                                                <i className="fas fa-user-tie text-teal-400 mr-1"></i>Pimpinan: {event.pimpinan}
+                                            </p>
+                                        )}
+                                        {event.type === 'kegiatan' && event.koordinator && (
+                                            <p className="text-[10px] text-gray-400 truncate">
+                                                <i className="fas fa-user-cog text-emerald-400 mr-1"></i>Koordinator: {event.koordinator}
+                                            </p>
                                         )}
                                     </div>
                                     <i className="fas fa-chevron-right text-gray-300 text-xs"></i>

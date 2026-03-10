@@ -33,12 +33,14 @@ class AbsensiMengajar extends Model
         'siswa_izin',
         'siswa_alpha',
         'tugas_siswa',
+        'foto_mengajar',
         'absensi_time',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'absensi_time' => 'datetime',
+        'foto_mengajar' => 'array',
     ];
 
     /**

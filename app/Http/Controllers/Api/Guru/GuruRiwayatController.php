@@ -80,6 +80,20 @@ class GuruRiwayatController extends Controller
                 return $item->jadwal_id . '-' . $item->tanggal->format('Y-m-d');
             });
 
+        // Preload all libur KBM periods to skip holiday dates
+        $liburPeriods = \App\Models\Kalender::where('status_kbm', 'Libur')
+            ->where('tanggal_berakhir', '>=', $startDate)
+            ->get();
+
+        $isLiburDate = function ($date) use ($liburPeriods) {
+            foreach ($liburPeriods as $libur) {
+                if ($date->between($libur->tanggal_mulai->startOfDay(), $libur->tanggal_berakhir->endOfDay())) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // Calculate past occurrences for each jadwal (last 30 days)
         $today = Carbon::now();
 
@@ -95,6 +109,12 @@ class GuruRiwayatController extends Controller
             }
 
             while ($checkDate->lte($today)) {
+                // Skip KBM libur dates
+                if ($isLiburDate($checkDate)) {
+                    $checkDate->addWeek();
+                    continue;
+                }
+
                 // Check if this occurrence has passed (date + jam_selesai < now)
                 $endTime = Carbon::parse($checkDate->format('Y-m-d') . ' ' . $jadwal->jam_selesai);
                 if ($endTime->gt($today)) {
@@ -359,6 +379,7 @@ class GuruRiwayatController extends Controller
                 'tugas_siswa' => $absensi->tugas_siswa,
                 'jenis_kegiatan' => $absensi->jenis_kegiatan ?? 'mengajar',
                 'jenis_ulangan' => $absensi->jenis_ulangan,
+                'foto_mengajar' => $absensi->foto_mengajar ?? [],
                 'nilai_siswa' => $nilaiMap,
                 'stats' => [
                     'hadir' => $hadir,

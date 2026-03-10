@@ -776,8 +776,17 @@ class GuruRapatController extends Controller
         $pimpinanSelfAttended = $existing ? $existing->pimpinan_self_attended : false;
         $pimpinanAttendedAt = $existing ? $existing->pimpinan_attended_at : null;
 
-        // Compress foto_rapat images before saving
-        $compressedFotos = \App\Services\ImageService::compressBase64Multiple($validated['foto_rapat']);
+        // Process foto_rapat - handle both file paths (server upload) and base64 strings
+        $processedFotos = [];
+        foreach ($validated['foto_rapat'] as $foto) {
+            if (str_starts_with($foto, 'data:image') || str_starts_with($foto, '/9j/') || str_starts_with($foto, 'iVBOR')) {
+                // Base64 image - compress it
+                $processedFotos[] = \App\Services\ImageService::compressBase64($foto);
+            } else {
+                // File path from server upload (e.g., rapat/dokumentasi/xxx.jpg) - keep as-is
+                $processedFotos[] = $foto;
+            }
+        }
 
         if ($existing) {
             $existing->update([
@@ -789,7 +798,7 @@ class GuruRapatController extends Controller
                 'sekretaris_keterangan' => $validated['sekretaris_keterangan'] ?? null,
                 'absensi_peserta' => $mergedPeserta,
                 'notulensi' => $validated['notulensi'],
-                'foto_rapat' => $compressedFotos,
+                'foto_rapat' => $processedFotos,
                 'status' => 'submitted',
             ]);
         } else {
@@ -802,7 +811,7 @@ class GuruRapatController extends Controller
                 'sekretaris_keterangan' => $validated['sekretaris_keterangan'] ?? null,
                 'absensi_peserta' => $mergedPeserta,
                 'notulensi' => $validated['notulensi'],
-                'foto_rapat' => $compressedFotos,
+                'foto_rapat' => $processedFotos,
                 'status' => 'submitted',
             ]);
         }

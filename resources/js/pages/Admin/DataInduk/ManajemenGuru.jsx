@@ -21,7 +21,7 @@ function ManajemenGuru() {
     const [currentItem, setCurrentItem] = useState(null);
     const [isModalClosing, setIsModalClosing] = useState(false);
     const [formData, setFormData] = useState({
-        username: '', password: '', nama: '', nip: '', email: '', sk: '',
+        username: '', password: '', nama: '', inisial: '', nip: '', email: '', sk: '',
         jenis_kelamin: 'L', tempat_lahir: '', tanggal_lahir: '',
         alamat: '', pendidikan: '', kontak: '', tmt: '', jabatan: '', status: 'Aktif'
     });
@@ -398,7 +398,7 @@ function ManajemenGuru() {
     const openAddModal = () => {
         setModalMode('add');
         setFormData({
-            username: '', password: '', nama: '', nip: '', sk: '',
+            username: '', password: '', nama: '', inisial: '', nip: '', sk: '',
             jenis_kelamin: 'L', tempat_lahir: '', tanggal_lahir: '',
             alamat: '', pendidikan: '', kontak: '', tmt: '', jabatan: '', status: 'Aktif'
         });
@@ -413,6 +413,7 @@ function ManajemenGuru() {
             username: item.username || '',
             password: '', // Password tidak di-load untuk keamanan
             nama: item.nama || '',
+            inisial: item.inisial || '',
             nip: item.nip || '',
             email: item.email || '',
             sk: item.sk || '',
@@ -775,6 +776,7 @@ function ManajemenGuru() {
                                 {!isMobile && <th className="select-none py-2.5 text-center text-xs font-black text-gray-400 uppercase tracking-widest">No</th>}
                                 {isMobile && <th className="col-expand select-none py-1 text-center"></th>}
                                 <SortableHeader label="Nama" column="nama" />
+                                {!isMobile && <th className="select-none py-2.5 px-2 text-xs font-black text-gray-400 uppercase tracking-widest">Inisial</th>}
                                 {!isMobile && <SortableHeader label="NIP" column="nip" />}
                                 {!isMobile && <SortableHeader label="Email" column="email" />}
                                 <SortableHeader
@@ -841,6 +843,11 @@ function ManajemenGuru() {
                                         <td className={`${isMobile ? 'py-1.5 px-1' : 'px-2 py-2'} align-middle whitespace-nowrap`}>
                                             <span className={`${isMobile ? 'text-[10px]' : 'text-sm'} font-black text-gray-700 uppercase tracking-tight truncate max-w-[120px] md:max-w-none block`}>{item.nama}</span>
                                         </td>
+                                        {!isMobile && (
+                                            <td className="py-2.5 px-2">
+                                                <span className="text-xs text-gray-500 font-medium">{item.inisial || '-'}</span>
+                                            </td>
+                                        )}
                                         {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{item.nip || '-'}</td>}
                                         {!isMobile && <td className="px-2 py-2 align-middle whitespace-nowrap">{item.email || '-'}</td>}
                                         <td className={`${isMobile ? 'py-1.5 px-1' : 'px-2 py-2'} align-middle whitespace-nowrap`}>
@@ -1084,6 +1091,17 @@ function ManajemenGuru() {
                                                     onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                                                     className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
                                                     placeholder="Nama Lengkap"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Inisial</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.inisial}
+                                                    onChange={(e) => setFormData({ ...formData, inisial: e.target.value })}
+                                                    className={`w-full bg-gray-50 dark:bg-dark-bg/50 border border-gray-200 dark:border-dark-border rounded-xl ${isMobile ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm'} focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all dark:text-dark-text placeholder-gray-400`}
+                                                    placeholder="Cth: DA"
+                                                    maxLength={10}
                                                 />
                                             </div>
                                             <div className="space-y-1">

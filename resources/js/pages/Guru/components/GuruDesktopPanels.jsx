@@ -11,7 +11,7 @@ import { showSwitchRolePopup } from '../../../utils/switchRolePopup';
  * Desktop Left Panel — Profil + Statistik
  * Extracted from Beranda.jsx for persistent display in desktop layout
  */
-export function DesktopLeftPanel({ dashboardData, loading, activeRole, upcomingEvents, tahunAjaran, onLogout }) {
+export function DesktopLeftPanel({ dashboardData, loading, activeRole, upcomingEvents, tahunAjaran, onLogout, liveAttendance, liveStats, loadingLive, isLibur, liburKeterangan, liburDateRange }) {
     const navigate = useNavigate();
     const [statsTab, setStatsTab] = useState('mengajar');
 
@@ -34,7 +34,7 @@ export function DesktopLeftPanel({ dashboardData, loading, activeRole, upcomingE
 
     const { stats, today } = dashboardData;
     const userData = dashboardData.user;
-    const currentStats = stats?.[statsTab] || { total: 0, hadir: 0, izin: 0, alpha: 0, percentage: 0 };
+    const currentStats = stats?.[statsTab] || { hadir: 0, izin: 0, sakit: 0, alpha: 0, percentage: 0 };
 
     // Filter today's events
     const todayEvents = (upcomingEvents || []).filter(event => {
@@ -129,13 +129,97 @@ export function DesktopLeftPanel({ dashboardData, loading, activeRole, upcomingE
                                 <p className="text-red-600 font-bold text-xl">{currentStats.alpha}</p>
                                 <p className="text-gray-500 text-[10px]">Alpha</p>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}>
-                                <p className="text-gray-600 font-bold text-xl">{currentStats.total}</p>
-                                <p className="text-gray-500 text-[10px]">Total</p>
+                            <div className="bg-blue-50 rounded-xl p-3 text-center cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => navigate(`/guru/riwayat?tab=${statsTab}`)}>
+                                <p className="text-blue-600 font-bold text-xl">{currentStats.sakit}</p>
+                                <p className="text-gray-500 text-[10px]">Sakit</p>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Live Kehadiran Mengajar */}
+            <div className="mt-4">
+                <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    Kehadiran Mengajar
+                    {!loadingLive && !isLibur && (
+                        <span className="ml-auto text-[10px] font-normal text-gray-400">
+                            {liveStats.hadir}/{liveStats.total} hadir
+                        </span>
+                    )}
+                </h3>
+                {loadingLive ? (
+                    <div className="space-y-1.5">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="bg-gray-100 rounded-lg h-10 animate-pulse"></div>
+                        ))}
+                    </div>
+                ) : isLibur ? (
+                    <div className="text-center py-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+                        <div className="text-3xl mb-2"><i className="fas fa-school text-amber-400"></i></div>
+                        <p className="text-xs font-semibold text-amber-700">KBM Libur</p>
+                        <p className="text-[10px] text-amber-500 mt-0.5">{liburKeterangan}</p>
+                        {liburDateRange && (
+                            <p className="text-[9px] text-amber-400 mt-0.5">
+                                <i className="fas fa-calendar-alt mr-0.5"></i>{liburDateRange}
+                            </p>
+                        )}
+                    </div>
+                ) : liveAttendance.length === 0 ? (
+                    <div className="text-center py-4 text-gray-400 text-xs">
+                        <i className="fas fa-coffee text-lg mb-1 block"></i>
+                        Tidak ada jadwal hari ini
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex gap-1.5 mb-2">
+                            <div className="flex-1 bg-green-50 rounded-lg px-2 py-1.5 text-center">
+                                <p className="text-sm font-bold text-green-600">{liveStats.hadir}</p>
+                                <p className="text-[8px] text-green-500 font-medium">Hadir</p>
+                            </div>
+                            <div className="flex-1 bg-amber-50 rounded-lg px-2 py-1.5 text-center">
+                                <p className="text-sm font-bold text-amber-600">{liveStats.belum}</p>
+                                <p className="text-[8px] text-amber-500 font-medium">Belum</p>
+                            </div>
+                            <div className="flex-1 bg-gray-50 rounded-lg px-2 py-1.5 text-center">
+                                <p className="text-sm font-bold text-gray-600">{liveStats.total}</p>
+                                <p className="text-[8px] text-gray-500 font-medium">Total</p>
+                            </div>
+                        </div>
+                        <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            {liveAttendance.map((item, idx) => {
+                                const cfg = {
+                                    sudah_absen: { bg: 'bg-green-100', text: 'text-green-700', label: 'Hadir', icon: 'fa-check-circle' },
+                                    sedang_berlangsung: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Berlangsung', icon: 'fa-clock' },
+                                    terlewat: { bg: 'bg-red-100', text: 'text-red-700', label: 'Belum', icon: 'fa-exclamation-circle' },
+                                    belum_mulai: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Nanti', icon: 'fa-hourglass-half' },
+                                }[item.status] || { bg: 'bg-gray-100', text: 'text-gray-500', label: '-', icon: 'fa-circle' };
+                                return (
+                                    <div key={idx} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-2 border border-gray-50">
+                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                            {item.guru_foto ? (
+                                                <img src={item.guru_foto} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <i className="fas fa-user text-green-500 text-[10px]"></i>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-semibold text-gray-800 truncate">{item.guru_nama}</p>
+                                            <p className="text-[9px] text-gray-400 truncate">{item.jam_mulai} · {item.mapel} · {item.kelas}</p>
+                                        </div>
+                                        <span className={`flex-shrink-0 text-[8px] px-1.5 py-0.5 rounded-full font-semibold ${cfg.bg} ${cfg.text}`}>
+                                            <i className={`fas ${cfg.icon} mr-0.5`}></i> {cfg.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Spacer */}
@@ -206,6 +290,7 @@ export function DesktopRightPanel({ dashboardData, upcomingEvents, loading, load
                         { path: '/guru/ulangan', icon: 'fa-file-signature', label: 'Penilaian' },
                         { path: '/guru/modul', icon: 'fa-book', label: 'Modul' },
                         { path: '/guru/supervisi', icon: 'fa-clipboard-check', label: 'Supervisi' },
+                        { path: '/guru/galeri', icon: 'fa-images', label: 'Galeri' },
                     ].map((item) => (
                         <button
                             key={item.path}

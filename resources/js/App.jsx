@@ -49,6 +49,7 @@ import AbsenKelas from './pages/Guru/AbsenKelas';
 import GuruSupervisi from './pages/Guru/Supervisi';
 import RiwayatAktivitas from './pages/Guru/RiwayatAktivitas';
 import GuruUlangan from './pages/Guru/Ulangan';
+import Galeri from './pages/Galeri';
 
 function App() {
     return (
@@ -82,6 +83,7 @@ function App() {
                                         <Route path="supervisi" element={<GuruSupervisi />} />
                                         <Route path="riwayat-aktivitas" element={<RiwayatAktivitas />} />
                                         <Route path="ulangan" element={<GuruUlangan />} />
+                                        <Route path="galeri" element={<Galeri />} />
                                     </Routes>
                                 </GuruLayout>
                             </TahunAjaranProvider>
@@ -107,6 +109,7 @@ function App() {
                                         <Route path="/bisyaroh" element={<Bisyaroh />} />
                                         <Route path="/generate-nota" element={<Nota />} />
                                         <Route path="/log-aktivitas" element={<LogAktivitas />} />
+                                        <Route path="/galeri" element={<Galeri isAdmin />} />
                                         <Route path="/data-induk" element={<Navigate to="/data-induk/siswa" replace />} />
                                         <Route path="/data-induk/siswa" element={<ManajemenSiswa />} />
                                         <Route path="/data-induk/absensi-siswa" element={<AbsensiSiswa />} />

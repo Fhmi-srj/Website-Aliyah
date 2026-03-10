@@ -32,6 +32,17 @@ class GuruAbsensiController extends Controller
         $now = Carbon::now('Asia/Jakarta');
         $dayName = $today->locale('id')->translatedFormat('l'); // Senin, Selasa, etc.
 
+        // Check if today is KBM libur
+        if (\App\Models\Kalender::isLiburKbm($today)) {
+            return response()->json([
+                'jadwal' => [],
+                'tanggal' => $today->locale('id')->translatedFormat('l, d F Y'),
+                'hari' => $dayName,
+                'waktu' => $now->format('H:i:s'),
+                'is_libur' => true,
+            ]);
+        }
+
         // Get jadwal for today filtered by user's active tahun_ajaran
         $tahunAjaranId = $user->tahun_ajaran_id ?? TahunAjaran::getCurrent()?->id;
 
@@ -267,6 +278,7 @@ class GuruAbsensiController extends Controller
                 'nilai_siswa.*.nilai' => 'nullable|numeric|min:0|max:100',
                 'nilai_siswa.*.keterangan' => 'nullable|string',
                 'judul_ulangan' => 'nullable|string|max:255',
+                'foto_mengajar' => 'nullable|array',
             ]);
 
             // Use explicit Jakarta timezone
@@ -340,6 +352,7 @@ class GuruAbsensiController extends Controller
                         'guru_keterangan' => in_array($guruStatus, ['I', 'S', 'A']) ? ($validated['guru_keterangan'] ?? null) : null,
                         'guru_tugas_id' => in_array($guruStatus, ['I', 'S']) ? ($validated['guru_tugas_id'] ?? null) : null,
                         'tugas_siswa' => in_array($guruStatus, ['I', 'S']) ? ($validated['tugas_siswa'] ?? null) : null,
+                        'foto_mengajar' => array_key_exists('foto_mengajar', $validated) ? $validated['foto_mengajar'] : $absensi->foto_mengajar,
                         'absensi_time' => $now,
                     ]);
 
@@ -413,6 +426,7 @@ class GuruAbsensiController extends Controller
                 'guru_keterangan' => in_array($guruStatus, ['I', 'S', 'A']) ? ($validated['guru_keterangan'] ?? null) : null,
                 'guru_tugas_id' => in_array($guruStatus, ['I', 'S']) ? ($validated['guru_tugas_id'] ?? null) : null,
                 'tugas_siswa' => in_array($guruStatus, ['I', 'S']) ? ($validated['tugas_siswa'] ?? null) : null,
+                'foto_mengajar' => $validated['foto_mengajar'] ?? null,
                 'absensi_time' => $now,
             ]);
 

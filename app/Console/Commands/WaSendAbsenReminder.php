@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
+use App\Models\Kalender;
 use App\Models\Kegiatan;
 use App\Models\Rapat;
 use App\Models\AbsensiMengajar;
@@ -88,8 +89,12 @@ class WaSendAbsenReminder extends Command
 
         $sent = 0;
 
-        // 1. Reminder Mengajar
-        $sent += $this->processRemindMengajar($wa, $now, $today, $hariIni, $delay, $dryRun);
+        // 1. Reminder Mengajar (skip if KBM Libur)
+        if (Kalender::isLiburKbm($today)) {
+            $this->info('[MENGAJAR] Hari ini KBM Libur — reminder mengajar dilewati');
+        } else {
+            $sent += $this->processRemindMengajar($wa, $now, $today, $hariIni, $delay, $dryRun);
+        }
 
         // 2. Reminder Kegiatan
         $sent += $this->processRemindKegiatan($wa, $now, $today, $delay, $dryRun);

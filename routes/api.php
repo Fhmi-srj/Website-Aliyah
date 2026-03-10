@@ -138,6 +138,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('kegiatan/{id}/absensi-admin', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'getAbsensiKegiatan']);
     Route::put('kegiatan/{id}/absensi-admin', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'updateAbsensiKegiatan']);
     Route::post('kegiatan/absensi/upload-foto', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'uploadFotoKegiatan']);
+    Route::post('mengajar/absensi/upload-foto', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'uploadFotoMengajar']);
+
+    // Gallery
+    Route::get('gallery', [\App\Http\Controllers\Api\Admin\GalleryController::class, 'index']);
 
     // Ekskul Anggota Management
     Route::get('ekskul/{ekskul}/anggota', [EkskulController::class, 'getAnggota']);
@@ -292,6 +296,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::post('upload-photo', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'uploadPhoto']);
     Route::post('upload-ttd', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'uploadTtd']);
     Route::get('upcoming-events', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'upcomingEvents']);
+    Route::get('live-attendance', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'liveAttendance']);
 
     // Absensi Mengajar
     Route::get('jadwal-hari-ini', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'jadwalHariIni']);
@@ -322,6 +327,10 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::get('rapat/{id}/check-status', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'checkPesertaStatus']);
     Route::get('rapat/{id}/absensi', [\App\Http\Controllers\Api\Guru\GuruRapatController::class, 'getAbsensiRapat']);
     Route::post('rapat/upload-foto', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'uploadFotoRapat']);
+    Route::post('mengajar/upload-foto', [\App\Http\Controllers\Api\Admin\AdminAbsensiController::class, 'uploadFotoMengajar']);
+
+    // Gallery
+    Route::get('gallery', [\App\Http\Controllers\Api\Admin\GalleryController::class, 'index']);
 
     // Riwayat
     Route::get('riwayat/mengajar', [\App\Http\Controllers\Api\Guru\GuruRiwayatController::class, 'riwayatMengajar']);

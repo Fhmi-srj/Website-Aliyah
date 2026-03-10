@@ -30,6 +30,14 @@ function GuruLayout({ children }) {
     const [loadingDashboard, setLoadingDashboard] = useState(true);
     const [loadingUpcoming, setLoadingUpcoming] = useState(true);
 
+    // Live attendance data for desktop
+    const [liveAttendance, setLiveAttendance] = useState([]);
+    const [liveStats, setLiveStats] = useState({ total: 0, hadir: 0, belum: 0 });
+    const [loadingLive, setLoadingLive] = useState(true);
+    const [isLibur, setIsLibur] = useState(false);
+    const [liburKeterangan, setLiburKeterangan] = useState('');
+    const [liburDateRange, setLiburDateRange] = useState('');
+
     // Detect mobile/desktop
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -67,6 +75,33 @@ function GuruLayout({ children }) {
 
         fetchDashboard();
         fetchUpcomingEvents();
+
+        // Fetch live attendance
+        const fetchLiveAttendance = async () => {
+            try {
+                setLoadingLive(true);
+                const response = await api.get('/guru-panel/live-attendance');
+                if (response.data.is_libur) {
+                    setIsLibur(true);
+                    setLiburKeterangan(response.data.libur_keterangan || 'Hari Libur');
+                    const mulai = response.data.libur_tanggal_mulai;
+                    const akhir = response.data.libur_tanggal_berakhir;
+                    setLiburDateRange(mulai && akhir ? `${mulai} - ${akhir}` : '');
+                    setLiveAttendance([]);
+                } else {
+                    setIsLibur(false);
+                    setLiveAttendance(response.data.data || []);
+                }
+                setLiveStats(response.data.stats || { total: 0, hadir: 0, belum: 0 });
+            } catch (err) {
+                console.error('Error fetching live attendance:', err);
+            } finally {
+                setLoadingLive(false);
+            }
+        };
+        fetchLiveAttendance();
+        const liveInterval = setInterval(fetchLiveAttendance, 60000);
+        return () => clearInterval(liveInterval);
     }, [isMobile]);
 
     const handleAbsensiClick = (type) => {
@@ -181,6 +216,12 @@ function GuruLayout({ children }) {
                             upcomingEvents={upcomingEvents}
                             tahunAjaran={tahunAjaran}
                             onLogout={logout}
+                            liveAttendance={liveAttendance}
+                            liveStats={liveStats}
+                            loadingLive={loadingLive}
+                            isLibur={isLibur}
+                            liburKeterangan={liburKeterangan}
+                            liburDateRange={liburDateRange}
                         />
                     </div>
 

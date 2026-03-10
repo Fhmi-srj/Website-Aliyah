@@ -69,4 +69,5 @@ Schedule::command('wa:meeting-invitation')
 
 // === Web Push Notification Schedules ===
 Schedule::command('push:send-reminders')->everyMinute()
+    ->timezone('Asia/Jakarta')
     ->appendOutputTo(storage_path('logs/push-reminders.log'));

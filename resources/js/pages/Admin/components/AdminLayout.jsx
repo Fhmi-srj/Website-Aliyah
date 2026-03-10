@@ -161,6 +161,7 @@ function AdminLayout({ children }) {
         { id: 'bisyaroh', label: 'Bisyaroh', path: '/bisyaroh', icon: 'fa-wallet' },
         { id: 'role', label: 'Manajemen Role', path: '/manajemen-role', icon: 'fa-user-shield' },
         { id: 'log-aktivitas', label: 'Log Aktivitas', path: '/log-aktivitas', icon: 'fa-history' },
+        { id: 'galeri', label: 'Galeri Dokumentasi', path: '/galeri', icon: 'fa-images' },
         { id: 'profil', label: 'Profil Saya', path: '/profil', icon: 'fa-user' },
     ];
 

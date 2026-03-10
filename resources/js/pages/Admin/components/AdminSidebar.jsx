@@ -66,6 +66,12 @@ const menuItems = [
         path: '/generate-nota',
     },
     {
+        id: 'galeri',
+        label: 'Galeri Dokumentasi',
+        icon: 'fa-images',
+        path: '/galeri',
+    },
+    {
         id: 'profil',
         label: 'Profil',
         icon: 'fa-user',
