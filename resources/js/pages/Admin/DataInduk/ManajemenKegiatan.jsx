@@ -121,13 +121,14 @@ function ManajemenKegiatan() {
     const formatDateTime = (dateStr) => {
         if (!dateStr) return '-';
         try {
-            // Parse date string directly to avoid timezone offset issues
-            const parts = dateStr.split(/[-T ]/);
+            // Remove fractional seconds and Z suffix, e.g. "2026-06-22T10:00:00.000000Z" -> "2026-06-22T10:00:00"
+            const clean = dateStr.replace(/\.\d+Z?$/, '').replace(/Z$/, '');
+            const parts = clean.split(/[-T ]/);
             if (parts.length < 3) return dateStr;
             const [year, month, day] = parts;
             const timePart = parts.length >= 4 ? parts[3] : '';
-            const [hours, minutes, seconds] = timePart ? timePart.split(':') : ['00', '00', '00'];
-            return `${day}-${month}-${year} | ${hours || '00'}:${minutes || '00'}:${seconds || '00'}`;
+            const [hours, minutes] = timePart ? timePart.split(':') : ['00', '00'];
+            return `${day}-${month}-${year} | ${hours || '00'}:${minutes || '00'}`;
         } catch (e) {
             return dateStr;
         }
