@@ -878,8 +878,8 @@
                         <div class="siswa-list collapsed" id="coordSiswaList">
                             @foreach($coordinatorData['siswa_list'] as $siswa)
                             @php
-                                $ssStatus = 'A';
-                                foreach($existSiswa as $es) { if(($es['siswa_id'] ?? 0) == $siswa['id']) { $ssStatus = $es['status'] ?? 'A'; break; } }
+                                $ssStatus = 'H';
+                                foreach($existSiswa as $es) { if(($es['siswa_id'] ?? 0) == $siswa['id']) { $ssStatus = $es['status'] ?? 'H'; break; } }
                             @endphp
                             <div class="siswa-item">
                                 <div class="siswa-row">

@@ -290,10 +290,10 @@ class AdminAbsensiController extends Controller
                 'keterangan' => '',
             ])->values()->toArray();
 
-            // Default siswa absensi: all alpha (belum absen)
+            // Default siswa absensi: all hadir
             $defaultSiswa = collect($siswaList)->map(fn($s) => [
                 'siswa_id' => $s['siswa_id'],
-                'status' => 'A',
+                'status' => 'H',
                 'keterangan' => '',
             ])->toArray();
 
