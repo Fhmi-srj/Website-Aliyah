@@ -568,6 +568,9 @@ class BisyarohController extends Controller
 
             $totalPenerimaan = $jumlah - $jumlahPotongan;
 
+            // Round up to nearest 5000 (e.g. 652500 -> 655000)
+            $totalPenerimaan = (int) ceil($totalPenerimaan / 5000) * 5000;
+
             // === 11. Save/Update bisyaroh record ===
             $bisyaroh = Bisyaroh::updateOrCreate(
                 ['guru_id' => $guru->id, 'bulan' => $bulan, 'tahun' => $tahun],
