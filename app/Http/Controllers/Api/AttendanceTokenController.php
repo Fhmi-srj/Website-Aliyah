@@ -75,13 +75,103 @@ class AttendanceTokenController extends Controller
                 ->get(['id', 'nama', 'nip']);
         }
 
+        // Detect role and load coordinator-specific data
+        $role = 'peserta'; // default
+        $coordinatorData = [];
+        $existingAbsensi = null;
+
+        if ($attendanceToken->type === 'kegiatan' && $reference) {
+            $isPJ = ($reference->penanggung_jawab_id == $attendanceToken->guru_id);
+            $role = $isPJ ? 'penanggung_jawab' : 'pendamping';
+
+            if ($isPJ) {
+                // Load pendamping guru list
+                $guruPendamping = is_array($reference->guru_pendamping) ? $reference->guru_pendamping : [];
+                $pendampingList = [];
+                if (!empty($guruPendamping)) {
+                    $pendampingList = \App\Models\Guru::whereIn('id', $guruPendamping)
+                        ->select('id', 'nama', 'nip')
+                        ->get();
+                }
+
+                // Load siswa from kelas peserta
+                $kegiatanSiswaList = collect();
+                if (!empty($reference->kelas_peserta)) {
+                    $kegiatanSiswaList = \App\Models\Siswa::whereIn('kelas_id', $reference->kelas_peserta)
+                        ->where('status', 'Aktif')
+                        ->select('id', 'nama', 'nis', 'kelas_id')
+                        ->with('kelas:id,nama_kelas')
+                        ->orderBy('nama')
+                        ->get()
+                        ->map(fn($s) => [
+                            'id' => $s->id,
+                            'nama' => $s->nama,
+                            'nis' => $s->nis,
+                            'kelas' => $s->kelas->nama_kelas ?? '-',
+                        ]);
+                }
+
+                // Load kelas peserta names
+                $kelasList = [];
+                if (!empty($reference->kelas_peserta)) {
+                    $kelasList = \App\Models\Kelas::whereIn('id', $reference->kelas_peserta)
+                        ->select('id', 'nama_kelas')
+                        ->get();
+                }
+
+                // Load existing absensi
+                $existingAbsensi = AbsensiKegiatan::where('kegiatan_id', $reference->id)->first();
+
+                $coordinatorData = [
+                    'pendamping_list' => $pendampingList,
+                    'siswa_list' => $kegiatanSiswaList,
+                    'kelas_list' => $kelasList,
+                ];
+            }
+        } elseif ($attendanceToken->type === 'rapat' && $reference) {
+            $isPimpinan = ($reference->pimpinan_id == $attendanceToken->guru_id);
+            $isSekretaris = ($reference->sekretaris_id == $attendanceToken->guru_id);
+
+            if ($isPimpinan) {
+                $role = 'pimpinan';
+            } elseif ($isSekretaris) {
+                $role = 'sekretaris';
+
+                // Load peserta list (exclude pimpinan/sekretaris)
+                $pesertaRapat = is_array($reference->peserta_rapat) ? $reference->peserta_rapat : [];
+                $excludeIds = array_filter([$reference->pimpinan_id, $reference->sekretaris_id]);
+                $pesertaList = [];
+                if (!empty($pesertaRapat)) {
+                    $filteredIds = array_diff($pesertaRapat, $excludeIds);
+                    $pesertaList = \App\Models\Guru::whereIn('id', $filteredIds)
+                        ->where('nama', '!=', 'Semua Guru')
+                        ->select('id', 'nama', 'nip')
+                        ->get();
+                }
+
+                // Load pimpinan/sekretaris guru info
+                $pimpinanGuru = \App\Models\Guru::find($reference->pimpinan_id, ['id', 'nama', 'nip']);
+                $sekretarisGuru = \App\Models\Guru::find($reference->sekretaris_id, ['id', 'nama', 'nip']);
+
+                // Load existing absensi
+                $existingAbsensi = AbsensiRapat::where('rapat_id', $reference->id)->first();
+
+                $coordinatorData = [
+                    'peserta_list' => $pesertaList,
+                    'pimpinan_guru' => $pimpinanGuru,
+                    'sekretaris_guru' => $sekretarisGuru,
+                ];
+            } else {
+                $role = 'peserta';
+            }
+        }
+
         // Check existing attendance status for same-day re-editing
         $existingStatus = null;
         if ($attendanceToken->used_at) {
             if ($attendanceToken->type === 'rapat' && $reference) {
-                $absensiRapat = AbsensiRapat::where('rapat_id', $attendanceToken->reference_id)->first();
+                $absensiRapat = $existingAbsensi ?? AbsensiRapat::where('rapat_id', $attendanceToken->reference_id)->first();
                 if ($absensiRapat) {
-                    // Check role
                     if ($reference->pimpinan_id == $attendanceToken->guru_id) {
                         $existingStatus = ['status' => $absensiRapat->pimpinan_status ?? 'H', 'keterangan' => $absensiRapat->pimpinan_keterangan ?? ''];
                     } else if ($reference->sekretaris_id == $attendanceToken->guru_id) {
@@ -97,7 +187,7 @@ class AttendanceTokenController extends Controller
                     }
                 }
             } elseif ($attendanceToken->type === 'kegiatan' && $reference) {
-                $absensiKegiatan = AbsensiKegiatan::where('kegiatan_id', $attendanceToken->reference_id)->first();
+                $absensiKegiatan = $existingAbsensi ?? AbsensiKegiatan::where('kegiatan_id', $attendanceToken->reference_id)->first();
                 if ($absensiKegiatan) {
                     if ($reference->penanggung_jawab_id == $attendanceToken->guru_id) {
                         $existingStatus = ['status' => $absensiKegiatan->pj_status ?? 'H', 'keterangan' => $absensiKegiatan->pj_keterangan ?? ''];
@@ -120,6 +210,9 @@ class AttendanceTokenController extends Controller
             'siswaList' => $siswaList,
             'guruList' => $guruList,
             'existingStatus' => $existingStatus,
+            'role' => $role,
+            'coordinatorData' => $coordinatorData,
+            'existingAbsensi' => $existingAbsensi,
         ]);
     }
 
@@ -325,65 +418,124 @@ class AttendanceTokenController extends Controller
         if (!$kegiatan)
             return;
 
-        $status = $request->input('status', 'H');
-        $keterangan = $request->input('keterangan', '') ?: null;
         $isPJ = ($kegiatan->penanggung_jawab_id == $token->guru_id);
-
         $existing = AbsensiKegiatan::where('kegiatan_id', $token->reference_id)->first();
 
-        if ($existing) {
-            if ($isPJ) {
-                $existing->update([
-                    'pj_status' => $status,
-                    'pj_keterangan' => $keterangan,
-                ]);
-            }
+        if ($isPJ && $request->has('is_coordinator_form')) {
+            // ===== FULL PJ FORM (same as GuruKegiatanController::simpanAbsensi) =====
+            $pjStatus = $request->input('pj_status', 'H');
+            $pjKeterangan = $request->input('pj_keterangan') ?: null;
+            $beritaAcara = $request->input('berita_acara') ?: null;
+            $absensiPendamping = $request->input('absensi_pendamping', []);
+            $absensiSiswa = $request->input('absensi_siswa', []);
+            $fotoKegiatan = $request->input('foto_kegiatan', []);
 
-            // Update in pendamping array
-            $pendamping = $existing->absensi_pendamping ?? [];
-            $found = false;
-            foreach ($pendamping as &$p) {
-                if (($p['guru_id'] ?? 0) == $token->guru_id) {
-                    $p['status'] = $status;
-                    $p['keterangan'] = $keterangan;
-                    $p['self_attended'] = true;
-                    $p['attended_at'] = $now->toISOString();
-                    $found = true;
+            // Merge pendamping - preserve self-attended data from existing
+            $mergedPendamping = [];
+            $existingPendamping = $existing ? ($existing->absensi_pendamping ?? []) : [];
+            foreach ($absensiPendamping as $newEntry) {
+                $found = false;
+                foreach ($existingPendamping as $existingEntry) {
+                    if ($existingEntry['guru_id'] == $newEntry['guru_id']) {
+                        $mergedEntry = $newEntry;
+                        if (!empty($existingEntry['self_attended'])) {
+                            $mergedEntry['self_attended'] = true;
+                            $mergedEntry['attended_at'] = $existingEntry['attended_at'] ?? null;
+                        }
+                        $mergedPendamping[] = $mergedEntry;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $mergedPendamping[] = $newEntry;
                 }
             }
-            if (!$found && !$isPJ) {
-                $pendamping[] = [
-                    'guru_id' => $token->guru_id,
-                    'status' => $status,
-                    'keterangan' => $keterangan,
-                    'self_attended' => true,
-                    'attended_at' => $now->toISOString(),
-                ];
+
+            // Compress images
+            $compressedFotos = \App\Services\ImageService::compressBase64Multiple($fotoKegiatan);
+
+            if ($existing) {
+                $existing->update([
+                    'pj_status' => $pjStatus,
+                    'pj_keterangan' => $pjKeterangan,
+                    'absensi_pendamping' => $mergedPendamping,
+                    'absensi_siswa' => $absensiSiswa,
+                    'berita_acara' => $beritaAcara,
+                    'foto_kegiatan' => $compressedFotos,
+                    'status' => 'submitted',
+                ]);
+            } else {
+                AbsensiKegiatan::create([
+                    'kegiatan_id' => $kegiatan->id,
+                    'tanggal' => $token->tanggal,
+                    'penanggung_jawab_id' => $kegiatan->penanggung_jawab_id,
+                    'pj_status' => $pjStatus,
+                    'pj_keterangan' => $pjKeterangan,
+                    'absensi_pendamping' => $mergedPendamping,
+                    'absensi_siswa' => $absensiSiswa,
+                    'berita_acara' => $beritaAcara,
+                    'foto_kegiatan' => $compressedFotos,
+                    'status' => 'submitted',
+                ]);
             }
-            $existing->update(['absensi_pendamping' => $pendamping]);
         } else {
-            // Create new absensi record
-            $pendampingData = [];
-            if (!$isPJ) {
-                $pendampingData[] = [
-                    'guru_id' => $token->guru_id,
-                    'status' => $status,
-                    'keterangan' => $keterangan,
-                    'self_attended' => true,
-                    'attended_at' => $now->toISOString(),
-                ];
+            // ===== SIMPLE SELF-ATTENDANCE (pendamping or fallback) =====
+            $status = $request->input('status', 'H');
+            $keterangan = $request->input('keterangan', '') ?: null;
+
+            if ($existing) {
+                if ($isPJ) {
+                    $existing->update([
+                        'pj_status' => $status,
+                        'pj_keterangan' => $keterangan,
+                    ]);
+                }
+
+                $pendamping = $existing->absensi_pendamping ?? [];
+                $found = false;
+                foreach ($pendamping as &$p) {
+                    if (($p['guru_id'] ?? 0) == $token->guru_id) {
+                        $p['status'] = $status;
+                        $p['keterangan'] = $keterangan;
+                        $p['self_attended'] = true;
+                        $p['attended_at'] = $now->toISOString();
+                        $found = true;
+                    }
+                }
+                if (!$found && !$isPJ) {
+                    $pendamping[] = [
+                        'guru_id' => $token->guru_id,
+                        'status' => $status,
+                        'keterangan' => $keterangan,
+                        'self_attended' => true,
+                        'attended_at' => $now->toISOString(),
+                    ];
+                }
+                $existing->update(['absensi_pendamping' => $pendamping]);
+            } else {
+                $pendampingData = [];
+                if (!$isPJ) {
+                    $pendampingData[] = [
+                        'guru_id' => $token->guru_id,
+                        'status' => $status,
+                        'keterangan' => $keterangan,
+                        'self_attended' => true,
+                        'attended_at' => $now->toISOString(),
+                    ];
+                }
+                AbsensiKegiatan::create([
+                    'kegiatan_id' => $kegiatan->id,
+                    'tanggal' => $token->tanggal,
+                    'penanggung_jawab_id' => $kegiatan->penanggung_jawab_id,
+                    'pj_status' => $isPJ ? $status : 'A',
+                    'pj_keterangan' => $isPJ ? $keterangan : null,
+                    'absensi_pendamping' => $pendampingData,
+                    'absensi_siswa' => [],
+                    'foto_kegiatan' => [],
+                    'status' => 'draft',
+                ]);
             }
-            AbsensiKegiatan::create([
-                'kegiatan_id' => $kegiatan->id,
-                'tanggal' => $token->tanggal,
-                'penanggung_jawab_id' => $kegiatan->penanggung_jawab_id,
-                'pj_status' => $isPJ ? $status : 'A',
-                'pj_keterangan' => $isPJ ? $keterangan : null,
-                'absensi_pendamping' => $pendampingData,
-                'absensi_siswa' => [],
-                'foto_kegiatan' => [],
-                'status' => 'draft',
-            ]);
         }
     }
 
@@ -393,76 +545,151 @@ class AttendanceTokenController extends Controller
         if (!$rapat)
             return;
 
-        $status = $request->input('status', 'H');
-        $keterangan = $request->input('keterangan', '') ?: null;
         $isPimpinan = ($rapat->pimpinan_id == $token->guru_id);
         $isSekretaris = ($rapat->sekretaris_id == $token->guru_id);
-
         $existing = AbsensiRapat::where('rapat_id', $token->reference_id)->first();
 
-        if ($existing) {
-            if ($isPimpinan) {
-                $existing->update([
-                    'pimpinan_status' => $status,
-                    'pimpinan_keterangan' => $keterangan,
-                    'pimpinan_self_attended' => true,
-                    'pimpinan_attended_at' => $now,
-                ]);
-            }
+        if ($isSekretaris && $request->has('is_coordinator_form')) {
+            // ===== FULL SEKRETARIS FORM (same as GuruRapatController::absensiSekretaris) =====
+            $pimpinanStatus = $request->input('pimpinan_status', 'H');
+            $pimpinanKeterangan = $request->input('pimpinan_keterangan') ?: null;
+            $sekretarisStatus = $request->input('sekretaris_status', 'H');
+            $sekretarisKeterangan = $request->input('sekretaris_keterangan') ?: null;
+            $notulensi = $request->input('notulensi', '');
+            $absensiPeserta = $request->input('absensi_peserta', []);
+            $fotoRapat = $request->input('foto_rapat', []);
 
-            if ($isSekretaris) {
-                $existing->update([
-                    'sekretaris_status' => $status,
-                    'sekretaris_keterangan' => $keterangan,
-                ]);
-            }
-
-            // Update peserta array
-            $peserta = $existing->absensi_peserta ?? [];
-            $found = false;
-            foreach ($peserta as &$p) {
-                if (($p['guru_id'] ?? 0) == $token->guru_id) {
-                    $p['status'] = $status;
-                    $p['keterangan'] = $keterangan;
-                    $p['self_attended'] = true;
-                    $p['attended_at'] = $now->toDateTimeString();
-                    $found = true;
+            // Merge peserta - preserve self-attended data
+            $mergedPeserta = [];
+            $existingPeserta = $existing ? ($existing->absensi_peserta ?? []) : [];
+            foreach ($absensiPeserta as $newEntry) {
+                $found = false;
+                foreach ($existingPeserta as $existingEntry) {
+                    if ($existingEntry['guru_id'] == $newEntry['guru_id']) {
+                        $mergedEntry = $newEntry;
+                        if (!empty($existingEntry['self_attended'])) {
+                            $mergedEntry['self_attended'] = true;
+                            $mergedEntry['attended_at'] = $existingEntry['attended_at'] ?? null;
+                        }
+                        $mergedPeserta[] = $mergedEntry;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $mergedPeserta[] = $newEntry;
                 }
             }
-            if (!$found && !$isPimpinan && !$isSekretaris) {
-                $peserta[] = [
-                    'guru_id' => $token->guru_id,
-                    'status' => $status,
-                    'keterangan' => $keterangan,
-                    'self_attended' => true,
-                    'attended_at' => $now->toDateTimeString(),
-                ];
+
+            // Preserve pimpinan self-attended status
+            $pimpinanSelfAttended = $existing ? $existing->pimpinan_self_attended : false;
+            $pimpinanAttendedAt = $existing ? $existing->pimpinan_attended_at : null;
+
+            // Process fotos
+            $processedFotos = [];
+            foreach ($fotoRapat as $foto) {
+                if (str_starts_with($foto, 'data:image') || str_starts_with($foto, '/9j/') || str_starts_with($foto, 'iVBOR')) {
+                    $processedFotos[] = \App\Services\ImageService::compressBase64($foto);
+                } else {
+                    $processedFotos[] = $foto;
+                }
             }
-            $existing->update(['absensi_peserta' => $peserta]);
+
+            if ($existing) {
+                $existing->update([
+                    'pimpinan_status' => $pimpinanStatus,
+                    'pimpinan_keterangan' => $pimpinanKeterangan,
+                    'pimpinan_self_attended' => $pimpinanSelfAttended,
+                    'pimpinan_attended_at' => $pimpinanAttendedAt,
+                    'sekretaris_status' => $sekretarisStatus,
+                    'sekretaris_keterangan' => $sekretarisKeterangan,
+                    'absensi_peserta' => $mergedPeserta,
+                    'notulensi' => $notulensi,
+                    'foto_rapat' => $processedFotos,
+                    'status' => 'submitted',
+                ]);
+            } else {
+                AbsensiRapat::create([
+                    'rapat_id' => $rapat->id,
+                    'tanggal' => $token->tanggal,
+                    'pimpinan_status' => $pimpinanStatus,
+                    'pimpinan_keterangan' => $pimpinanKeterangan,
+                    'sekretaris_status' => $sekretarisStatus,
+                    'sekretaris_keterangan' => $sekretarisKeterangan,
+                    'absensi_peserta' => $mergedPeserta,
+                    'notulensi' => $notulensi,
+                    'foto_rapat' => $processedFotos,
+                    'status' => 'submitted',
+                ]);
+            }
         } else {
-            // Create new absensi record
-            $pesertaData = [];
-            if (!$isPimpinan && !$isSekretaris) {
-                $pesertaData[] = [
-                    'guru_id' => $token->guru_id,
-                    'status' => $status,
-                    'keterangan' => $keterangan,
-                    'self_attended' => true,
-                    'attended_at' => $now->toDateTimeString(),
-                ];
+            // ===== SIMPLE SELF-ATTENDANCE (pimpinan, peserta, or fallback) =====
+            $status = $request->input('status', 'H');
+            $keterangan = $request->input('keterangan', '') ?: null;
+
+            if ($existing) {
+                if ($isPimpinan) {
+                    $existing->update([
+                        'pimpinan_status' => $status,
+                        'pimpinan_keterangan' => $keterangan,
+                        'pimpinan_self_attended' => true,
+                        'pimpinan_attended_at' => $now,
+                    ]);
+                }
+
+                if ($isSekretaris) {
+                    $existing->update([
+                        'sekretaris_status' => $status,
+                        'sekretaris_keterangan' => $keterangan,
+                    ]);
+                }
+
+                // Update peserta array
+                $peserta = $existing->absensi_peserta ?? [];
+                $found = false;
+                foreach ($peserta as &$p) {
+                    if (($p['guru_id'] ?? 0) == $token->guru_id) {
+                        $p['status'] = $status;
+                        $p['keterangan'] = $keterangan;
+                        $p['self_attended'] = true;
+                        $p['attended_at'] = $now->toDateTimeString();
+                        $found = true;
+                    }
+                }
+                if (!$found && !$isPimpinan && !$isSekretaris) {
+                    $peserta[] = [
+                        'guru_id' => $token->guru_id,
+                        'status' => $status,
+                        'keterangan' => $keterangan,
+                        'self_attended' => true,
+                        'attended_at' => $now->toDateTimeString(),
+                    ];
+                }
+                $existing->update(['absensi_peserta' => $peserta]);
+            } else {
+                $pesertaData = [];
+                if (!$isPimpinan && !$isSekretaris) {
+                    $pesertaData[] = [
+                        'guru_id' => $token->guru_id,
+                        'status' => $status,
+                        'keterangan' => $keterangan,
+                        'self_attended' => true,
+                        'attended_at' => $now->toDateTimeString(),
+                    ];
+                }
+                AbsensiRapat::create([
+                    'rapat_id' => $rapat->id,
+                    'tanggal' => $token->tanggal,
+                    'pimpinan_status' => $isPimpinan ? $status : null,
+                    'pimpinan_keterangan' => $isPimpinan ? $keterangan : null,
+                    'pimpinan_self_attended' => $isPimpinan,
+                    'pimpinan_attended_at' => $isPimpinan ? $now : null,
+                    'sekretaris_status' => $isSekretaris ? $status : null,
+                    'sekretaris_keterangan' => $isSekretaris ? $keterangan : null,
+                    'absensi_peserta' => $pesertaData,
+                    'status' => 'draft',
+                ]);
             }
-            AbsensiRapat::create([
-                'rapat_id' => $rapat->id,
-                'tanggal' => $token->tanggal,
-                'pimpinan_status' => $isPimpinan ? $status : null,
-                'pimpinan_keterangan' => $isPimpinan ? $keterangan : null,
-                'pimpinan_self_attended' => $isPimpinan,
-                'pimpinan_attended_at' => $isPimpinan ? $now : null,
-                'sekretaris_status' => $isSekretaris ? $status : null,
-                'sekretaris_keterangan' => $isSekretaris ? $keterangan : null,
-                'absensi_peserta' => $pesertaData,
-                'status' => 'draft',
-            ]);
         }
     }
 }

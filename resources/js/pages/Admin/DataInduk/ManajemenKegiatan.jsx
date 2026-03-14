@@ -1425,7 +1425,7 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
                             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${pendampingExpanded ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                 <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
                                     {formData.absensi_pendamping.map((p, idx) => {
-                                        const guru = guruList.find(g => g.id === p.guru_id);
+                                        const guru = guruList.find(g => g.id == p.guru_id);
                                         return (
                                             <div key={idx} className="bg-white dark:bg-dark-bg rounded-lg p-2 border border-gray-100 dark:border-dark-border">
                                                 <div className="flex items-center gap-1.5">

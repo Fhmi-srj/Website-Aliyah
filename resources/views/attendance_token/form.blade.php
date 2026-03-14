@@ -756,13 +756,17 @@
             </form>
 
         @else
-            {{-- ===== NON-MENGAJAR FORM (kegiatan/rapat - simpler) ===== --}}
+            {{-- ===== NON-MENGAJAR FORM (role-aware: PJ kegiatan, sekretaris rapat, etc.) ===== --}}
             <div style="text-align: center;">
                 <span class="type-badge">
                     @if($token->type === 'kegiatan')
                         <i class="fas fa-calendar-check"></i> Absensi Kegiatan
+                        @if($role === 'penanggung_jawab') — Koordinator @endif
                     @else
                         <i class="fas fa-handshake"></i> Absensi Rapat
+                        @if($role === 'sekretaris') — Sekretaris
+                        @elseif($role === 'pimpinan') — Pimpinan
+                        @endif
                     @endif
                 </span>
             </div>
@@ -803,73 +807,291 @@
                 @endif
             </div>
 
-            <form method="POST" action="{{ url('/api/absen/' . $token->token) }}" id="absenForm">
-                @csrf
+            @if($role === 'penanggung_jawab' && $token->type === 'kegiatan')
+                {{-- =============== PJ KEGIATAN FULL FORM =============== --}}
+                <form method="POST" action="{{ url('/api/absen/' . $token->token) }}" id="absenForm">
+                    @csrf
+                    <input type="hidden" name="is_coordinator_form" value="1">
 
-                @php $curStatus = $existingStatus['status'] ?? 'H'; @endphp
+                    @php
+                        $pjCurStatus = $existingAbsensi->pj_status ?? 'H';
+                        $existPendamping = $existingAbsensi->absensi_pendamping ?? [];
+                        $existSiswa = $existingAbsensi->absensi_siswa ?? [];
+                        $existFotos = $existingAbsensi->foto_kegiatan ?? [];
+                    @endphp
 
-                {{-- Re-edit notice --}}
-                @if($existingStatus)
-                <div class="notice notice-h" style="margin-bottom: 12px; background: #fffbeb; color: #854d0e;">
-                    <i class="fas fa-edit"></i>
-                    <span>Anda sudah absen. Anda dapat mengubah status absensi di bawah ini.</span>
-                </div>
-                @endif
-
-                {{-- Guru Self-Attendance --}}
-                <div class="section-card">
-                    <div class="guru-attendance">
-                        <div class="guru-info">
-                            <div class="guru-name">{{ $token->guru->nama ?? '-' }}</div>
-                            <div class="guru-role">
-                                @if($token->type === 'rapat')
-                                    Peserta Rapat
-                                @else
-                                    Guru Pendamping
-                                @endif
+                    {{-- PJ Self Status --}}
+                    <div class="section-card">
+                        <div class="guru-attendance">
+                            <div class="guru-info">
+                                <div class="guru-name">{{ $token->guru->nama ?? '-' }}</div>
+                                <div class="guru-role" style="color: #16a34a; font-weight: 600;">Penanggung Jawab</div>
+                            </div>
+                            <div class="status-btns">
+                                @foreach(['H','S','I','A'] as $st)
+                                <button type="button" class="status-btn {{ $pjCurStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordStatus('pj_status', '{{ $st }}', this)">{{ $st }}</button>
+                                @endforeach
                             </div>
                         </div>
-                        <div class="status-btns">
-                            <button type="button" class="status-btn {{ $curStatus === 'H' ? 'active-h' : '' }}" data-rk-status="H" onclick="setRKStatus('H')">H</button>
-                            <button type="button" class="status-btn {{ $curStatus === 'S' ? 'active-s' : '' }}" data-rk-status="S" onclick="setRKStatus('S')">S</button>
-                            <button type="button" class="status-btn {{ $curStatus === 'I' ? 'active-i' : '' }}" data-rk-status="I" onclick="setRKStatus('I')">I</button>
-                            <button type="button" class="status-btn {{ $curStatus === 'A' ? 'active-a' : '' }}" data-rk-status="A" onclick="setRKStatus('A')">A</button>
+                        <input type="hidden" name="pj_status" id="pj_status" value="{{ $pjCurStatus }}">
+                        <input type="text" name="pj_keterangan" class="form-input {{ in_array($pjCurStatus, ['S','I']) ? '' : 'hidden' }}" id="pj_keterangan" style="margin-top: 10px;" placeholder="Keterangan..." value="{{ $existingAbsensi->pj_keterangan ?? '' }}">
+                    </div>
+
+                    {{-- Guru Pendamping Attendance --}}
+                    @if(!empty($coordinatorData['pendamping_list']) && count($coordinatorData['pendamping_list']) > 0)
+                    <div class="section-card">
+                        <div class="form-label" style="margin-bottom: 10px;"><i class="fas fa-users"></i> Absensi Guru Pendamping</div>
+                        @foreach($coordinatorData['pendamping_list'] as $idx => $guru)
+                        @php
+                            $gpStatus = 'H';
+                            foreach($existPendamping as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'H'; break; } }
+                        @endphp
+                        <div class="guru-attendance" style="margin-bottom: 8px; padding: 8px; background: #f9fafb; border-radius: 10px;">
+                            <div class="guru-info">
+                                <div class="guru-name" style="font-size: 0.8rem;">{{ $guru->nama }}</div>
+                                <div class="guru-role">Pendamping</div>
+                            </div>
+                            <div class="status-btns">
+                                @foreach(['H','S','I','A'] as $st)
+                                <button type="button" class="status-btn {{ $gpStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordStatus('pendamping_status_{{ $guru->id }}', '{{ $st }}', this)">{{ $st }}</button>
+                                @endforeach
+                            </div>
+                            <input type="hidden" name="pendamping_status_{{ $guru->id }}" id="pendamping_status_{{ $guru->id }}" value="{{ $gpStatus }}" data-guru-id="{{ $guru->id }}">
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
+                    {{-- Siswa Attendance --}}
+                    @if(!empty($coordinatorData['siswa_list']) && count($coordinatorData['siswa_list']) > 0)
+                    <div class="siswa-section">
+                        <button type="button" class="siswa-header" onclick="toggleCoordSiswa()">
+                            <div class="siswa-header-left">
+                                <div class="siswa-header-icon"><i class="fas fa-user-graduate"></i></div>
+                                <div>
+                                    <div class="siswa-header-title">Absensi Siswa</div>
+                                    <div class="siswa-header-subtitle" id="coordSiswaSubtitle">{{ count($coordinatorData['siswa_list']) }} siswa</div>
+                                </div>
+                            </div>
+                            <div class="siswa-header-chevron" id="coordSiswaChevron"><i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #666;"></i></div>
+                        </button>
+                        <div class="siswa-list collapsed" id="coordSiswaList">
+                            @foreach($coordinatorData['siswa_list'] as $siswa)
+                            @php
+                                $ssStatus = 'H';
+                                foreach($existSiswa as $es) { if(($es['siswa_id'] ?? 0) == $siswa['id']) { $ssStatus = $es['status'] ?? 'H'; break; } }
+                            @endphp
+                            <div class="siswa-item">
+                                <div class="siswa-row">
+                                    <div class="siswa-info">
+                                        <div class="siswa-name">{{ $siswa['nama'] }}</div>
+                                        <div class="siswa-nis">{{ $siswa['kelas'] ?? '' }} • {{ $siswa['nis'] ?? '' }}</div>
+                                    </div>
+                                    <div class="siswa-status-btns">
+                                        @foreach(['H','S','I','A'] as $st)
+                                        <button type="button" class="siswa-status-btn {{ $ssStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordSiswaStatus({{ $siswa['id'] }}, '{{ $st }}', this)">{{ $st }}</button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <input type="hidden" name="siswa_status_{{ $siswa['id'] }}" id="siswa_status_{{ $siswa['id'] }}" value="{{ $ssStatus }}" data-siswa-id="{{ $siswa['id'] }}">
+                            </div>
+                            @endforeach
                         </div>
                     </div>
-                    <input type="hidden" name="status" id="rkStatusInput" value="{{ $curStatus }}">
+                    @endif
 
-                    {{-- Keterangan (shown for S/I) --}}
-                    <input type="text" name="keterangan" id="rkKeteranganInput"
-                        class="form-input {{ in_array($curStatus, ['S', 'I']) ? '' : 'hidden' }}"
-                        style="margin-top: 10px; border-color: {{ $curStatus === 'S' ? '#bfdbfe' : '#fde68a' }}; background: {{ $curStatus === 'S' ? '#eff6ff' : '#fefce8' }};"
-                        placeholder="{{ $curStatus === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...' }}"
-                        value="{{ $existingStatus['keterangan'] ?? '' }}">
-                </div>
+                    {{-- Berita Acara --}}
+                    <div>
+                        <div class="form-label"><i class="fas fa-file-alt"></i> Berita Acara <span class="optional">(opsional)</span></div>
+                        <textarea name="berita_acara" class="form-input" placeholder="Isi berita acara kegiatan..." style="margin-bottom: 12px;">{{ $existingAbsensi->berita_acara ?? '' }}</textarea>
+                    </div>
 
-                {{-- Notice --}}
-                <div class="notice notice-{{ strtolower($curStatus) }}" id="rkNotice" style="margin-bottom: 12px;">
-                    <i class="fas fa-{{ $curStatus === 'H' ? 'check-circle' : ($curStatus === 'S' ? 'clinic-medical' : ($curStatus === 'I' ? 'info-circle' : 'exclamation-circle')) }}" id="rkNoticeIcon"></i>
-                    <span id="rkNoticeText">
-                        @if($curStatus === 'H')
-                            Dengan menyimpan, Anda tercatat <strong>HADIR</strong>
-                        @elseif($curStatus === 'S')
-                            Anda tercatat <strong>SAKIT</strong>
-                        @elseif($curStatus === 'I')
-                            Anda tercatat <strong>IZIN</strong>
-                        @else
-                            Anda tercatat <strong>ALPHA</strong>
-                        @endif
-                    </span>
-                </div>
+                    {{-- Foto Kegiatan --}}
+                    <div class="section-card">
+                        <div class="form-label"><i class="fas fa-camera"></i> Foto Kegiatan <span style="color: #ef4444;">* (min 2, max 4)</span></div>
+                        <div id="photoPreviewContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0;"></div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="capturePhoto()" class="btn-cancel" style="flex: 1; font-size: 0.8rem; padding: 10px;">
+                                <i class="fas fa-camera"></i> Kamera
+                            </button>
+                            <button type="button" onclick="selectPhoto()" class="btn-cancel" style="flex: 1; font-size: 0.8rem; padding: 10px;">
+                                <i class="fas fa-image"></i> Galeri
+                            </button>
+                        </div>
+                        <input type="file" id="photoFileInput" accept="image/*" class="hidden" onchange="handlePhotoSelect(event)">
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(event)">
+                    </div>
 
-                <div class="footer-buttons">
-                    <button type="button" class="btn-cancel" onclick="window.history.back()">Batal</button>
-                    <button type="submit" class="btn-submit" id="submitBtn">
-                        <i class="fas fa-save"></i>
-                        {{ $existingStatus ? 'Ubah Absensi' : 'Simpan Absensi' }}
-                    </button>
-                </div>
-            </form>
+                    <div class="footer-buttons">
+                        <button type="button" class="btn-cancel" onclick="window.history.back()">Batal</button>
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <i class="fas fa-save"></i> Simpan Absensi
+                        </button>
+                    </div>
+                </form>
+
+            @elseif($role === 'sekretaris' && $token->type === 'rapat')
+                {{-- =============== SEKRETARIS RAPAT FULL FORM =============== --}}
+                <form method="POST" action="{{ url('/api/absen/' . $token->token) }}" id="absenForm">
+                    @csrf
+                    <input type="hidden" name="is_coordinator_form" value="1">
+
+                    @php
+                        $pimStatus = $existingAbsensi->pimpinan_status ?? 'H';
+                        $sekStatus = $existingAbsensi->sekretaris_status ?? 'H';
+                        $existPeserta = $existingAbsensi->absensi_peserta ?? [];
+                    @endphp
+
+                    {{-- Pimpinan Status --}}
+                    <div class="section-card">
+                        <div class="guru-attendance">
+                            <div class="guru-info">
+                                <div class="guru-name">{{ $coordinatorData['pimpinan_guru']->nama ?? '-' }}</div>
+                                <div class="guru-role" style="color: #8b5cf6; font-weight: 600;">Pimpinan Rapat</div>
+                            </div>
+                            <div class="status-btns">
+                                @foreach(['H','S','I','A'] as $st)
+                                <button type="button" class="status-btn {{ $pimStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordStatus('pimpinan_status', '{{ $st }}', this)">{{ $st }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                        <input type="hidden" name="pimpinan_status" id="pimpinan_status" value="{{ $pimStatus }}">
+                        <input type="text" name="pimpinan_keterangan" class="form-input {{ in_array($pimStatus, ['S','I']) ? '' : 'hidden' }}" id="pimpinan_keterangan" style="margin-top: 10px;" placeholder="Keterangan..." value="{{ $existingAbsensi->pimpinan_keterangan ?? '' }}">
+                    </div>
+
+                    {{-- Sekretaris Self Status --}}
+                    <div class="section-card">
+                        <div class="guru-attendance">
+                            <div class="guru-info">
+                                <div class="guru-name">{{ $coordinatorData['sekretaris_guru']->nama ?? '-' }}</div>
+                                <div class="guru-role" style="color: #16a34a; font-weight: 600;">Sekretaris Rapat</div>
+                            </div>
+                            <div class="status-btns">
+                                @foreach(['H','S','I','A'] as $st)
+                                <button type="button" class="status-btn {{ $sekStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordStatus('sekretaris_status', '{{ $st }}', this)">{{ $st }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                        <input type="hidden" name="sekretaris_status" id="sekretaris_status" value="{{ $sekStatus }}">
+                        <input type="text" name="sekretaris_keterangan" class="form-input {{ in_array($sekStatus, ['S','I']) ? '' : 'hidden' }}" id="sekretaris_keterangan" style="margin-top: 10px;" placeholder="Keterangan..." value="{{ $existingAbsensi->sekretaris_keterangan ?? '' }}">
+                    </div>
+
+                    {{-- Peserta Attendance --}}
+                    @if(!empty($coordinatorData['peserta_list']) && count($coordinatorData['peserta_list']) > 0)
+                    <div class="section-card">
+                        <div class="form-label" style="margin-bottom: 10px;"><i class="fas fa-users"></i> Absensi Peserta Rapat</div>
+                        @foreach($coordinatorData['peserta_list'] as $guru)
+                        @php
+                            $gpStatus = 'H';
+                            foreach($existPeserta as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'H'; break; } }
+                        @endphp
+                        <div class="guru-attendance" style="margin-bottom: 8px; padding: 8px; background: #f9fafb; border-radius: 10px;">
+                            <div class="guru-info">
+                                <div class="guru-name" style="font-size: 0.8rem;">{{ $guru->nama }}</div>
+                                <div class="guru-role">Peserta</div>
+                            </div>
+                            <div class="status-btns">
+                                @foreach(['H','S','I','A'] as $st)
+                                <button type="button" class="status-btn {{ $gpStatus === $st ? 'active-'.strtolower($st) : '' }}" onclick="setCoordStatus('peserta_status_{{ $guru->id }}', '{{ $st }}', this)">{{ $st }}</button>
+                                @endforeach
+                            </div>
+                            <input type="hidden" name="peserta_status_{{ $guru->id }}" id="peserta_status_{{ $guru->id }}" value="{{ $gpStatus }}" data-guru-id="{{ $guru->id }}">
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
+                    {{-- Notulensi --}}
+                    <div>
+                        <div class="form-label"><i class="fas fa-file-alt"></i> Notulensi <span style="color: #ef4444;">*</span></div>
+                        <textarea name="notulensi" id="notulensiInput" class="form-input" style="min-height: 100px; margin-bottom: 12px;" placeholder="Isi notulensi rapat...">{{ $existingAbsensi->notulensi ?? '' }}</textarea>
+                    </div>
+
+                    {{-- Foto Rapat --}}
+                    <div class="section-card">
+                        <div class="form-label"><i class="fas fa-camera"></i> Foto Rapat <span style="color: #ef4444;">* (min 2, max 4)</span></div>
+                        <div id="photoPreviewContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0;"></div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="capturePhoto()" class="btn-cancel" style="flex: 1; font-size: 0.8rem; padding: 10px;">
+                                <i class="fas fa-camera"></i> Kamera
+                            </button>
+                            <button type="button" onclick="selectPhoto()" class="btn-cancel" style="flex: 1; font-size: 0.8rem; padding: 10px;">
+                                <i class="fas fa-image"></i> Galeri
+                            </button>
+                        </div>
+                        <input type="file" id="photoFileInput" accept="image/*" class="hidden" onchange="handlePhotoSelect(event)">
+                        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(event)">
+                    </div>
+
+                    <div class="footer-buttons">
+                        <button type="button" class="btn-cancel" onclick="window.history.back()">Batal</button>
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <i class="fas fa-save"></i> Simpan Absensi
+                        </button>
+                    </div>
+                </form>
+
+            @else
+                {{-- =============== SIMPLE SELF-ATTENDANCE (pimpinan, peserta, pendamping) =============== --}}
+                <form method="POST" action="{{ url('/api/absen/' . $token->token) }}" id="absenForm">
+                    @csrf
+
+                    @php $curStatus = $existingStatus['status'] ?? 'H'; @endphp
+
+                    @if($existingStatus)
+                    <div class="notice notice-h" style="margin-bottom: 12px; background: #fffbeb; color: #854d0e;">
+                        <i class="fas fa-edit"></i>
+                        <span>Anda sudah absen. Anda dapat mengubah status absensi di bawah ini.</span>
+                    </div>
+                    @endif
+
+                    <div class="section-card">
+                        <div class="guru-attendance">
+                            <div class="guru-info">
+                                <div class="guru-name">{{ $token->guru->nama ?? '-' }}</div>
+                                <div class="guru-role">
+                                    @if($role === 'pimpinan') Pimpinan Rapat
+                                    @elseif($role === 'peserta' && $token->type === 'rapat') Peserta Rapat
+                                    @elseif($role === 'pendamping') Guru Pendamping
+                                    @else Peserta
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="status-btns">
+                                <button type="button" class="status-btn {{ $curStatus === 'H' ? 'active-h' : '' }}" data-rk-status="H" onclick="setRKStatus('H')">H</button>
+                                <button type="button" class="status-btn {{ $curStatus === 'S' ? 'active-s' : '' }}" data-rk-status="S" onclick="setRKStatus('S')">S</button>
+                                <button type="button" class="status-btn {{ $curStatus === 'I' ? 'active-i' : '' }}" data-rk-status="I" onclick="setRKStatus('I')">I</button>
+                                <button type="button" class="status-btn {{ $curStatus === 'A' ? 'active-a' : '' }}" data-rk-status="A" onclick="setRKStatus('A')">A</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="status" id="rkStatusInput" value="{{ $curStatus }}">
+                        <input type="text" name="keterangan" id="rkKeteranganInput"
+                            class="form-input {{ in_array($curStatus, ['S', 'I']) ? '' : 'hidden' }}"
+                            style="margin-top: 10px; border-color: {{ $curStatus === 'S' ? '#bfdbfe' : '#fde68a' }}; background: {{ $curStatus === 'S' ? '#eff6ff' : '#fefce8' }};"
+                            placeholder="{{ $curStatus === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...' }}"
+                            value="{{ $existingStatus['keterangan'] ?? '' }}">
+                    </div>
+
+                    <div class="notice notice-{{ strtolower($curStatus) }}" id="rkNotice" style="margin-bottom: 12px;">
+                        <i class="fas fa-{{ $curStatus === 'H' ? 'check-circle' : ($curStatus === 'S' ? 'clinic-medical' : ($curStatus === 'I' ? 'info-circle' : 'exclamation-circle')) }}" id="rkNoticeIcon"></i>
+                        <span id="rkNoticeText">
+                            @if($curStatus === 'H') Dengan menyimpan, Anda tercatat <strong>HADIR</strong>
+                            @elseif($curStatus === 'S') Anda tercatat <strong>SAKIT</strong>
+                            @elseif($curStatus === 'I') Anda tercatat <strong>IZIN</strong>
+                            @else Anda tercatat <strong>ALPHA</strong>
+                            @endif
+                        </span>
+                    </div>
+
+                    <div class="footer-buttons">
+                        <button type="button" class="btn-cancel" onclick="window.history.back()">Batal</button>
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <i class="fas fa-save"></i>
+                            {{ $existingStatus ? 'Ubah Absensi' : 'Simpan Absensi' }}
+                        </button>
+                    </div>
+                </form>
+            @endif
         @endif
     </div>
 
@@ -1122,51 +1344,241 @@
     </script>
     @else
     <script>
-        let rkStatus = '{{ $existingStatus["status"] ?? "H" }}';
+        const isCoordinatorForm = !!document.querySelector('[name="is_coordinator_form"]');
 
-        function setRKStatus(status) {
-            rkStatus = status;
-            document.getElementById('rkStatusInput').value = status;
+        if (isCoordinatorForm) {
+            // ===== COORDINATOR FORM JS =====
+            const photos = [];
+            const MAX_PHOTOS = 4;
 
-            // Update button styles
-            document.querySelectorAll('[data-rk-status]').forEach(btn => {
-                btn.className = 'status-btn';
-                if (btn.dataset.rkStatus === status) {
-                    btn.classList.add('active-' + status.toLowerCase());
+            function setCoordStatus(fieldId, status, btn) {
+                document.getElementById(fieldId).value = status;
+
+                // Update sibling buttons
+                const parent = btn.closest('.status-btns');
+                parent.querySelectorAll('.status-btn').forEach(b => {
+                    b.className = 'status-btn';
+                });
+                btn.classList.add('active-' + status.toLowerCase());
+
+                // Toggle keterangan field
+                const ketId = fieldId.replace('_status', '_keterangan').replace('pendamping_status_', 'pendamping_keterangan_').replace('peserta_status_', 'peserta_keterangan_');
+                const ketInput = document.getElementById(ketId);
+                if (ketInput) {
+                    if (status === 'S' || status === 'I') {
+                        ketInput.classList.remove('hidden');
+                    } else {
+                        ketInput.classList.add('hidden');
+                    }
                 }
-            });
-
-            // Update keterangan field
-            const ketInput = document.getElementById('rkKeteranganInput');
-            if (status === 'S' || status === 'I') {
-                ketInput.classList.remove('hidden');
-                ketInput.placeholder = status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...';
-                ketInput.style.borderColor = status === 'S' ? '#bfdbfe' : '#fde68a';
-                ketInput.style.background = status === 'S' ? '#eff6ff' : '#fefce8';
-            } else {
-                ketInput.classList.add('hidden');
             }
 
-            // Update notice
-            const notice = document.getElementById('rkNotice');
-            const icon = document.getElementById('rkNoticeIcon');
-            const text = document.getElementById('rkNoticeText');
-            notice.className = 'notice notice-' + status.toLowerCase();
-            const data = {
-                H: { icon: 'fa-check-circle', text: 'Dengan menyimpan, Anda tercatat <strong>HADIR</strong>' },
-                S: { icon: 'fa-clinic-medical', text: 'Anda tercatat <strong>SAKIT</strong>' },
-                I: { icon: 'fa-info-circle', text: 'Anda tercatat <strong>IZIN</strong>' },
-                A: { icon: 'fa-exclamation-circle', text: 'Anda tercatat <strong>ALPHA</strong>' },
-            };
-            icon.className = 'fas ' + data[status].icon;
-            text.innerHTML = data[status].text;
-        }
+            function setCoordSiswaStatus(siswaId, status, btn) {
+                document.getElementById('siswa_status_' + siswaId).value = status;
+                const parent = btn.closest('.siswa-status-btns');
+                parent.querySelectorAll('.siswa-status-btn').forEach(b => b.className = 'siswa-status-btn');
+                btn.classList.add('active-' + status.toLowerCase());
+            }
 
-        document.getElementById('absenForm').addEventListener('submit', function() {
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-        });
+            let coordSiswaExpanded = false;
+            function toggleCoordSiswa() {
+                coordSiswaExpanded = !coordSiswaExpanded;
+                const list = document.getElementById('coordSiswaList');
+                const chevron = document.getElementById('coordSiswaChevron');
+                if (list) list.classList.toggle('collapsed', !coordSiswaExpanded);
+                if (chevron) chevron.classList.toggle('expanded', coordSiswaExpanded);
+            }
+
+            function capturePhoto() {
+                if (photos.length >= MAX_PHOTOS) { alert('Maksimal ' + MAX_PHOTOS + ' foto'); return; }
+                document.getElementById('cameraInput').click();
+            }
+
+            function selectPhoto() {
+                if (photos.length >= MAX_PHOTOS) { alert('Maksimal ' + MAX_PHOTOS + ' foto'); return; }
+                document.getElementById('photoFileInput').click();
+            }
+
+            function handlePhotoSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photos.push(e.target.result);
+                    renderPhotoPreview();
+                };
+                reader.readAsDataURL(file);
+                event.target.value = '';
+            }
+
+            function removePhoto(idx) {
+                photos.splice(idx, 1);
+                renderPhotoPreview();
+            }
+
+            function renderPhotoPreview() {
+                const container = document.getElementById('photoPreviewContainer');
+                container.innerHTML = photos.map((src, i) =>
+                    `<div style="position: relative; width: 70px; height: 70px;">
+                        <img src="${src}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 2px solid #e5e7eb;">
+                        <button type="button" onclick="removePhoto(${i})" style="position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
+                    </div>`
+                ).join('');
+            }
+
+            // Submit coordinator form via fetch (JSON)
+            document.getElementById('absenForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                if (photos.length < 2) {
+                    alert('Minimal 2 foto harus diupload!');
+                    return;
+                }
+
+                // Check notulensi for sekretaris
+                const notulensiInput = document.getElementById('notulensiInput');
+                if (notulensiInput && !notulensiInput.value.trim()) {
+                    alert('Notulensi wajib diisi!');
+                    return;
+                }
+
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+
+                const form = this;
+                const formData = new FormData(form);
+                const payload = { is_coordinator_form: '1' };
+
+                // Extract hidden token
+                payload._token = formData.get('_token');
+
+                // Detect form type
+                const isKegiatan = !!document.getElementById('pj_status');
+                const isRapat = !!document.getElementById('pimpinan_status');
+
+                if (isKegiatan) {
+                    // PJ Kegiatan form
+                    payload.pj_status = formData.get('pj_status');
+                    payload.pj_keterangan = formData.get('pj_keterangan') || null;
+                    payload.berita_acara = formData.get('berita_acara') || null;
+                    payload.foto_kegiatan = photos;
+
+                    // Collect pendamping array
+                    payload.absensi_pendamping = [];
+                    document.querySelectorAll('[name^="pendamping_status_"]').forEach(input => {
+                        const guruId = input.dataset.guruId;
+                        if (guruId) {
+                            payload.absensi_pendamping.push({
+                                guru_id: parseInt(guruId),
+                                status: input.value,
+                                keterangan: null
+                            });
+                        }
+                    });
+
+                    // Collect siswa array
+                    payload.absensi_siswa = [];
+                    document.querySelectorAll('[name^="siswa_status_"]').forEach(input => {
+                        const siswaId = input.dataset.siswaId;
+                        if (siswaId) {
+                            payload.absensi_siswa.push({
+                                siswa_id: parseInt(siswaId),
+                                status: input.value,
+                                keterangan: null
+                            });
+                        }
+                    });
+                } else if (isRapat) {
+                    // Sekretaris Rapat form
+                    payload.pimpinan_status = formData.get('pimpinan_status');
+                    payload.pimpinan_keterangan = formData.get('pimpinan_keterangan') || null;
+                    payload.sekretaris_status = formData.get('sekretaris_status');
+                    payload.sekretaris_keterangan = formData.get('sekretaris_keterangan') || null;
+                    payload.notulensi = formData.get('notulensi') || '';
+                    payload.foto_rapat = photos;
+
+                    // Collect peserta array
+                    payload.absensi_peserta = [];
+                    document.querySelectorAll('[name^="peserta_status_"]').forEach(input => {
+                        const guruId = input.dataset.guruId;
+                        if (guruId) {
+                            payload.absensi_peserta.push({
+                                guru_id: parseInt(guruId),
+                                status: input.value,
+                                keterangan: null
+                            });
+                        }
+                    });
+                }
+
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': payload._token,
+                        'Accept': 'text/html'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(resp => resp.text())
+                .then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(err => {
+                    alert('Terjadi kesalahan: ' + err.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Absensi';
+                });
+            });
+
+        } else {
+            // ===== SIMPLE SELF-ATTENDANCE JS =====
+            let rkStatus = '{{ $existingStatus["status"] ?? "H" }}';
+
+            window.setRKStatus = function(status) {
+                rkStatus = status;
+                document.getElementById('rkStatusInput').value = status;
+
+                document.querySelectorAll('[data-rk-status]').forEach(btn => {
+                    btn.className = 'status-btn';
+                    if (btn.dataset.rkStatus === status) {
+                        btn.classList.add('active-' + status.toLowerCase());
+                    }
+                });
+
+                const ketInput = document.getElementById('rkKeteranganInput');
+                if (status === 'S' || status === 'I') {
+                    ketInput.classList.remove('hidden');
+                    ketInput.placeholder = status === 'S' ? 'Keterangan sakit...' : 'Keterangan izin...';
+                    ketInput.style.borderColor = status === 'S' ? '#bfdbfe' : '#fde68a';
+                    ketInput.style.background = status === 'S' ? '#eff6ff' : '#fefce8';
+                } else {
+                    ketInput.classList.add('hidden');
+                }
+
+                const notice = document.getElementById('rkNotice');
+                const icon = document.getElementById('rkNoticeIcon');
+                const text = document.getElementById('rkNoticeText');
+                notice.className = 'notice notice-' + status.toLowerCase();
+                const data = {
+                    H: { icon: 'fa-check-circle', text: 'Dengan menyimpan, Anda tercatat <strong>HADIR</strong>' },
+                    S: { icon: 'fa-clinic-medical', text: 'Anda tercatat <strong>SAKIT</strong>' },
+                    I: { icon: 'fa-info-circle', text: 'Anda tercatat <strong>IZIN</strong>' },
+                    A: { icon: 'fa-exclamation-circle', text: 'Anda tercatat <strong>ALPHA</strong>' },
+                };
+                icon.className = 'fas ' + data[status].icon;
+                text.innerHTML = data[status].text;
+            };
+
+            document.getElementById('absenForm').addEventListener('submit', function() {
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            });
+        }
     </script>
     @endif
 </body>
