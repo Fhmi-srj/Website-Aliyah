@@ -516,9 +516,13 @@ function Bisyaroh() {
         }, 200);
     };
 
-    const handlePrintRekap = () => {
+    const handlePrintRekap = (historyId = null) => {
         const token = localStorage.getItem('auth_token');
-        window.open(`${API_BASE}/bisyaroh/print-rekap?bulan=${bulan}&tahun=${tahun}&token=${token}`, '_blank');
+        const hid = historyId || (viewingHistory ? viewingHistory.id : null);
+        const url = hid
+            ? `${API_BASE}/bisyaroh/print-rekap?history_id=${hid}&token=${token}`
+            : `${API_BASE}/bisyaroh/print-rekap?bulan=${bulan}&tahun=${tahun}&token=${token}`;
+        window.open(url, '_blank');
     };
 
     const handleOpenKegiatanOverview = async () => {
@@ -1005,6 +1009,10 @@ function Bisyaroh() {
                                                     className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-[9px]" title="Lihat">
                                                     <i className="fas fa-eye"></i>
                                                 </button>
+                                                <button onClick={() => handlePrintRekap(h.id)}
+                                                    className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center text-[9px]" title="Cetak Rekap">
+                                                    <i className="fas fa-print"></i>
+                                                </button>
                                                 <button onClick={() => handleLockHistory(h.id, h.status)}
                                                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] ${h.status === 'locked' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                                                         }`} title={h.status === 'locked' ? 'Unlock' : 'Kunci'}>
@@ -1063,6 +1071,10 @@ function Bisyaroh() {
                                                     <button onClick={() => handleViewHistory(h.id)}
                                                         className="action-btn w-8 h-8 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95" title="Lihat Data">
                                                         <i className="fas fa-eye text-[10px]"></i>
+                                                    </button>
+                                                    <button onClick={() => handlePrintRekap(h.id)}
+                                                        className="action-btn w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95" title="Cetak Rekap">
+                                                        <i className="fas fa-print text-[10px]"></i>
                                                     </button>
                                                     <button onClick={() => handleLockHistory(h.id, h.status)}
                                                         className={`action-btn w-8 h-8 rounded-xl transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${h.status === 'locked' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'

@@ -247,6 +247,7 @@
             print-color-adjust: exact !important;
         }
         .slip-page { height: 100vh; }
+        .slip-page:last-child { page-break-after: avoid; }
     }
     @media screen {
         .slip-page { min-height: 700px; margin-bottom: 20px; }
@@ -316,8 +317,8 @@
                     $totalJumlah += $b->jumlah;
                     $totalPenerimaan += $b->total_penerimaan;
 
-                    $jabatan = '-';
-                    if ($b->guru && $b->guru->user) {
+                    $jabatan = $b->jabatan ?? '-';
+                    if ($jabatan === '-' && isset($b->guru->user) && is_object($b->guru->user) && method_exists($b->guru->user, 'getAttribute')) {
                         $roleNames = $b->guru->user->roles->where('name', '!=', 'guru')->pluck('display_name')->toArray();
                         $jabatan = !empty($roleNames) ? implode(', ', $roleNames) : 'Guru';
                     }
@@ -382,8 +383,8 @@
         <div class="slip-page">
             @foreach($chunk as $b)
                 @php
-                    $jabatan = '-';
-                    if ($b->guru && $b->guru->user) {
+                    $jabatan = $b->jabatan ?? '-';
+                    if ($jabatan === '-' && isset($b->guru->user) && is_object($b->guru->user) && method_exists($b->guru->user, 'getAttribute')) {
                         $roleNames = $b->guru->user->roles->where('name', '!=', 'guru')->pluck('display_name')->toArray();
                         $jabatan = !empty($roleNames) ? implode(', ', $roleNames) : 'Guru';
                     }

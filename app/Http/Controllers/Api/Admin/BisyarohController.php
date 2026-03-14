@@ -628,15 +628,34 @@ class BisyarohController extends Controller
     {
         $bulan = $request->input('bulan', now()->month);
         $tahun = $request->input('tahun', now()->year);
+        $historyId = $request->input('history_id');
 
-        // Only include aktif guru
-        $aktifGuruIds = Guru::where('status', 'aktif')->pluck('id');
+        if ($historyId) {
+            // Print from saved history snapshot
+            $history = \App\Models\BisyarohHistory::findOrFail($historyId);
+            $bulan = $history->bulan;
+            $tahun = $history->tahun;
 
-        $bisyaroh = Bisyaroh::with('guru.user.roles')
-            ->where('bulan', $bulan)
-            ->where('tahun', $tahun)
-            ->whereIn('guru_id', $aktifGuruIds)
-            ->get();
+            // Convert snapshot array data to objects for blade template compatibility
+            $bisyaroh = collect($history->data)->map(function ($item) {
+                $obj = new \stdClass();
+                foreach ($item as $key => $value) {
+                    $obj->$key = $value;
+                }
+                // Create a mock guru object for the template
+                $obj->guru = (object) ['nama' => $item['nama'] ?? '-'];
+                return $obj;
+            });
+        } else {
+            // Print from live data
+            $aktifGuruIds = Guru::where('status', 'aktif')->pluck('id');
+
+            $bisyaroh = Bisyaroh::with('guru.user.roles')
+                ->where('bulan', $bulan)
+                ->where('tahun', $tahun)
+                ->whereIn('guru_id', $aktifGuruIds)
+                ->get();
+        }
 
         $settings = [
             'bisyaroh_per_jam' => BisyarohSetting::getValue('bisyaroh_per_jam', 30000),
