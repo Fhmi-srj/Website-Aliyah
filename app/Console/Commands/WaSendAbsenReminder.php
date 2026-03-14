@@ -154,8 +154,8 @@ class WaSendAbsenReminder extends Command
             );
 
             $message = $wa->renderTemplate('reminder_mengajar', [
-                'guru_nama' => $jadwal->guru->nama,
-                'mapel' => $jadwal->mapel->nama_mapel ?? '-',
+                'guru_nama' => $jadwal->guru->inisial ?? $jadwal->guru->nama,
+                'mapel' => $jadwal->mapel->kode_mapel ?? $jadwal->mapel->nama_mapel ?? '-',
                 'kelas' => $jadwal->kelas->nama_kelas ?? '-',
                 'jam' => $jadwal->jam_mulai . ' - ' . $jadwal->jam_selesai,
                 'hari' => $hariIni,
@@ -233,7 +233,7 @@ class WaSendAbsenReminder extends Command
                 );
 
                 $message = $wa->renderTemplate('reminder_kegiatan', [
-                    'guru_nama' => $guru->nama,
+                    'guru_nama' => $guru->inisial ?? $guru->nama,
                     'kegiatan' => $kegiatan->nama_kegiatan,
                     'tempat' => $kegiatan->tempat ?? '-',
                     'waktu' => $waktuMulai->format('H:i'),
@@ -310,7 +310,7 @@ class WaSendAbsenReminder extends Command
                 );
 
                 $message = $wa->renderTemplate('reminder_rapat', [
-                    'guru_nama' => $guru->nama,
+                    'guru_nama' => $guru->inisial ?? $guru->nama,
                     'agenda' => $rapat->agenda_rapat,
                     'tempat' => $rapat->tempat ?? '-',
                     'waktu' => substr($rapat->waktu_mulai, 0, 5),

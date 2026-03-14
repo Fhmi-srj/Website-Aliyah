@@ -86,20 +86,20 @@ class WhatsappController extends Controller
                 'hari' => $hari,
                 'tanggal' => $tanggal,
                 'daftar_jadwal' => implode("\n", [
-                    "1. *Ahmad Fauzi* - Matematika (X-A) | 07:00-08:30",
-                    "2. *Siti Aisyah* - B. Indonesia (XI-B) | 08:30-10:00",
-                    "3. *Budi Santoso* - Fisika (XII-A) | 10:15-11:45",
+                    "1. *AF* - MTK (X-A) | 07:00-08:30",
+                    "2. *SA* - BIN (XI-B) | 08:30-10:00",
+                    "3. *BS* - FIS (XII-A) | 10:15-11:45",
                 ]),
             ]),
             'rekap_absensi' => $wa->renderTemplate('rekap_absensi', [
                 'hari' => $hari,
                 'tanggal' => $tanggal,
                 'daftar_rekap' => implode("\n", [
-                    "\u{2705} Ahmad Fauzi - Hadir (07:05)",
-                    "\u{2705} Siti Aisyah - Hadir (08:25)",
-                    "\u{2705} Budi Santoso - Hadir (10:10)",
-                    "\u{274C} Dewi Lestari - Belum Absen",
-                    "\u{274C} Eko Prasetyo - Belum Absen",
+                    "\u{2705} AF - MTK (X-A) | Hadir (07:05)",
+                    "\u{2705} SA - BIN (XI-B) | Hadir (08:25)",
+                    "\u{2705} BS - FIS (XII-A) | Hadir (10:10)",
+                    "\u{274C} DL - SKI (X-B) | Belum Absen",
+                    "\u{274C} EP - FQH (XI-A) | Belum Absen",
                     "",
                     "Total: 3/5 guru sudah absen",
                 ]),
@@ -108,12 +108,12 @@ class WhatsappController extends Controller
                 'nama_kegiatan' => 'Workshop Kurikulum Merdeka',
                 'tanggal' => $tanggal,
                 'tempat' => 'Aula MA Alhikam',
-                'penanggung_jawab' => 'Ahmad Fauzi, S.Pd',
+                'penanggung_jawab' => 'AF',
                 'daftar_kehadiran' => implode("\n", [
-                    "\u{2705} Ahmad Fauzi",
-                    "\u{2705} Siti Aisyah",
-                    "\u{2705} Budi Santoso",
-                    "\u{274C} Dewi Lestari (Izin)",
+                    "\u{2705} AF",
+                    "\u{2705} SA",
+                    "\u{2705} BS",
+                    "\u{274C} DL (Izin)",
                 ]),
             ]),
             'undangan_rapat' => $wa->renderTemplate('undangan_rapat', [
@@ -122,12 +122,12 @@ class WhatsappController extends Controller
                 'agenda' => 'Evaluasi Semester Genap & Persiapan UAS',
                 'waktu' => '09:00',
                 'kepala_madrasah' => 'Dr. H. Muhammad Ali, M.Pd',
-                'pimpinan' => 'Ahmad Fauzi, S.Pd',
-                'sekretaris' => 'Siti Aisyah, S.Pd',
+                'pimpinan' => 'AF',
+                'sekretaris' => 'SA',
             ]),
             'reminder_absen' => $wa->renderTemplate('reminder_mengajar', [
                 'guru_nama' => 'Bapak/Ibu Guru',
-                'mapel' => 'Matematika Peminatan',
+                'mapel' => 'MTK',
                 'kelas' => 'XII-A',
                 'jam' => '07:00 - 08:30',
                 'hari' => $hari,
@@ -359,8 +359,8 @@ class WhatsappController extends Controller
         }
 
         $kepalaMadrasah = AppSetting::getValue('nama_kepala_madrasah', 'Kepala MA Alhikam');
-        $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
-        $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+        $pimpinanNama = $rapat->pimpinanGuru->inisial ?? $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+        $sekretarisNama = $rapat->sekretarisGuru->inisial ?? $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
 
         $message = $wa->renderTemplate('undangan_rapat', [
             'agenda' => $rapat->agenda_rapat,
@@ -396,8 +396,8 @@ class WhatsappController extends Controller
         }
 
         $today = $rapat->tanggal;
-        $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
-        $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+        $pimpinanNama = $rapat->pimpinanGuru->inisial ?? $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+        $sekretarisNama = $rapat->sekretarisGuru->inisial ?? $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
 
         // Build kehadiran list
         $daftarKehadiran = '';
@@ -421,7 +421,7 @@ class WhatsappController extends Controller
             if (!$guru)
                 continue;
 
-            $nama = $guru->nama;
+            $nama = $guru->inisial ?? $guru->nama;
             $role = '-';
             $status = '❌';
 
@@ -490,7 +490,7 @@ class WhatsappController extends Controller
         }
 
         $kepalaMadrasah = AppSetting::getValue('nama_kepala_madrasah', 'Kepala MA Alhikam');
-        $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+        $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
 
         $message = $wa->renderTemplate('undangan_kegiatan', [
             'nama_kegiatan' => $kegiatan->nama_kegiatan,
@@ -525,7 +525,7 @@ class WhatsappController extends Controller
         }
 
         $today = Carbon::parse($kegiatan->waktu_mulai)->format('Y-m-d');
-        $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+        $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
 
         // Build kehadiran list
         $daftarKehadiran = '';
@@ -547,7 +547,7 @@ class WhatsappController extends Controller
             if (!$guru)
                 continue;
 
-            $nama = $guru->nama;
+            $nama = $guru->inisial ?? $guru->nama;
             $role = 'PENDAMPING';
             $status = '❌';
 

@@ -37,8 +37,8 @@ class WaSendMeetingInvitation extends Command
             ->get();
 
         foreach ($rapatH2 as $rapat) {
-            $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
-            $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+            $pimpinanNama = $rapat->pimpinanGuru->inisial ?? $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+            $sekretarisNama = $rapat->sekretarisGuru->inisial ?? $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
 
             $message = $wa->renderTemplate('undangan_rapat', [
                 'agenda' => $rapat->agenda_rapat,
@@ -67,8 +67,8 @@ class WaSendMeetingInvitation extends Command
             ->get();
 
         foreach ($rapatHariH as $rapat) {
-            $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
-            $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+            $pimpinanNama = $rapat->pimpinanGuru->inisial ?? $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+            $sekretarisNama = $rapat->sekretarisGuru->inisial ?? $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
 
             $message = $wa->renderTemplate('pengingat_rapat', [
                 'agenda' => $rapat->agenda_rapat,
@@ -99,7 +99,7 @@ class WaSendMeetingInvitation extends Command
             ->get();
 
         foreach ($kegiatanH2 as $kegiatan) {
-            $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+            $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
 
             $message = $wa->renderTemplate('undangan_kegiatan', [
                 'nama_kegiatan' => $kegiatan->nama_kegiatan,
@@ -127,7 +127,7 @@ class WaSendMeetingInvitation extends Command
             ->get();
 
         foreach ($kegiatanHariH as $kegiatan) {
-            $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+            $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
 
             $message = $wa->renderTemplate('pengingat_kegiatan', [
                 'nama_kegiatan' => $kegiatan->nama_kegiatan,

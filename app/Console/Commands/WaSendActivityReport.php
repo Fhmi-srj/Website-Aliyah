@@ -30,8 +30,8 @@ class WaSendActivityReport extends Command
             ->get();
 
         foreach ($rapatList as $rapat) {
-            $pimpinanNama = $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
-            $sekretarisNama = $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
+            $pimpinanNama = $rapat->pimpinanGuru->inisial ?? $rapat->pimpinanGuru->nama ?? $rapat->pimpinan ?? '-';
+            $sekretarisNama = $rapat->sekretarisGuru->inisial ?? $rapat->sekretarisGuru->nama ?? $rapat->sekretaris ?? '-';
 
             // Build kehadiran list
             $daftarKehadiran = '';
@@ -56,7 +56,7 @@ class WaSendActivityReport extends Command
                 if (!$guru)
                     continue;
 
-                $nama = $guru->nama;
+                $nama = $guru->inisial ?? $guru->nama;
                 $role = '-';
                 $status = '❌';
 
@@ -125,7 +125,7 @@ class WaSendActivityReport extends Command
             ->get();
 
         foreach ($kegiatanList as $kegiatan) {
-            $pjNama = $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
+            $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? $kegiatan->penanggung_jawab ?? '-';
 
             // Build kehadiran list
             $daftarKehadiran = '';
@@ -148,7 +148,7 @@ class WaSendActivityReport extends Command
                 if (!$guru)
                     continue;
 
-                $nama = $guru->nama;
+                $nama = $guru->inisial ?? $guru->nama;
                 $role = 'PENDAMPING';
                 $status = '❌';
 
