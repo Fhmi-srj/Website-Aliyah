@@ -536,14 +536,14 @@ class BisyarohController extends Controller
                     $tunjRapatTotal += $tunjRapat;
                     // Count rapat day as hadir
                     if ($rapat->tanggal) {
-                        $hariHadirSet[$rapat->tanggal->format('Y-m-d')] = true;
+                        $hariHadirSet[$rapat->tanggal] = true;
                     }
                 }
 
                 $detailRapatArr[] = [
                     'rapat_id' => $rapat->id,
                     'agenda' => $rapat->agenda_rapat,
-                    'tanggal' => $rapat->tanggal?->format('Y-m-d'),
+                    'tanggal' => $rapat->tanggal,
                     'tempat' => $rapat->tempat,
                     'hadir' => $hadir,
                     'tunjangan' => $hadir ? $tunjRapat : 0,
@@ -737,7 +737,7 @@ class BisyarohController extends Controller
                 return [
                     'id' => $r->id,
                     'agenda' => $r->agenda_rapat,
-                    'tanggal' => $r->tanggal?->format('Y-m-d'),
+                    'tanggal' => $r->tanggal,
                     'tempat' => $r->tempat,
                     'pimpinan' => $pimpinan?->nama ?? '-',
                     'sekretaris' => $sekretaris?->nama ?? '-',
