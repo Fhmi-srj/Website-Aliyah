@@ -66,7 +66,7 @@ class AdminAbsensiController extends Controller
                 'guru_id' => $g->id,
                 'nama' => $g->nama,
                 'role' => 'Peserta',
-                'status' => 'H',
+                'status' => 'A',
                 'keterangan' => '',
             ])->values()->toArray();
 
@@ -108,7 +108,7 @@ class AdminAbsensiController extends Controller
                 'guru_id' => $guruId,
                 'nama' => $guru ? $guru->nama : '',
                 'role' => 'Peserta',
-                'status' => 'H',
+                'status' => 'A',
                 'keterangan' => '',
             ];
         })->values()->toArray();
@@ -286,14 +286,14 @@ class AdminAbsensiController extends Controller
             // No absensi record yet - return default structure with pendamping list
             $defaultPendamping = $validGurus->map(fn($g) => [
                 'guru_id' => $g->id,
-                'status' => 'H',
+                'status' => 'A',
                 'keterangan' => '',
             ])->values()->toArray();
 
-            // Default siswa absensi: all hadir
+            // Default siswa absensi: all alpha (belum absen)
             $defaultSiswa = collect($siswaList)->map(fn($s) => [
                 'siswa_id' => $s['siswa_id'],
-                'status' => 'H',
+                'status' => 'A',
                 'keterangan' => '',
             ])->toArray();
 
@@ -324,7 +324,7 @@ class AdminAbsensiController extends Controller
             }
             return [
                 'guru_id' => $guruId,
-                'status' => 'H',
+                'status' => 'A',
                 'keterangan' => '',
             ];
         })->values()->toArray();

@@ -843,8 +843,8 @@
                         <div class="form-label" style="margin-bottom: 10px;"><i class="fas fa-users"></i> Absensi Guru Pendamping</div>
                         @foreach($coordinatorData['pendamping_list'] as $idx => $guru)
                         @php
-                            $gpStatus = 'H';
-                            foreach($existPendamping as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'H'; break; } }
+                            $gpStatus = 'A';
+                            foreach($existPendamping as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'A'; break; } }
                         @endphp
                         <div class="guru-attendance" style="margin-bottom: 8px; padding: 8px; background: #f9fafb; border-radius: 10px;">
                             <div class="guru-info">
@@ -878,8 +878,8 @@
                         <div class="siswa-list collapsed" id="coordSiswaList">
                             @foreach($coordinatorData['siswa_list'] as $siswa)
                             @php
-                                $ssStatus = 'H';
-                                foreach($existSiswa as $es) { if(($es['siswa_id'] ?? 0) == $siswa['id']) { $ssStatus = $es['status'] ?? 'H'; break; } }
+                                $ssStatus = 'A';
+                                foreach($existSiswa as $es) { if(($es['siswa_id'] ?? 0) == $siswa['id']) { $ssStatus = $es['status'] ?? 'A'; break; } }
                             @endphp
                             <div class="siswa-item">
                                 <div class="siswa-row">
@@ -982,8 +982,8 @@
                         <div class="form-label" style="margin-bottom: 10px;"><i class="fas fa-users"></i> Absensi Peserta Rapat</div>
                         @foreach($coordinatorData['peserta_list'] as $guru)
                         @php
-                            $gpStatus = 'H';
-                            foreach($existPeserta as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'H'; break; } }
+                            $gpStatus = 'A';
+                            foreach($existPeserta as $ep) { if(($ep['guru_id'] ?? 0) == $guru->id) { $gpStatus = $ep['status'] ?? 'A'; break; } }
                         @endphp
                         <div class="guru-attendance" style="margin-bottom: 8px; padding: 8px; background: #f9fafb; border-radius: 10px;">
                             <div class="guru-info">
