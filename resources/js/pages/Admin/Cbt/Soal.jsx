@@ -259,17 +259,52 @@ export default function AdminCbtSoal() {
     };
 
     const downloadTemplate = () => {
-        const header = [['no', 'type', 'content', 'option_a', 'option_b', 'option_c', 'option_d', 'option_e', 'correct_answer', 'weight']];
+        const header = [['no', 'type (opsional)', 'content', 'option_a', 'option_b', 'option_c', 'option_d', 'option_e', 'correct_answer', 'weight']];
         const example = [
-            [1, 'multiple_choice', 'Tuliskan pertanyaan PG biasa di sini', 'Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D', 'Pilihan E', 'A', 1],
-            [2, 'essay', 'Pertanyaan esai di sini', '', '', '', '', '', '', 2],
-            [3, 'true_false', 'Pernyataan ini adalah benar.', 'Pernyataan Benar', 'Pernyataan Salah', '', '', '', 'A', 1],
-            [4, 'ms_choice', 'Pilih minimal dua jawaban yang tepat:', 'Pilihan 1', 'Pilihan 2', 'Pilihan 3', 'Pilihan 4', 'Pilihan 5', 'A,C,D', 1],
+            [1, '', 'Contoh soal pilihan ganda otomatis terdeteksi', 'Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D', 'Pilihan E', 'A', 1],
+            [2, '', 'Soal esai otomatis terdeteksi jika tidak ada opsi', '', '', '', '', '', '', 2],
+            [3, '', 'Pernyataan ini otomatis terdeteksi Benar/Salah.', 'Benar', 'Salah', '', '', '', 'A', 1],
+            [4, '', 'Soal PG kompleks terdeteksi jika jawaban berisi koma', 'Pilihan 1', 'Pilihan 2', 'Pilihan 3', 'Pilihan 4', 'Pilihan 5', 'A,C,D', 1],
+            [5, 'multiple_choice', 'Bisa juga isi kolom type manual jika ingin eksplisit', 'Opsi A', 'Opsi B', 'Opsi C', 'Opsi D', '', 'B', 1],
         ];
         const ws = XLSX.utils.aoa_to_sheet([...header, ...example]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Soal');
         XLSX.writeFile(wb, 'template_soal_cbt.xlsx');
+    };
+
+    // Auto-detect tipe soal dari data baris Excel (sama logic dengan Word parser)
+    const autoDetectExcelType = (row) => {
+        // Jika sudah ada type yang valid, pakai itu
+        const validTypes = ['multiple_choice', 'essay', 'ms_choice', 'true_false', 'matching'];
+        if (row.type && validTypes.includes(String(row.type).trim().toLowerCase())) {
+            return String(row.type).trim().toLowerCase();
+        }
+
+        const optA = String(row.option_a || '').trim().toLowerCase();
+        const optB = String(row.option_b || '').trim().toLowerCase();
+        const optC = String(row.option_c || '').trim();
+        const optD = String(row.option_d || '').trim();
+        const optE = String(row.option_e || '').trim();
+        const correctAnswer = String(row.correct_answer || '').trim();
+
+        // Tidak ada opsi sama sekali → esai
+        if (!optA && !optB && !optC && !optD && !optE) {
+            return 'essay';
+        }
+
+        // Opsi A=benar & B=salah & tidak ada C,D,E → benar/salah
+        if ((optA === 'benar' || optA === 'true') && (optB === 'salah' || optB === 'false') && !optC && !optD && !optE) {
+            return 'true_false';
+        }
+
+        // Jawaban berisi koma → PG Kompleks
+        if (correctAnswer.includes(',')) {
+            return 'ms_choice';
+        }
+
+        // Default → pilihan ganda biasa
+        return 'multiple_choice';
     };
 
     const handleImportFileChange = async (e) => {
@@ -284,7 +319,20 @@ export default function AdminCbtSoal() {
                     const wb = XLSX.read(evt.target.result, { type: 'array' });
                     const ws = wb.Sheets[wb.SheetNames[0]];
                     const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
-                    setImportData(raw);
+
+                    // Normalisasi header: hapus teks tambahan seperti " (opsional)"
+                    const normalized = raw.map(row => {
+                        const cleanRow = {};
+                        for (const key of Object.keys(row)) {
+                            const cleanKey = key.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+                            cleanRow[cleanKey] = row[key];
+                        }
+                        // Auto-detect tipe soal jika kolom 'type' kosong atau tidak valid
+                        cleanRow.type = autoDetectExcelType(cleanRow);
+                        return cleanRow;
+                    });
+
+                    setImportData(normalized);
                 } catch (err) {
                     Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membaca file Excel. Pastikan format sesuai.' });
                 }
