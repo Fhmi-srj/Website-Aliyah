@@ -401,7 +401,7 @@ class KegiatanRutinController extends Controller
                         'tempat' => $kegiatan->tempat,
                         'guru_id' => $kegiatan->penanggung_jawab_id,
                         'kegiatan_id' => $kegiatan->id,
-                        'keterangan' => 'Kegiatan Rutin',
+                        'keterangan' => 'Kegiatan',
                         'tahun_ajaran_id' => $kegiatan->tahun_ajaran_id,
                     ]);
                 }
