@@ -425,7 +425,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     });
 
     // CBT Routes (Guru)
-    Route::apiResource('cbt/question-banks', \App\Http\Controllers\Api\Guru\CbtQuestionBankController::class);
+    Route::apiResource('cbt/question-banks', \App\Http\Controllers\Api\Guru\CbtQuestionBankController::class)->names('guru.cbt.question-banks');
     Route::post('cbt/question-banks/{id}/questions/bulk', [\App\Http\Controllers\Api\Guru\CbtBulkQuestionController::class, 'store']);
     Route::get('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'index']);
     Route::post('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'store']);
@@ -434,7 +434,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::post('cbt/exams/bulk', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'storeBulk']);
     Route::get('cbt/exams/proctors', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getProctors']);
     Route::get('cbt/exams/projects', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getProjects']);
-    Route::apiResource('cbt/exams', \App\Http\Controllers\Api\Guru\CbtExamController::class);
+    Route::apiResource('cbt/exams', \App\Http\Controllers\Api\Guru\CbtExamController::class)->names('guru.cbt.exams');
     Route::get('cbt/exams/{id}/results', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getResults']);
     Route::get('cbt/exams/{id}/results/{studentId}', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getStudentAnswers']);
     Route::post('cbt/exams/{id}/results/{studentId}/grade', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'gradeEssay']);
