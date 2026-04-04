@@ -189,4 +189,24 @@ Wassalamu'alaikum warahmatullahi wabarakatuh.
 *NB.*
 Penanggung Jawab : {penanggung_jawab}
 TPL,
+
+    // Pengingat kegiatan ekstra hari H (kegiatan rutin mingguan/bulanan/harian)
+    'pengingat_kegiatan_ekstra' => <<<'TPL'
+*PENGINGAT KEGIATAN EKSTRA HARI INI*
+Yth. Segenap Dewan Guru MA Alhikam
+
+Assalamu'alaikum warahmatullahi wabarakatuh.
+Mengingatkan kegiatan ekstra rutin hari {hari} ini:
+
+📌 : {nama_kegiatan}
+🏛️ : {tempat}
+⏰ : {waktu} WIB - Selesai
+🔄 : {jenis_kegiatan}
+
+Mohon hadir tepat waktu. 🙏
+Wassalamu'alaikum warahmatullahi wabarakatuh.
+
+*NB.*
+Penanggung Jawab : {penanggung_jawab}
+TPL,
 ];

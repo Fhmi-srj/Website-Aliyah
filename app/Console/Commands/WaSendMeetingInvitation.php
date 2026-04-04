@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Rapat;
 use App\Models\Kegiatan;
+use App\Models\KegiatanRutin;
 use App\Models\Guru;
 use App\Models\AppSetting;
 use App\Services\WhatsappService;
@@ -146,7 +147,42 @@ class WaSendMeetingInvitation extends Command
             $sent++;
         }
 
-        $this->info("Total notifikasi rapat & kegiatan terkirim: {$sent}");
+        // ========================================
+        // 3. KEGIATAN EKSTRA (Rutin)
+        // ========================================
+
+        // Cocokkan hari ini (Carbon locale 'id') dengan field 'hari' di kegiatan_rutins
+        // Format: "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"
+        $hariIni = $today->locale('id')->translatedFormat('l');
+
+        $kegiatanEkstraHariH = KegiatanRutin::with(['penanggungJawab'])
+            ->where('status', 'Aktif')
+            ->where('hari', $hariIni)
+            ->get();
+
+        foreach ($kegiatanEkstraHariH as $kegiatan) {
+            $pjNama = $kegiatan->penanggungJawab->inisial ?? $kegiatan->penanggungJawab->nama ?? '-';
+
+            $message = $wa->renderTemplate('pengingat_kegiatan_ekstra', [
+                'nama_kegiatan'    => $kegiatan->nama_kegiatan,
+                'tempat'           => $kegiatan->tempat ?? '-',
+                'waktu'            => substr($kegiatan->jam_mulai, 0, 5),
+                'hari'             => $hariIni,
+                'jenis_kegiatan'   => $kegiatan->jenis_kegiatan ?? '-',
+                'penanggung_jawab' => $pjNama,
+            ]);
+
+            if ($dryRun) {
+                $this->info("=== DRY RUN - Pengingat Kegiatan Ekstra ({$kegiatan->nama_kegiatan}) ===");
+                $this->line($message);
+            } else {
+                $wa->sendToGroup($message);
+                usleep(1000000);
+            }
+            $sent++;
+        }
+
+        $this->info("Total notifikasi rapat, kegiatan & kegiatan ekstra terkirim: {$sent}");
         return Command::SUCCESS;
     }
 }
