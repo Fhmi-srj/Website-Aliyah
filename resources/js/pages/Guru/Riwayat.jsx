@@ -286,6 +286,14 @@ function Riwayat() {
                     label: 'Izin',
                     labelBg: 'bg-yellow-100 text-yellow-700',
                 };
+            case '-':
+                return {
+                    border: 'border-gray-200',
+                    bg: 'bg-gray-50',
+                    icon: 'text-gray-400',
+                    label: 'Belum Mulai',
+                    labelBg: 'bg-gray-100 text-gray-500',
+                };
             case 'A':
             default:
                 return {

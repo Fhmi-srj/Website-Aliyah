@@ -459,7 +459,7 @@ class GuruRiwayatController extends Controller
             $waktuSelesai = $kegiatan->waktu_berakhir ? Carbon::parse($kegiatan->waktu_berakhir) : $waktuMulai->copy()->addHours(2);
 
             // Determine attendance status
-            $guruStatus = 'H'; // Default
+            $guruStatus = '-'; // Default is pending/belum mulai
             $guruKeterangan = null;
 
             // Check if kegiatan has passed
@@ -471,17 +471,17 @@ class GuruRiwayatController extends Controller
             if ($absensiRecord) {
                 if ($isPJ) {
                     // PJ status is in pj_status column
-                    $guruStatus = $absensiRecord->pj_status ?? ($isPast ? 'A' : 'H');
+                    $guruStatus = $absensiRecord->pj_status ?? ($isPast ? 'A' : '-');
                     $guruKeterangan = $absensiRecord->pj_keterangan;
                 } else {
                     // Pendamping status is in absensi_pendamping JSON
                     $absensiPendamping = $absensiRecord->absensi_pendamping ?? [];
                     $attendance = $findAttendance($absensiPendamping, $guru->id);
                     if ($attendance) {
-                        $guruStatus = $attendance['status'] ?? 'H';
+                        $guruStatus = $attendance['status'] ?? '-';
                         $guruKeterangan = $attendance['keterangan'] ?? null;
                     } else {
-                        $guruStatus = $isPast ? 'A' : 'H';
+                        $guruStatus = $isPast ? 'A' : '-';
                         $guruKeterangan = $isPast ? 'Tidak tercatat dalam absensi' : null;
                     }
                 }
@@ -626,7 +626,7 @@ class GuruRiwayatController extends Controller
                     $guruKeterangan = $absensiRecord ? 'Tidak tercatat dalam absensi' : 'Tidak ada record absensi';
                 } else {
                     // Rapat not past and no self-attendance yet
-                    $guruStatus = 'H'; // Will show as pending/default
+                    $guruStatus = '-'; // Will show as Belum Mulai
                 }
             }
 
@@ -705,7 +705,7 @@ class GuruRiwayatController extends Controller
                     'id' => $pg->id,
                     'nama' => $pg->nama,
                     'nip' => $pg->nip,
-                    'status' => $absensi ? ($absensi['status'] ?? 'H') : 'A',
+                    'status' => $absensi ? ($absensi['status'] ?? 'H') : '-',
                 ];
             }
         }
@@ -729,18 +729,18 @@ class GuruRiwayatController extends Controller
         }
 
         // Determine current guru's own status
-        $guruStatus = 'H'; // Default if guru is PJ or in pendamping list
+        $guruStatus = '-'; // Default if guru is PJ or in pendamping list
         $guruKeterangan = null;
 
         // Check if guru is PJ
         if ($kegiatan->penanggung_jawab_id == $guru->id && $absensiRecord) {
-            $guruStatus = $absensiRecord->pj_status ?? 'H';
+            $guruStatus = $absensiRecord->pj_status ?? '-';
             $guruKeterangan = $absensiRecord->pj_keterangan;
         } else {
             // Check in pendamping list
             $guruAbsensi = $findAttendance($absensiPendamping, $guru->id);
             if ($guruAbsensi) {
-                $guruStatus = $guruAbsensi['status'] ?? 'H';
+                $guruStatus = $guruAbsensi['status'] ?? '-';
                 $guruKeterangan = $guruAbsensi['keterangan'] ?? null;
             }
         }
@@ -807,7 +807,7 @@ class GuruRiwayatController extends Controller
                 'id' => $rapat->pimpinanGuru->id,
                 'nama' => $rapat->pimpinanGuru->nama,
                 'nip' => $rapat->pimpinanGuru->nip,
-                'status' => $absensiRecord ? ($absensiRecord->pimpinan_status ?? 'A') : 'A',
+                'status' => $absensiRecord ? ($absensiRecord->pimpinan_status ?? 'A') : '-',
             ];
         }
 
@@ -818,7 +818,7 @@ class GuruRiwayatController extends Controller
                 'id' => $rapat->sekretarisGuru->id,
                 'nama' => $rapat->sekretarisGuru->nama,
                 'nip' => $rapat->sekretarisGuru->nip,
-                'status' => $absensiRecord ? ($absensiRecord->sekretaris_status ?? 'A') : 'A',
+                'status' => $absensiRecord ? ($absensiRecord->sekretaris_status ?? 'A') : '-',
             ];
         }
 
@@ -835,30 +835,30 @@ class GuruRiwayatController extends Controller
                     'id' => $pg->id,
                     'nama' => $pg->nama,
                     'nip' => $pg->nip,
-                    'status' => $absensi ? ($absensi['status'] ?? 'H') : 'A',
+                    'status' => $absensi ? ($absensi['status'] ?? 'H') : '-',
                 ];
             }
         }
 
         // Determine current guru's own status
-        $guruStatus = 'H';
+        $guruStatus = '-';
         $guruKeterangan = null;
 
         // Check if guru is pimpinan
         if ($rapat->pimpinan_id == $guru->id && $absensiRecord) {
-            $guruStatus = $absensiRecord->pimpinan_status ?? 'H';
+            $guruStatus = $absensiRecord->pimpinan_status ?? '-';
             $guruKeterangan = $absensiRecord->pimpinan_keterangan;
         }
         // Check if guru is sekretaris
         elseif ($rapat->sekretaris_id == $guru->id && $absensiRecord) {
-            $guruStatus = $absensiRecord->sekretaris_status ?? 'H';
+            $guruStatus = $absensiRecord->sekretaris_status ?? '-';
             $guruKeterangan = $absensiRecord->sekretaris_keterangan;
         }
         // Check in peserta list
         else {
             $guruAbsensi = $findAttendance($absensiPeserta, $guru->id);
             if ($guruAbsensi) {
-                $guruStatus = $guruAbsensi['status'] ?? 'H';
+                $guruStatus = $guruAbsensi['status'] ?? '-';
                 $guruKeterangan = $guruAbsensi['keterangan'] ?? null;
             }
         }
