@@ -30,7 +30,9 @@ function Login() {
     useEffect(() => {
         if (!authLoading && isAuthenticated) {
             const activeRole = localStorage.getItem('active_role') || 'guru';
-            if (hasAdminAccess(activeRole)) {
+            if (activeRole === 'siswa') {
+                navigate('/siswa', { replace: true });
+            } else if (hasAdminAccess(activeRole)) {
                 navigate('/dashboard', { replace: true });
             } else {
                 navigate('/guru', { replace: true });
@@ -73,7 +75,9 @@ function Login() {
 
         if (result.success) {
             const activeRole = localStorage.getItem('active_role') || 'guru';
-            if (hasAdminAccess(activeRole)) {
+            if (activeRole === 'siswa') {
+                navigate('/siswa', { replace: true });
+            } else if (hasAdminAccess(activeRole)) {
                 navigate('/dashboard', { replace: true });
             } else {
                 navigate('/guru', { replace: true });
@@ -100,7 +104,9 @@ function Login() {
 
             if (result.success) {
                 const activeRole = localStorage.getItem('active_role') || 'guru';
-                if (hasAdminAccess(activeRole)) {
+                if (activeRole === 'siswa') {
+                    navigate('/siswa', { replace: true });
+                } else if (hasAdminAccess(activeRole)) {
                     navigate('/dashboard', { replace: true });
                 } else {
                     navigate('/guru', { replace: true });

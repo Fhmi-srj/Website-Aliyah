@@ -192,12 +192,23 @@ export function DesktopLeftPanel({ dashboardData, loading, activeRole, upcomingE
                         </div>
                         <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
                             {liveAttendance.map((item, idx) => {
-                                const cfg = {
+                                let cfg = {
                                     sudah_absen: { bg: 'bg-green-100', text: 'text-green-700', label: 'Hadir', icon: 'fa-check-circle' },
                                     sedang_berlangsung: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Berlangsung', icon: 'fa-clock' },
                                     terlewat: { bg: 'bg-red-100', text: 'text-red-700', label: 'Belum', icon: 'fa-exclamation-circle' },
                                     belum_mulai: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Nanti', icon: 'fa-hourglass-half' },
                                 }[item.status] || { bg: 'bg-gray-100', text: 'text-gray-500', label: '-', icon: 'fa-circle' };
+
+                                // Override for actual attendance status
+                                if (item.status === 'sudah_absen' && item.guru_status) {
+                                    if (item.guru_status === 'S') {
+                                        cfg = { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sakit', icon: 'fa-briefcase-medical' };
+                                    } else if (item.guru_status === 'I') {
+                                        cfg = { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Izin', icon: 'fa-envelope-open-text' };
+                                    } else if (item.guru_status === 'A') {
+                                        cfg = { bg: 'bg-red-100', text: 'text-red-700', label: 'Alpha', icon: 'fa-times-circle' };
+                                    }
+                                }
                                 return (
                                     <div key={idx} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-2 border border-gray-50">
                                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -291,6 +302,8 @@ export function DesktopRightPanel({ dashboardData, upcomingEvents, loading, load
                         { path: '/guru/modul', icon: 'fa-book', label: 'Modul' },
                         { path: '/guru/supervisi', icon: 'fa-clipboard-check', label: 'Supervisi' },
                         { path: '/guru/galeri', icon: 'fa-images', label: 'Galeri' },
+                        { path: '/guru/cbt/bank-soal', icon: 'fa-database', label: 'Bank Soal' },
+                        { path: '/guru/cbt/jadwal', icon: 'fa-laptop-code', label: 'Jadwal Ujian' },
                     ].map((item) => (
                         <button
                             key={item.path}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\AbsensiMengajar;
 use App\Models\TahunAjaran;
@@ -64,12 +65,13 @@ class JadwalController extends Controller
             'jam_pelajaran_sampai_id' => 'nullable|exists:jam_pelajaran,id',
             'guru_id' => 'nullable|exists:guru,id',
             'mapel_id' => 'required|exists:mapel,id',
-            'kelas_id' => 'required|exists:kelas,id',
+            'kelas_id' => 'nullable|exists:kelas,id',  // nullable for kegiatan rutin
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'semester' => 'nullable|in:Ganjil,Genap',
             'tahun_ajaran' => 'nullable|string|max:20', // Keep for backward compatibility
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
             'status' => 'nullable|in:Aktif,Tidak Aktif',
+            'is_kegiatan_rutin' => 'nullable|boolean',
         ]);
 
         // Set defaults
@@ -125,12 +127,13 @@ class JadwalController extends Controller
             'jam_pelajaran_sampai_id' => 'nullable|exists:jam_pelajaran,id',
             'guru_id' => 'nullable|exists:guru,id',
             'mapel_id' => 'required|exists:mapel,id',
-            'kelas_id' => 'required|exists:kelas,id',
+            'kelas_id' => 'nullable|exists:kelas,id',  // nullable for kegiatan rutin
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'semester' => 'nullable|in:Ganjil,Genap',
             'tahun_ajaran' => 'nullable|string|max:20',
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
             'status' => 'nullable|in:Aktif,Tidak Aktif',
+            'is_kegiatan_rutin' => 'nullable|boolean',
         ]);
 
         // Sync tahun_ajaran text if tahun_ajaran_id is provided
@@ -173,6 +176,71 @@ class JadwalController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Jadwal berhasil dihapus'
+        ]);
+    }
+
+    /**
+     * Assign a routine schedule (is_kegiatan_rutin=true) to all active guru.
+     * This creates individual Jadwal rows for each guru based on the template data.
+     * Skips if a guru already has a jadwal with the same mapel_id + hari + is_kegiatan_rutin.
+     */
+    public function assignAll(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mapel_id'               => 'required|exists:mapel,id',
+            'hari'                   => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
+            'jam_ke'                 => 'nullable|string|max:10',
+            'jam_pelajaran_id'       => 'nullable|exists:jam_pelajaran,id',
+            'jam_pelajaran_sampai_id'=> 'nullable|exists:jam_pelajaran,id',
+            'semester'               => 'nullable|in:Ganjil,Genap',
+            'tahun_ajaran_id'        => 'nullable|exists:tahun_ajaran,id',
+            'status'                 => 'nullable|in:Aktif,Tidak Aktif',
+        ]);
+
+        // Resolve tahun ajaran
+        $tahunAjaranId = $validated['tahun_ajaran_id'] ?? $this->getActiveTahunAjaranId($request);
+        $tahunAjaran = TahunAjaran::find($tahunAjaranId);
+
+        $guruList = Guru::where('status', 'Aktif')->get();
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($guruList as $guru) {
+            // Skip if already exists
+            $exists = Jadwal::where('guru_id', $guru->id)
+                ->where('mapel_id', $validated['mapel_id'])
+                ->where('hari', $validated['hari'])
+                ->where('is_kegiatan_rutin', true)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            Jadwal::create([
+                'guru_id'                => $guru->id,
+                'mapel_id'               => $validated['mapel_id'],
+                'kelas_id'               => null,
+                'hari'                   => $validated['hari'],
+                'jam_ke'                 => $validated['jam_ke'] ?? '1-2',
+                'jam_pelajaran_id'       => $validated['jam_pelajaran_id'] ?? null,
+                'jam_pelajaran_sampai_id'=> $validated['jam_pelajaran_sampai_id'] ?? null,
+                'semester'               => $validated['semester'] ?? 'Ganjil',
+                'tahun_ajaran_id'        => $tahunAjaranId,
+                'tahun_ajaran'           => $tahunAjaran?->nama,
+                'status'                 => $validated['status'] ?? 'Aktif',
+                'is_kegiatan_rutin'      => true,
+            ]);
+            $created++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Jadwal berhasil diterapkan ke {$created} guru ({$skipped} sudah ada, dilewati).",
+            'created' => $created,
+            'skipped' => $skipped,
         ]);
     }
 }

@@ -82,7 +82,8 @@ class GuruAbsensiController extends Controller
             $result[] = [
                 'id' => $jadwal->id,
                 'mapel' => $jadwal->mapel->nama_mapel ?? 'Unknown',
-                'kelas' => $jadwal->kelas->nama_kelas ?? 'Unknown',
+                'kelas' => $jadwal->is_kegiatan_rutin ? 'Semua Guru' : ($jadwal->kelas->nama_kelas ?? 'Unknown'),
+                'is_kegiatan_rutin' => (bool) $jadwal->is_kegiatan_rutin,
                 'jam_mulai' => $jadwal->jam_mulai,
                 'jam_selesai' => $jadwal->jam_selesai,
                 'jam_ke' => $jadwal->jam_ke,
@@ -160,7 +161,8 @@ class GuruAbsensiController extends Controller
                 $dayResult[] = [
                     'id' => $jadwal->id,
                     'mapel' => $jadwal->mapel->nama_mapel ?? 'Unknown',
-                    'kelas' => $jadwal->kelas->nama_kelas ?? 'Unknown',
+                    'kelas' => $jadwal->is_kegiatan_rutin ? 'Semua Guru' : ($jadwal->kelas->nama_kelas ?? 'Unknown'),
+                    'is_kegiatan_rutin' => (bool) $jadwal->is_kegiatan_rutin,
                     'jam_mulai' => $jadwal->jam_mulai,
                     'jam_selesai' => $jadwal->jam_selesai,
                     'jam_ke' => $jadwal->jam_ke,
@@ -411,7 +413,9 @@ class GuruAbsensiController extends Controller
             $absensi = AbsensiMengajar::create([
                 'jadwal_id' => $jadwal->id,
                 'guru_id' => $guru->id,
-                'snapshot_kelas' => $jadwal->kelas?->nama_kelas ?? null,
+                'snapshot_kelas' => $jadwal->is_kegiatan_rutin
+                    ? 'Kegiatan Rutin'
+                    : ($jadwal->kelas?->nama_kelas ?? null),
                 'snapshot_mapel' => $jadwal->mapel?->nama_mapel ?? null,
                 'snapshot_jam' => $jadwal->jam_mulai . ' - ' . $jadwal->jam_selesai,
                 'snapshot_hari' => $jadwal->hari,
@@ -430,8 +434,8 @@ class GuruAbsensiController extends Controller
                 'absensi_time' => $now,
             ]);
 
-            // Save daily absensi siswa (per-day, not per-mapel)
-            if (!empty($validated['absensi_siswa'])) {
+            // Save daily absensi siswa — skip for kegiatan rutin (no class)
+            if (!$jadwal->is_kegiatan_rutin && !empty($validated['absensi_siswa'])) {
                 $snapshotCounts = $this->saveDailyAbsensiSiswa(
                     $validated['absensi_siswa'],
                     $jadwal->kelas_id,

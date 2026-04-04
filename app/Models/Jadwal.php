@@ -25,6 +25,11 @@ class Jadwal extends Model
         'tahun_ajaran',
         'tahun_ajaran_id',
         'status',
+        'is_kegiatan_rutin',
+    ];
+
+    protected $casts = [
+        'is_kegiatan_rutin' => 'boolean',
     ];
 
     /**

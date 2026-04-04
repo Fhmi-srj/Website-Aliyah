@@ -27,6 +27,7 @@ class Kegiatan extends Model
         'status_kbm', // Keep for backward compatibility
         'tahun_ajaran_id',
         'kalender_id',
+        'kegiatan_rutin_id',
     ];
 
     protected $casts = [
@@ -91,5 +92,13 @@ class Kegiatan extends Model
     public function kalender()
     {
         return $this->hasOne(Kalender::class, 'kegiatan_id');
+    }
+
+    /**
+     * Get the recurring template if this activity is a routine.
+     */
+    public function kegiatanRutin()
+    {
+        return $this->belongsTo(KegiatanRutin::class, 'kegiatan_rutin_id');
     }
 }

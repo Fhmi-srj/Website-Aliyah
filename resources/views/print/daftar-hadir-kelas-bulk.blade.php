@@ -271,7 +271,7 @@
                     </tr>
                     <tr>
                         @for($d = 1; $d <= $section['daysInMonth']; $d++)
-                            @php $dow = \Carbon\Carbon::create($section['tahun'], array_search($section['bulanNama'], ['Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4, 'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8, 'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12]) ?: 1, $d)->dayOfWeek; @endphp
+                            @php $dow = \Carbon\Carbon::create($section['tahun'], ['Januari' => 1, 'Februari' => 2, 'Maret' => 3, 'April' => 4, 'Mei' => 5, 'Juni' => 6, 'Juli' => 7, 'Agustus' => 8, 'September' => 9, 'Oktober' => 10, 'November' => 11, 'Desember' => 12][$section['bulanNama']] ?? 1, $d)->dayOfWeek; @endphp
                             <th class="col-day {{ isset($section['holidayInfo'][$d]) ? 'col-holiday-header' : '' }}"
                                 style="font-size: 5.5pt; color: {{ $dow == 5 ? '#dc2626' : '#666' }};">
                                 {{ $dayInitials[$dow] }}

@@ -28,6 +28,7 @@ const menuItems = [
             { id: 'jadwal', label: 'Manajemen Jadwal', path: '/data-induk/jadwal', icon: 'fa-calendar-alt' },
             { id: 'jam-pelajaran', label: 'Jam Pelajaran', path: '/data-induk/jam-pelajaran', icon: 'fa-clock' },
             { id: 'kegiatan', label: 'Manajemen Kegiatan', path: '/data-induk/kegiatan', icon: 'fa-tasks' },
+            { id: 'kegiatan-rutin', label: 'Kegiatan Ekstra (Template)', path: '/data-induk/kegiatan-ekstra', icon: 'fa-calendar-alt' },
             { id: 'ekskul', label: 'Manajemen Ekstrakurikuler', path: '/data-induk/ekskul', icon: 'fa-futbol' },
             { id: 'rapat', label: 'Manajemen Rapat', path: '/data-induk/rapat', icon: 'fa-users' },
             { id: 'kalender', label: 'Kalender Pendidikan', path: '/data-induk/kalender', icon: 'fa-calendar-check' },
@@ -52,6 +53,16 @@ const menuItems = [
         label: 'Manajemen Role',
         icon: 'fa-user-shield',
         path: '/manajemen-role',
+    },
+    {
+        id: 'cbt',
+        label: 'Ujian Online (CBT)',
+        icon: 'fa-laptop-code',
+        children: [
+            { id: 'cbt-bank-soal', label: 'Bank Soal', path: '/cbt/bank-soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', label: 'Jadwal Ujian', path: '/cbt/jadwal', icon: 'fa-calendar-alt' },
+            { id: 'cbt-hasil', label: 'Hasil Ujian', path: '/cbt/hasil', icon: 'fa-chart-bar' },
+        ],
     },
     {
         id: 'log-aktivitas',

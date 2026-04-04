@@ -410,6 +410,24 @@ function Beranda() {
                                 Galeri
                             </span>
                         </button>
+                        <button
+                            onClick={() => navigate("/guru/cbt/bank-soal")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-database text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Bank Soal
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => navigate("/guru/cbt/jadwal")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-laptop-code text-xl"></i>
+                            <span className="text-[10px] font-medium text-center leading-tight">
+                                Jadwal Ujian
+                            </span>
+                        </button>
                     </div>
                 </div>
 

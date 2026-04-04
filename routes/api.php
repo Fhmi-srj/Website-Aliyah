@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\MapelController;
 use App\Http\Controllers\Api\Admin\GuruController;
 use App\Http\Controllers\Api\Admin\SiswaController;
 use App\Http\Controllers\Api\Admin\JadwalController;
+use App\Http\Controllers\Api\Admin\KegiatanRutinController;
 use App\Http\Controllers\Api\Admin\KegiatanController;
 use App\Http\Controllers\Api\Admin\EkskulController;
 use App\Http\Controllers\Api\Admin\RapatController;
@@ -25,6 +26,8 @@ use Illuminate\Session\Middleware\StartSession;
 
 // Public Auth Routes
 Route::post('auth/login', [AuthController::class, 'login']);
+Route::post('cbt/student/login', [\App\Http\Controllers\Api\Siswa\CbtAuthController::class, 'login']);
+Route::post('siswa-panel/login', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'login']);
 
 // === WebAuthn Public Routes (login with fingerprint) - needs session for challenge storage ===
 Route::middleware([
@@ -91,9 +94,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('guru/{guru}/modul', [\App\Http\Controllers\Api\Guru\GuruModulController::class, 'modulByGuru']);
     Route::apiResource('siswa', SiswaController::class);
     Route::post('siswa/bulk-delete', [SiswaController::class, 'bulkDelete']);
+    Route::post('siswa/{siswa}/reset-password', [SiswaController::class, 'resetPassword']);
     Route::apiResource('jadwal', JadwalController::class);
+    Route::post('jadwal/assign-all-guru', [JadwalController::class, 'assignAll']);
     Route::apiResource('kegiatan', KegiatanController::class);
     Route::post('kegiatan/bulk-delete', [KegiatanController::class, 'bulkDelete']);
+    Route::post('kegiatan/bulk-jenis', [KegiatanController::class, 'bulkUpdateJenis']);
+    
+    Route::apiResource('kegiatan-rutin', KegiatanRutinController::class);
+    Route::post('kegiatan-rutin/bulk-delete', [KegiatanRutinController::class, 'bulkDelete']);
     Route::post('kegiatan/bulk-jenis', [KegiatanController::class, 'bulkUpdateJenis']);
     Route::apiResource('ekskul', EkskulController::class);
     Route::post('rapat/bulk-delete', [RapatController::class, 'bulkDelete']);
@@ -284,7 +293,44 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('pengeluaran', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportPengeluaran']);
         Route::get('tagihan', [\App\Http\Controllers\Api\Admin\TableExportController::class, 'exportTagihan']);
     });
+
+    // CBT Routes (Admin)
+    Route::post('cbt/question-banks/generate', [\App\Http\Controllers\Api\Admin\CbtQuestionBankController::class, 'generate']);
+    Route::apiResource('cbt/question-banks', \App\Http\Controllers\Api\Admin\CbtQuestionBankController::class);
+    Route::post('cbt/question-banks/{id}/questions/bulk', [\App\Http\Controllers\Api\Admin\CbtBulkQuestionController::class, 'store']);
+    Route::get('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Admin\CbtQuestionController::class, 'index']);
+    Route::post('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Admin\CbtQuestionController::class, 'store']);
+    Route::put('cbt/questions/{id}', [\App\Http\Controllers\Api\Admin\CbtQuestionController::class, 'update']);
+    Route::delete('cbt/questions/{id}', [\App\Http\Controllers\Api\Admin\CbtQuestionController::class, 'destroy']);
+    Route::post('cbt/exams/bulk', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'storeBulk']);
+    Route::get('cbt/exams/proctors', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'getProctors']);
+    Route::get('cbt/exams/projects', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'getProjects']);
+    Route::apiResource('cbt/exams', \App\Http\Controllers\Api\Admin\CbtExamController::class);
+    Route::post('cbt/exams/{id}/generate-token', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'generateToken']);
+    Route::get('cbt/exams/{id}/results', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'getResults']);
+    Route::get('cbt/exams/{id}/results/{studentId}', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'getStudentAnswers']);
+    Route::post('cbt/exams/{id}/results/{studentId}/grade', [\App\Http\Controllers\Api\Admin\CbtExamController::class, 'gradeEssay']);
+
+    // CBT Routes (Siswa)
+    Route::post('cbt/student/logout', [\App\Http\Controllers\Api\Siswa\CbtAuthController::class, 'logout']);
+    Route::get('cbt/student/me', [\App\Http\Controllers\Api\Siswa\CbtAuthController::class, 'me']);
+    
+    // Panel Siswa Routes
+    Route::get('siswa-panel/me', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'me']);
+    Route::post('siswa-panel/logout', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'logout']);
+    Route::post('siswa-panel/change-password', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'changePassword']);
+    Route::get('siswa-panel/dashboard', [\App\Http\Controllers\Api\Siswa\DashboardController::class, 'getInfo']);
+    Route::get('siswa-panel/exams', [\App\Http\Controllers\Api\Siswa\DashboardController::class, 'getActiveExams']);
+    Route::get('siswa-panel/penilaian', [\App\Http\Controllers\Api\Siswa\SiswaPenilaianController::class, 'index']);
+    Route::prefix('cbt/student')->group(function () {
+        Route::get('exams', [\App\Http\Controllers\Api\Siswa\CbtStudentController::class, 'getAvailableExams']);
+        Route::post('exams/{id}/join', [\App\Http\Controllers\Api\Siswa\CbtStudentController::class, 'joinExam']);
+        Route::get('exams/{id}/questions', [\App\Http\Controllers\Api\Siswa\CbtStudentController::class, 'getQuestions']);
+        Route::post('exams/{id}/answer', [\App\Http\Controllers\Api\Siswa\CbtStudentController::class, 'submitAnswer']);
+        Route::post('exams/{id}/finish', [\App\Http\Controllers\Api\Siswa\CbtStudentController::class, 'finishExam']);
+    });
 });
+
 
 
 // Guru Panel Routes (for guru role)
@@ -377,6 +423,21 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
         Route::post('unsubscribe', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'unsubscribe']);
         Route::put('preferences', [\App\Http\Controllers\Api\Guru\PushNotificationController::class, 'updatePreferences']);
     });
+
+    // CBT Routes (Guru)
+    Route::apiResource('cbt/question-banks', \App\Http\Controllers\Api\Guru\CbtQuestionBankController::class);
+    Route::post('cbt/question-banks/{id}/questions/bulk', [\App\Http\Controllers\Api\Guru\CbtBulkQuestionController::class, 'store']);
+    Route::get('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'index']);
+    Route::post('cbt/question-banks/{id}/questions', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'store']);
+    Route::put('cbt/questions/{id}', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'update']);
+    Route::delete('cbt/questions/{id}', [\App\Http\Controllers\Api\Guru\CbtQuestionController::class, 'destroy']);
+    Route::post('cbt/exams/bulk', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'storeBulk']);
+    Route::get('cbt/exams/proctors', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getProctors']);
+    Route::get('cbt/exams/projects', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getProjects']);
+    Route::apiResource('cbt/exams', \App\Http\Controllers\Api\Guru\CbtExamController::class);
+    Route::get('cbt/exams/{id}/results', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getResults']);
+    Route::get('cbt/exams/{id}/results/{studentId}', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'getStudentAnswers']);
+    Route::post('cbt/exams/{id}/results/{studentId}/grade', [\App\Http\Controllers\Api\Guru\CbtExamController::class, 'gradeEssay']);
 });
 
 // Print Routes - separate group with token_auth middleware

@@ -9,6 +9,7 @@ use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class SiswaController extends Controller
 {
@@ -129,6 +130,7 @@ class SiswaController extends Controller
             'status' => 'required|in:Aktif,Tidak Aktif,Alumni,Mutasi',
             'nis' => 'required|string|max:20|unique:siswa,nis',
             'nisn' => 'nullable|string|max:20|unique:siswa,nisn',
+            'password' => 'nullable|string|min:6',
             'kelas_id' => 'required|exists:kelas,id',
             'jenis_kelamin' => 'required|in:L,P',
             'alamat' => 'nullable|string',
@@ -140,6 +142,11 @@ class SiswaController extends Controller
             'kontak_ortu' => 'nullable|string|max:20',
             'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
         ]);
+
+        // If no password set, use mahakam2020 as default password
+        if (empty($validated['password'])) {
+            $validated['password'] = 'mahakam2020';
+        }
 
         $siswa = Siswa::create($validated);
         $siswa->load('kelas');
@@ -187,6 +194,7 @@ class SiswaController extends Controller
             'status' => 'required|in:Aktif,Tidak Aktif',
             'nis' => 'required|string|max:20|unique:siswa,nis,' . $siswa->id,
             'nisn' => 'nullable|string|max:20|unique:siswa,nisn,' . $siswa->id,
+            'password' => 'nullable|string|min:6',
             'kelas_id' => 'required|exists:kelas,id',
             'jenis_kelamin' => 'required|in:L,P',
             'alamat' => 'nullable|string',
@@ -197,6 +205,11 @@ class SiswaController extends Controller
             'nama_ibu' => 'nullable|string|max:100',
             'kontak_ortu' => 'nullable|string|max:20',
         ]);
+
+        // If no new password provided, remove it from update to keep existing one
+        if (empty($validated['password'])) {
+            unset($validated['password']);
+        }
 
         // Capture old values for logging
         $oldValues = $siswa->getOriginal();
@@ -281,6 +294,25 @@ class SiswaController extends Controller
         return response()->json([
             'success' => true,
             'message' => "$count siswa berhasil dihapus"
+        ]);
+    }
+
+    /**
+     * Reset siswa password (Admin action)
+     */
+    public function resetPassword(Request $request, Siswa $siswa): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:6',
+        ]);
+
+        $siswa->update(['password' => $request->password]);
+
+        ActivityLog::logUpdate($siswa, [], "Reset password siswa: {$siswa->nama}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password siswa berhasil direset',
         ]);
     }
 

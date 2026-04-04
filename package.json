@@ -16,9 +16,11 @@
     "dependencies": {
         "@vitejs/plugin-react": "^5.1.2",
         "chart.js": "^4.5.1",
+        "mammoth": "^1.12.0",
         "react": "^19.2.3",
         "react-chartjs-2": "^5.3.1",
         "react-dom": "^19.2.3",
+        "react-quill-new": "^3.8.3",
         "react-router-dom": "^7.12.0",
         "sweetalert2": "^11.26.17",
         "xlsx": "^0.18.5"

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Siswa extends Model
+class Siswa extends Authenticatable
 {
-    use HasFactory;
+    use HasApiTokens, HasFactory;
 
     protected $table = 'siswa';
 
@@ -16,6 +18,7 @@ class Siswa extends Model
         'status',
         'nis',
         'nisn',
+        'password',
         'kelas_id',
         'jenis_kelamin',
         'alamat',
@@ -28,8 +31,11 @@ class Siswa extends Model
         'tahun_ajaran_id',
     ];
 
+    protected $hidden = ['password', 'remember_token'];
+
     protected $casts = [
         'tanggal_lahir' => 'date',
+        'password' => 'hashed',
     ];
 
     public function tahunAjaran()

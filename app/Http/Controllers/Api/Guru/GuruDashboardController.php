@@ -611,7 +611,9 @@ class GuruDashboardController extends Controller
             $status = 'belum_mulai';
             if ($absensi) {
                 $status = 'sudah_absen';
-                $totalHadir++;
+                if ($absensi->guru_status === 'H') {
+                    $totalHadir++;
+                }
             } elseif ($now->greaterThan($jamSelesai)) {
                 $status = 'terlewat';
                 $totalBelum++;

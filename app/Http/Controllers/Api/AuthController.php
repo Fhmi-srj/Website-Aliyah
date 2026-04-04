@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Guru;
+use App\Models\Siswa;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,7 @@ class AuthController extends Controller
             'username' => 'required|string',
             'password' => 'required|string',
             'remember' => 'boolean',
-            'tahun_ajaran_id' => 'required|exists:tahun_ajaran,id',
+            'tahun_ajaran_id' => 'nullable|exists:tahun_ajaran,id',
         ]);
 
         // Rate limiting: 5 attempts per 15 minutes per IP
@@ -77,6 +78,69 @@ class AuthController extends Controller
                     'username' => $guru->username,
                     'name' => $guru->nama,
                     'password' => $guru->password,
+                ]);
+            }
+        }
+
+        // Third: try siswa table by nisn
+        if (!$user) {
+            $siswa = Siswa::where('nisn', $request->username)->first();
+
+            if ($siswa) {
+                // Check password: use hashed password if set, otherwise fallback to plain-text NISN
+                $passwordValid = $siswa->password
+                    ? \Illuminate\Support\Facades\Hash::check($request->password, $siswa->password)
+                    : ($request->password === $siswa->nisn);
+
+                if (!$passwordValid) {
+                    RateLimiter::hit($key, 900);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Username atau password salah.'
+                    ], 401);
+                }
+
+                if ($siswa->status !== 'Aktif') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Status siswa tidak aktif. Hubungi administrator.'
+                    ], 403);
+                }
+
+                RateLimiter::clear($key);
+
+                $tahunAjaran = $request->tahun_ajaran_id
+                    ? \App\Models\TahunAjaran::find($request->tahun_ajaran_id)
+                    : \App\Models\TahunAjaran::where('is_active', true)->first();
+
+                $expiration = $request->remember ? now()->addDays(30) : now()->addHours(24);
+                $siswa->tokens()->delete();
+                $token = $siswa->createToken('siswa-web-token', ['*'], $expiration)->plainTextToken;
+
+                $siswa->load('kelas');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Login berhasil',
+                    'data' => [
+                        'user' => [
+                            'id' => $siswa->id,
+                            'username' => $siswa->nisn,
+                            'name' => $siswa->nama,
+                            'nisn' => $siswa->nisn,
+                            'nis' => $siswa->nis,
+                            'kelas' => $siswa->kelas ? ['kode_kelas' => $siswa->kelas->kode_kelas] : null,
+                            'role' => 'siswa',
+                            'roles' => [['id' => 0, 'name' => 'siswa', 'display_name' => 'Siswa', 'allowed_pages' => []]],
+                        ],
+                        'token' => $token,
+                        'expires_at' => $expiration->toISOString(),
+                        'tahun_ajaran' => $tahunAjaran ? [
+                            'id' => $tahunAjaran->id,
+                            'nama' => $tahunAjaran->nama,
+                            'is_active' => $tahunAjaran->is_active,
+                        ] : null,
+                    ]
                 ]);
             }
         }

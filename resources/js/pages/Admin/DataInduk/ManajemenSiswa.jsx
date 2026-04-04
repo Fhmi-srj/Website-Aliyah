@@ -19,7 +19,7 @@ function ManajemenSiswa() {
     const [currentItem, setCurrentItem] = useState(null);
 
     const [formData, setFormData] = useState({
-        nama: '', status: 'Aktif', nis: '', nisn: '', kelas_id: '',
+        nama: '', status: 'Aktif', nis: '', nisn: '', password: '', kelas_id: '',
         jenis_kelamin: 'L', alamat: '', tanggal_lahir: '', tempat_lahir: '',
         asal_sekolah: '', nama_ayah: '', nama_ibu: '', kontak_ortu: ''
     });
@@ -374,7 +374,7 @@ function ManajemenSiswa() {
     const openAddModal = () => {
         setModalMode('add');
         setFormData({
-            nama: '', status: 'Aktif', nis: '', nisn: '', kelas_id: kelasList[0]?.id || '',
+            nama: '', status: 'Aktif', nis: '', nisn: '', password: '', kelas_id: kelasList[0]?.id || '',
             jenis_kelamin: 'L', alamat: '', tanggal_lahir: '', tempat_lahir: '',
             asal_sekolah: '', nama_ayah: '', nama_ibu: '', kontak_ortu: ''
         });
@@ -390,6 +390,7 @@ function ManajemenSiswa() {
             status: item.status || 'Aktif',
             nis: item.nis || '',
             nisn: item.nisn || '',
+            password: '', // Blank, if filled it updates the password
             kelas_id: item.kelas_id || '',
             jenis_kelamin: item.jenis_kelamin || 'L',
             alamat: item.alamat || '',
@@ -825,6 +826,10 @@ function ManajemenSiswa() {
                         <div className="space-y-1">
                             <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">NISN</label>
                             <input type="text" value={formData.nisn} onChange={(e) => setFormData({ ...formData, nisn: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder="Nomor Induk Siswa Nasional" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Password {modalMode === 'edit' && '(Kosongkan jika tak diubah)'}</label>
+                            <input type="text" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className={`input-standard ${isMobile ? 'py-1.5 px-3 text-xs' : ''}`} placeholder={modalMode === 'add' ? "Default: NISN" : "Ubah password"} />
                         </div>
                         <div className="space-y-1">
                             <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kelas *</label>

@@ -26,6 +26,15 @@ const menuItems = [
         ],
     },
     {
+        id: 'cbt',
+        label: 'Ujian Online (CBT)',
+        icon: 'fa-laptop-code',
+        children: [
+            { id: 'cbt-bank-soal', label: 'Bank Soal', path: '/guru/cbt/bank-soal', icon: 'fa-book-open' },
+            { id: 'cbt-jadwal', label: 'Jadwal Ujian', path: '/guru/cbt/jadwal', icon: 'fa-calendar-alt' },
+        ],
+    },
+    {
         id: 'riwayat',
         label: 'Riwayat',
         icon: 'fa-history',

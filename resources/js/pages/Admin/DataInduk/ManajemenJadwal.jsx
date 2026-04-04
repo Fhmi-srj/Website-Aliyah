@@ -31,8 +31,10 @@ function ManajemenJadwal() {
         guru_id: '',
         mapel_id: '',
         kelas_id: '',
-        hari: 'Senin'
+        hari: 'Senin',
+        is_kegiatan_rutin: false,
     });
+    const [assignAllLoading, setAssignAllLoading] = useState(false);
 
     // Sorting state
     const [sortColumn, setSortColumn] = useState(null);
@@ -213,8 +215,50 @@ function ManajemenJadwal() {
         });
         setGuruSearch('');
         setMapelSearch('');
-
         setShowModal(true);
+    };
+
+    const handleAssignAll = async () => {
+        if (!formData.mapel_id || !formData.hari) {
+            Swal.fire({ icon: 'warning', title: 'Lengkapi Form', text: 'Pilih Mata Pelajaran dan Hari terlebih dahulu.' });
+            return;
+        }
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'Terapkan ke Semua Guru?',
+            html: `Jadwal <b>${mapelSearch || 'ini'}</b> hari <b>${formData.hari}</b> akan dibuat untuk seluruh guru aktif.<br/><small>Guru yang sudah memiliki jadwal ini akan dilewati.</small>`,
+            showCancelButton: true,
+            confirmButtonText: '✅ Ya, Terapkan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#10b981',
+        });
+        if (!confirm.isConfirmed) return;
+        setAssignAllLoading(true);
+        try {
+            const res = await authFetch(`${API_BASE}/jadwal/assign-all-guru`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    mapel_id: formData.mapel_id,
+                    hari: formData.hari,
+                    jam_pelajaran_id: formData.jam_pelajaran_id || null,
+                    jam_pelajaran_sampai_id: formData.jam_pelajaran_sampai_id || null,
+                    tahun_ajaran_id: tahunAjaranId,
+                }),
+            });
+            const result = await res.json();
+            if (result.success) {
+                closeModal();
+                fetchData();
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: result.message, timer: 3000, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: result.message || 'Terjadi kesalahan' });
+            }
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server' });
+        } finally {
+            setAssignAllLoading(false);
+        }
     };
 
     const openEditModal = (item) => {
@@ -226,7 +270,8 @@ function ManajemenJadwal() {
             guru_id: item.guru_id || '',
             mapel_id: item.mapel_id || '',
             kelas_id: item.kelas_id || '',
-            hari: item.hari || 'Senin'
+            hari: item.hari || 'Senin',
+            is_kegiatan_rutin: item.is_kegiatan_rutin || false,
         });
         setGuruSearch(item.guru?.nama || '');
         setMapelSearch(item.mapel?.nama_mapel || '');
@@ -446,7 +491,10 @@ function ManajemenJadwal() {
                                         )}
                                         {!isMobile && (
                                             <td className="py-2.5 px-2 align-middle whitespace-nowrap">
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100">{item.kelas?.nama_kelas}</span>
+                                                {item.is_kegiatan_rutin
+                                                    ? <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-amber-100"><i className="fas fa-users text-[8px]"/> Semua Guru</span>
+                                                    : <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-100">{item.kelas?.nama_kelas}</span>
+                                                }
                                             </td>
                                         )}
                                         <td className={`text-center ${isMobile ? 'py-1 px-1' : 'py-2.5 px-6'}`}>
@@ -547,9 +595,9 @@ function ManajemenJadwal() {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Unit Kelas *</label>
-                            <select required value={formData.kelas_id} onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })} className="input-standard outline-none">
-                                <option value="">-- Pilih Kelas --</option>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Unit Kelas {formData.is_kegiatan_rutin ? '(Opsional)' : '*'}</label>
+                            <select value={formData.kelas_id} onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })} className="input-standard outline-none" required={!formData.is_kegiatan_rutin}>
+                                <option value="">{formData.is_kegiatan_rutin ? '-- Tidak Terikat Kelas --' : '-- Pilih Kelas --'}</option>
                                 {kelasList.map(k => <option key={k.id} value={k.id}>{k.nama_kelas}</option>)}
                             </select>
                         </div>
@@ -609,6 +657,35 @@ function ManajemenJadwal() {
                             )}
                         </div>
                     </div>
+                </div>
+
+                {/* Kegiatan Rutin flag */}
+                <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={formData.is_kegiatan_rutin}
+                            onChange={(e) => setFormData({ ...formData, is_kegiatan_rutin: e.target.checked, kelas_id: e.target.checked ? '' : formData.kelas_id })}
+                            className="mt-0.5 w-4 h-4 rounded border-amber-400 text-amber-500 focus:ring-amber-400"
+                        />
+                        <div>
+                            <span className="text-xs font-black text-amber-700 dark:text-amber-300 uppercase tracking-wide">🏫 Kegiatan Rutin (Wajib Semua Guru)</span>
+                            <p className="text-[10px] text-amber-600/80 mt-0.5">Aktifkan untuk Upacara, Kamis Sehat, dll. Jadwal ini tidak terikat ke satu kelas dan dihitung di bisyaroh semua guru.</p>
+                        </div>
+                    </label>
+                    {formData.is_kegiatan_rutin && modalMode === 'add' && (
+                        <button
+                            type="button"
+                            onClick={handleAssignAll}
+                            disabled={assignAllLoading}
+                            className="mt-3 w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                        >
+                            {assignAllLoading
+                                ? <><i className="fas fa-spinner fa-spin"/> Memproses...</>
+                                : <><i className="fas fa-users"/> Terapkan ke Semua Guru Aktif</>
+                            }
+                        </button>
+                    )}
                 </div>
             </CrudModal>
 

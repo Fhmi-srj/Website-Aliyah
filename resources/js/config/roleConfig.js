@@ -5,6 +5,7 @@
 
 // Role display labels
 export const roleLabels = {
+    siswa: 'Siswa',
     guru: 'Guru',
     waka_kurikulum: 'Waka Kurikulum',
     waka_kesiswaan: 'Waka Kesiswaan',
@@ -15,6 +16,7 @@ export const roleLabels = {
 
 // Role icons (FontAwesome)
 export const roleIcons = {
+    siswa: 'fa-user-graduate',
     guru: 'fa-chalkboard-teacher',
     waka_kurikulum: 'fa-book',
     waka_kesiswaan: 'fa-users-cog',
@@ -73,6 +75,10 @@ export const roleMenus = {
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
             { id: 'download', path: '/guru/download', label: 'Download', icon: 'fa-download' },
+            { id: 'divider-cbt', type: 'divider' },
+            { id: 'cbt-bank-soal', path: '/guru/cbt/bank-soal', label: 'Bank Soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', path: '/guru/cbt/jadwal', label: 'Jadwal Ujian', icon: 'fa-laptop-code' },
+            { id: 'divider-3', type: 'divider' },
             { id: 'profil', path: '/guru/profil', label: 'Profil', icon: 'fa-user' },
         ],
     },
@@ -102,6 +108,10 @@ export const roleMenus = {
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
             { id: 'download', path: '/guru/download', label: 'Download', icon: 'fa-download' },
+            { id: 'divider-cbt', type: 'divider' },
+            { id: 'cbt-bank-soal', path: '/guru/cbt/bank-soal', label: 'Bank Soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', path: '/guru/cbt/jadwal', label: 'Jadwal Ujian', icon: 'fa-laptop-code' },
+            { id: 'divider-3', type: 'divider' },
             { id: 'profil', path: '/guru/profil', label: 'Profil', icon: 'fa-user' },
         ],
     },
@@ -131,6 +141,10 @@ export const roleMenus = {
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
             { id: 'download', path: '/guru/download', label: 'Download', icon: 'fa-download' },
+            { id: 'divider-cbt', type: 'divider' },
+            { id: 'cbt-bank-soal', path: '/guru/cbt/bank-soal', label: 'Bank Soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', path: '/guru/cbt/jadwal', label: 'Jadwal Ujian', icon: 'fa-laptop-code' },
+            { id: 'divider-3', type: 'divider' },
             { id: 'profil', path: '/guru/profil', label: 'Profil', icon: 'fa-user' },
         ],
     },
@@ -160,6 +174,10 @@ export const roleMenus = {
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
             { id: 'download', path: '/guru/download', label: 'Download', icon: 'fa-download' },
+            { id: 'divider-cbt', type: 'divider' },
+            { id: 'cbt-bank-soal', path: '/guru/cbt/bank-soal', label: 'Bank Soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', path: '/guru/cbt/jadwal', label: 'Jadwal Ujian', icon: 'fa-laptop-code' },
+            { id: 'divider-3', type: 'divider' },
             { id: 'profil', path: '/guru/profil', label: 'Profil', icon: 'fa-user' },
         ],
     },
@@ -190,6 +208,10 @@ export const roleMenus = {
             { id: 'sppd', path: '/guru/sppd', label: 'SPPD', icon: 'fa-file-alt' },
             { id: 'modul', path: '/guru/modul', label: 'Modul', icon: 'fa-book' },
             { id: 'download', path: '/guru/download', label: 'Download', icon: 'fa-download' },
+            { id: 'divider-cbt', type: 'divider' },
+            { id: 'cbt-bank-soal', path: '/guru/cbt/bank-soal', label: 'Bank Soal', icon: 'fa-database' },
+            { id: 'cbt-jadwal', path: '/guru/cbt/jadwal', label: 'Jadwal Ujian', icon: 'fa-laptop-code' },
+            { id: 'divider-3', type: 'divider' },
             { id: 'profil', path: '/guru/profil', label: 'Profil', icon: 'fa-user' },
         ],
     },
@@ -227,6 +249,9 @@ let _dynamicRolePages = {
         '/data-induk/ekskul',
         '/data-induk/rapat',
         '/data-induk/surat',
+        '/cbt/bank-soal',
+        '/cbt/jadwal',
+        '/cbt/hasil',
         '/profil',
     ],
     waka_kesiswaan: [
@@ -235,6 +260,7 @@ let _dynamicRolePages = {
         '/data-induk/alumni',
         '/data-induk/ekskul',
         '/data-induk/kegiatan',
+        '/data-induk/kegiatan-ekstra',
         '/data-induk/absensi-siswa',
         '/data-induk/kalender',
         '/profil',
@@ -250,6 +276,7 @@ let _dynamicRolePages = {
         '/data-induk/alumni',
         '/data-induk/ekskul',
         '/data-induk/kegiatan',
+        '/data-induk/kegiatan-ekstra',
         '/data-induk/absensi-siswa',
         '/data-induk/kalender',
         '/data-induk/surat',
@@ -263,6 +290,9 @@ export const setDynamicRolePages = (roles) => {
     if (!roles || !Array.isArray(roles)) return;
 
     roles.forEach(role => {
+        // Skip siswa, they are not admins
+        if (role.name === 'siswa') return;
+        
         if (role.allowed_pages !== null && role.allowed_pages !== undefined) {
             _dynamicRolePages[role.name] = role.allowed_pages;
         }
@@ -284,6 +314,7 @@ export const allAdminPages = [
     { path: '/data-induk/jadwal', label: 'Manajemen Jadwal', icon: 'fa-calendar-alt', group: 'Data Induk' },
     { path: '/data-induk/jam-pelajaran', label: 'Jam Pelajaran', icon: 'fa-clock', group: 'Data Induk' },
     { path: '/data-induk/kegiatan', label: 'Manajemen Kegiatan', icon: 'fa-tasks', group: 'Data Induk' },
+    { path: '/data-induk/kegiatan-ekstra', label: 'Manajemen Kegiatan Ekstra', icon: 'fa-calendar-alt', group: 'Data Induk' },
     { path: '/data-induk/ekskul', label: 'Manajemen Ekstrakurikuler', icon: 'fa-futbol', group: 'Data Induk' },
     { path: '/data-induk/rapat', label: 'Manajemen Rapat', icon: 'fa-users', group: 'Data Induk' },
     { path: '/data-induk/kalender', label: 'Kalender Pendidikan', icon: 'fa-calendar-check', group: 'Data Induk' },
@@ -295,6 +326,9 @@ export const allAdminPages = [
     { path: '/log-aktivitas', label: 'Log Aktivitas', icon: 'fa-history', group: 'Sistem' },
     { path: '/profil', label: 'Profil', icon: 'fa-user', group: 'Umum' },
     { path: '/pengaturan', label: 'Pengaturan', icon: 'fa-cog', group: 'Sistem' },
+    { path: '/cbt/bank-soal', label: 'Bank Soal CBT', icon: 'fa-database', group: 'Ujian Online' },
+    { path: '/cbt/jadwal', label: 'Jadwal Ujian CBT', icon: 'fa-calendar-alt', group: 'Ujian Online' },
+    { path: '/cbt/hasil', label: 'Hasil Ujian CBT', icon: 'fa-chart-bar', group: 'Ujian Online' },
 ];
 
 // Check if role has admin panel access
@@ -319,6 +353,9 @@ export const getAdminRoles = () => {
 // Get default role from user's roles array
 export const getDefaultRole = (roles) => {
     if (!roles || roles.length === 0) return 'guru';
+
+    // If the only role is siswa, return siswa
+    if (roles.length === 1 && roles[0].name === 'siswa') return 'siswa';
 
     // Prefer superadmin if exists
     if (roles.some(r => r.name === 'superadmin')) return 'superadmin';

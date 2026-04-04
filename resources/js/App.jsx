@@ -16,6 +16,7 @@ import ManajemenKelas from './pages/Admin/DataInduk/ManajemenKelas';
 import ManajemenMapel from './pages/Admin/DataInduk/ManajemenMapel';
 import ManajemenJadwal from './pages/Admin/DataInduk/ManajemenJadwal';
 import ManajemenKegiatan from './pages/Admin/DataInduk/ManajemenKegiatan';
+import ManajemenKegiatanEkstra from './Pages/Admin/DataInduk/ManajemenKegiatanEkstra';
 import ManajemenEkskul from './pages/Admin/DataInduk/ManajemenEkskul';
 import ManajemenRapat from './pages/Admin/DataInduk/ManajemenRapat';
 import ManajemenJamPelajaran from './pages/Admin/DataInduk/ManajemenJamPelajaran';
@@ -29,6 +30,12 @@ import Transaksi from './pages/Admin/Transaksi';
 import Bisyaroh from './pages/Admin/Bisyaroh';
 import Nota from './pages/Admin/Nota';
 import PergantianTahun from './pages/Admin/Settings/WizardTahunAjaran';
+
+// Admin CBT Pages
+import AdminCbtBankSoal from './pages/Admin/Cbt/BankSoal';
+import AdminCbtJadwal from './pages/Admin/Cbt/JadwalUjian';
+import AdminCbtHasil from './pages/Admin/Cbt/HasilUjian';
+import AdminCbtSoal from './pages/Admin/Cbt/Soal';
 
 // Guru Pages
 import GuruLayout from './pages/Guru/components/GuruLayout';
@@ -51,12 +58,62 @@ import RiwayatAktivitas from './pages/Guru/RiwayatAktivitas';
 import GuruUlangan from './pages/Guru/Ulangan';
 import Galeri from './pages/Galeri';
 
+// Guru CBT Pages
+import GuruCbtBankSoal from './pages/Guru/Cbt/BankSoal';
+import GuruCbtJadwal from './pages/Guru/Cbt/JadwalUjian';
+import GuruCbtHasil from './pages/Guru/Cbt/HasilUjian';
+import GuruCbtSoal from './pages/Guru/Cbt/Soal';
+
+// Siswa Panel Pages
+import SiswaLayout from './pages/Siswa/components/SiswaLayout';
+import SiswaBeranda from './pages/Siswa/Beranda';
+import SiswaJadwalUjian from './pages/Siswa/JadwalUjian';
+
+// Siswa CBT Pages
+import ExamLayout from './pages/Siswa/Cbt/ExamLayout';
+import ExamRoom from './pages/Siswa/Cbt/ExamRoom';
+
+// Siswa Setting Pages
+import SiswaProfil from './pages/Siswa/Profil';
+import SiswaPenilaian from './pages/Siswa/Penilaian';
+
 function App() {
     return (
         <AuthProvider>
             <Routes>
                 {/* Public Route */}
                 <Route path="/login" element={<Login />} />
+                
+                {/* Siswa Panel Routes */}
+                <Route
+                    path="/siswa/*"
+                    element={
+                        <ProtectedRoute requiredRoles={['siswa']}>
+                            <TahunAjaranProvider>
+                                <SiswaLayout>
+                                    <Routes>
+                                        <Route index element={<SiswaBeranda />} />
+                                        <Route path="ujian" element={<SiswaJadwalUjian />} />
+                                        <Route path="profil" element={<SiswaProfil />} />
+                                        <Route path="penilaian" element={<SiswaPenilaian />} />
+                                    </Routes>
+                                </SiswaLayout>
+                            </TahunAjaranProvider>
+                        </ProtectedRoute>
+                    }
+                />
+                
+                {/* Siswa CBT Routes - protected, uses same siswa auth token */}
+                <Route
+                    path="/cbt/exam"
+                    element={
+                        <ProtectedRoute requiredRoles={['siswa']}>
+                            <ExamLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route path=":id/room" element={<ExamRoom />} />
+                </Route>
 
                 {/* Guru Routes - Mobile Only */}
                 <Route
@@ -84,6 +141,10 @@ function App() {
                                         <Route path="riwayat-aktivitas" element={<RiwayatAktivitas />} />
                                         <Route path="ulangan" element={<GuruUlangan />} />
                                         <Route path="galeri" element={<Galeri />} />
+                                        <Route path="cbt/bank-soal" element={<GuruCbtBankSoal />} />
+                                        <Route path="cbt/bank-soal/:id/soal" element={<GuruCbtSoal />} />
+                                        <Route path="cbt/jadwal" element={<GuruCbtJadwal />} />
+                                        <Route path="cbt/hasil/:id" element={<GuruCbtHasil />} />
                                     </Routes>
                                 </GuruLayout>
                             </TahunAjaranProvider>
@@ -119,12 +180,18 @@ function App() {
                                         <Route path="/data-induk/mapel" element={<ManajemenMapel />} />
                                         <Route path="/data-induk/jadwal" element={<ManajemenJadwal />} />
                                         <Route path="/data-induk/kegiatan" element={<ManajemenKegiatan />} />
+                                        <Route path="/data-induk/kegiatan-ekstra" element={<ManajemenKegiatanEkstra />} />
                                         <Route path="/data-induk/ekskul" element={<ManajemenEkskul />} />
                                         <Route path="/data-induk/rapat" element={<ManajemenRapat />} />
                                         <Route path="/data-induk/jam-pelajaran" element={<ManajemenJamPelajaran />} />
                                         <Route path="/data-induk/kalender" element={<ManajemenKalender />} />
                                         <Route path="/data-induk/surat" element={<SuratMenyurat />} />
                                         <Route path="/data-induk/supervisi" element={<ManajemenSupervisi />} />
+                                        {/* Admin CBT Routes */}
+                                        <Route path="/cbt/bank-soal" element={<AdminCbtBankSoal />} />
+                                        <Route path="/cbt/bank-soal/:id/soal" element={<AdminCbtSoal />} />
+                                        <Route path="/cbt/jadwal" element={<AdminCbtJadwal />} />
+                                        <Route path="/cbt/hasil/:id" element={<AdminCbtHasil />} />
                                     </Routes>
                                 </AdminLayout>
                             </TahunAjaranProvider>
