@@ -33,7 +33,7 @@ class WaSendMeetingInvitation extends Command
         // 1a. Undangan Rapat H-2
         $h2Date = $today->copy()->addDays(2)->format('Y-m-d');
         $rapatH2 = Rapat::with(['pimpinanGuru', 'sekretarisGuru'])
-            ->where('status', 'aktif')
+            ->whereIn('status', ['Dijadwalkan', 'Berlangsung'])
             ->whereDate('tanggal', $h2Date)
             ->get();
 
@@ -63,7 +63,7 @@ class WaSendMeetingInvitation extends Command
 
         // 1b. Pengingat Rapat Hari H
         $rapatHariH = Rapat::with(['pimpinanGuru', 'sekretarisGuru'])
-            ->where('status', 'aktif')
+            ->whereIn('status', ['Dijadwalkan', 'Berlangsung'])
             ->whereDate('tanggal', $today->format('Y-m-d'))
             ->get();
 
@@ -93,9 +93,10 @@ class WaSendMeetingInvitation extends Command
         // 2. KEGIATAN
         // ========================================
 
-        // 2a. Undangan Kegiatan H-2
+        // 2a. Undangan Kegiatan H-2 (HANYA kegiatan non-rutin/ekstra)
         $kegiatanH2 = Kegiatan::with(['penanggungJawab'])
             ->where('status', 'aktif')
+            ->whereNull('kegiatan_rutin_id') // Kegiatan ekstra/rutin ditangani di loop 3
             ->whereDate('waktu_mulai', $h2Date)
             ->get();
 
@@ -121,9 +122,10 @@ class WaSendMeetingInvitation extends Command
             $sent++;
         }
 
-        // 2b. Pengingat Kegiatan Hari H
+        // 2b. Pengingat Kegiatan Hari H (HANYA kegiatan non-rutin/ekstra)
         $kegiatanHariH = Kegiatan::with(['penanggungJawab'])
             ->where('status', 'aktif')
+            ->whereNull('kegiatan_rutin_id') // Kegiatan ekstra/rutin ditangani di loop 3
             ->whereDate('waktu_mulai', $today->format('Y-m-d'))
             ->get();
 

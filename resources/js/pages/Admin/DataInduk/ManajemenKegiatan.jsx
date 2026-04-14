@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 import AiTextArea from '../../../components/AiTextArea';
+import { compressImage } from '../../../utils/imageCompressor';
 
 
 function ManajemenKegiatan() {
@@ -1182,8 +1183,9 @@ function AbsensiKegiatanAdminModal({ show, onClose, kegiatan, initialData, onSuc
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        const compressedFile = await compressImage(file, 1080, 0.8);
         const formDataUpload = new FormData();
-        formDataUpload.append('foto', file);
+        formDataUpload.append('foto', compressedFile);
         try {
             setUploading(true);
             const res = await authFetch(`${API_BASE}/kegiatan/absensi/upload-foto`, {

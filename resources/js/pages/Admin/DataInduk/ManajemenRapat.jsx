@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import Pagination from '../../../components/Pagination';
 import SignatureCanvas from '../../../components/SignatureCanvas';
 import AiTextArea from '../../../components/AiTextArea';
+import { compressImage } from '../../../utils/imageCompressor';
 
 
 function ManajemenRapat() {
@@ -1163,8 +1164,9 @@ function AbsensiAdminModal({ show, onClose, rapat, initialData, onSuccess }) {
         try {
             setUploading(true);
             for (const file of files) {
+                const compressedFile = await compressImage(file, 1080, 0.8);
                 const formDataUpload = new FormData();
-                formDataUpload.append('foto', file);
+                formDataUpload.append('foto', compressedFile);
                 const res = await authFetch(`${API_BASE}/rapat/absensi/upload-foto`, {
                     method: 'POST',
                     body: formDataUpload

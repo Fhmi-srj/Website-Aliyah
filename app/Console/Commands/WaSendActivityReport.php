@@ -25,7 +25,7 @@ class WaSendActivityReport extends Command
 
         // 1. Laporan Rapat
         $rapatList = Rapat::with(['pimpinanGuru', 'sekretarisGuru'])
-            ->where('status', 'aktif')
+            ->whereIn('status', ['Dijadwalkan', 'Berlangsung', 'Selesai'])
             ->whereDate('tanggal', $today)
             ->get();
 

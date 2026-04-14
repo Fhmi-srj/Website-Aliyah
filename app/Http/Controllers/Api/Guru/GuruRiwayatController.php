@@ -423,6 +423,7 @@ class GuruRiwayatController extends Controller
             })
             ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
             ->whereNotNull('waktu_mulai')
+            ->where('waktu_mulai', '<=', $now)
             ->orderBy('waktu_mulai', 'desc');
 
         if ($search) {
@@ -550,6 +551,7 @@ class GuruRiwayatController extends Controller
                     ->orWhereJsonContains('peserta_rapat', (string) $guru->id);
             })
             ->when($tahunAjaranId, fn($q) => $q->where('tahun_ajaran_id', $tahunAjaranId))
+            ->where('tanggal', '<=', $now->format('Y-m-d'))
             ->orderBy('tanggal', 'desc');
 
         if ($search) {

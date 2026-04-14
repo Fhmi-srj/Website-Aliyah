@@ -12,6 +12,8 @@ use App\Models\TahunAjaran;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use App\Services\WhatsappService;
+use App\Models\Guru;
 
 class GuruAbsensiController extends Controller
 {
@@ -387,6 +389,11 @@ class GuruAbsensiController extends Controller
                         : "Mengubah absensi mengajar: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})";
                     ActivityLog::log('attendance', $absensi, $logMsgUpd, $oldAbsensiValues, $absensi->toArray());
 
+                    // Kirim notifikasi WA ke grup jika guru izin atau sakit (hanya jika status baru)
+                    if (in_array($guruStatus, ['I', 'S'])) {
+                        $this->sendIzinNotification($guru, $jadwal, $guruStatus, $validated);
+                    }
+
                     return response()->json([
                         'success' => true,
                         'message' => $jenisKegiatanUpd === 'ulangan' ? 'Penilaian berhasil diperbarui' : 'Absensi berhasil diperbarui',
@@ -462,6 +469,11 @@ class GuruAbsensiController extends Controller
                 ? "Menyimpan penilaian: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})"
                 : "Menyimpan absensi mengajar: {$absensi->snapshot_mapel} - {$absensi->snapshot_kelas} ({$absensi->tanggal})";
             ActivityLog::log('attendance', $absensi, $logMessage);
+
+            // Kirim notifikasi WA ke grup jika guru izin atau sakit
+            if (in_array($guruStatus, ['I', 'S'])) {
+                $this->sendIzinNotification($guru, $jadwal, $guruStatus, $validated);
+            }
 
             return response()->json([
                 'success' => true,
@@ -581,5 +593,68 @@ class GuruAbsensiController extends Controller
             'success' => true,
             'data' => $guruList,
         ]);
+    }
+
+    /**
+     * Kirim notifikasi WA ke grup saat guru izin atau sakit mengajar.
+     * Dipanggil setelah absensi berhasil disimpan. Tidak throw exception.
+     */
+    private function sendIzinNotification($guru, $jadwal, string $guruStatus, array $validated): void
+    {
+        try {
+            $wa = new WhatsappService();
+            if (!$wa->isConfigured()) {
+                return;
+            }
+
+            $jenisIzin = $guruStatus === 'S' ? 'SAKIT' : 'IZIN';
+
+            // Nama guru pengganti jika ada
+            $guruPenggantiLine = '';
+            if (!empty($validated['guru_tugas_id'])) {
+                $guruPengganti = Guru::find($validated['guru_tugas_id']);
+                if ($guruPengganti) {
+                    $guruPenggantiLine = "👨‍🏫 *Diserahkan kepada:* {$guruPengganti->nama}";
+                }
+            }
+
+            // Keterangan izin/sakit jika ada
+            $keteranganLine = '';
+            if (!empty($validated['guru_keterangan'])) {
+                $keteranganLine = "💬 *Keterangan:* {$validated['guru_keterangan']}\n";
+            }
+
+            // Tugas siswa
+            $tugasSiswa = $validated['tugas_siswa'] ?? '-';
+
+            // Tanggal
+            $tanggal = Carbon::now('Asia/Jakarta')->locale('id')->translatedFormat('l, d F Y');
+
+            // Jam pelajaran
+            $jam = substr($jadwal->jam_mulai, 0, 5) . ' - ' . substr($jadwal->jam_selesai, 0, 5);
+
+            // Kelas — bisa null untuk kegiatan rutin
+            $kelas = $jadwal->is_kegiatan_rutin ? 'Semua Guru' : ($jadwal->kelas?->nama_kelas ?? '-');
+
+            // Mapel
+            $mapel = $jadwal->mapel?->nama_mapel ?? '-';
+
+            $message = $wa->renderTemplate('izin_mengajar', [
+                'jenis_izin'         => $jenisIzin,
+                'guru_nama'          => $guru->nama,
+                'mapel'              => $mapel,
+                'kelas'              => $kelas,
+                'jam'                => $jam,
+                'keterangan_line'    => $keteranganLine,
+                'tugas_siswa'        => $tugasSiswa,
+                'guru_pengganti_line'=> $guruPenggantiLine,
+                'tanggal'            => $tanggal,
+            ]);
+
+            $wa->sendToGroup($message);
+        } catch (\Throwable $e) {
+            // Jangan biarkan error WA mengganggu proses absensi
+            \Log::warning('WA izin notification failed: ' . $e->getMessage());
+        }
     }
 }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import Swal from 'sweetalert2';
+import AiTextArea from '../../../components/AiTextArea';
 import api from '../../../lib/axios';
+import { compressImage } from '../../../utils/imageCompressor';
 
 // Animated Modal Wrapper for smooth transitions
 function AnimatedModalWrapper({ children, onClose, maxWidth = 'max-w-md' }) {
@@ -704,8 +707,9 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                                     if (!file) return;
                                                     setUploadingFoto(true);
                                                     try {
+                                                        const compressedFile = await compressImage(file, 1080, 0.8);
                                                         const formData = new FormData();
-                                                        formData.append('foto', file);
+                                                        formData.append('foto', compressedFile);
                                                         const res = await api.post('/guru-panel/mengajar/upload-foto', formData, {
                                                             headers: { 'Content-Type': 'multipart/form-data' }
                                                         });
@@ -739,8 +743,9 @@ export function ModalAbsensiSiswa({ jadwal, tanggal, siswaList, onClose, onSucce
                                                     setUploadingFoto(true);
                                                     try {
                                                         for (const file of toUpload) {
+                                                            const compressedFile = await compressImage(file, 1080, 0.8);
                                                             const formData = new FormData();
-                                                            formData.append('foto', file);
+                                                            formData.append('foto', compressedFile);
                                                             const res = await api.post('/guru-panel/mengajar/upload-foto', formData, {
                                                                 headers: { 'Content-Type': 'multipart/form-data' }
                                                             });

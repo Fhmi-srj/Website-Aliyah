@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Jadwal;
 use App\Models\AbsensiMengajar;
+use App\Models\AbsensiSiswa;
+use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Services\WhatsappService;
 use Illuminate\Support\Carbon;
@@ -57,15 +59,23 @@ class WaSendAttendanceRecap extends Command
         $daftarRekap = '';
         foreach ($grouped as $kelasId => $jadwals) {
             $kelas = $jadwals->first()->kelas;
-            $kelasNama = $kelas->nama_kelas ?? '-';
+            $kelasNama = $kelas->nama_kelas ?? 'Kegiatan Ekstra / Rutin';
 
             $daftarRekap .= "*{$kelasNama}*\n\n";
 
-            // Track siswa totals for this kelas
-            $totalSiswaH = 0;
-            $totalSiswaI = 0;
-            $totalSiswaS = 0;
-            $totalSiswaA = 0;
+            // Ambil kehadiran siswa langsung dari tabel absensi_siswa (per kelas, per hari)
+            // Sistem daily: hanya status S/I/A yang tersimpan — H tidak disimpan
+            if ($kelasId) {
+                $totalSiswa = Siswa::where('kelas_id', $kelasId)->where('status', 'Aktif')->count();
+                $absensiSiswaRows = AbsensiSiswa::where('kelas_id', $kelasId)
+                    ->whereDate('tanggal', $today)
+                    ->get();
+
+                $totalSiswaS = $absensiSiswaRows->where('status', 'S')->count();
+                $totalSiswaI = $absensiSiswaRows->where('status', 'I')->count();
+                $totalSiswaA = $absensiSiswaRows->where('status', 'A')->count();
+                $totalSiswaH = max(0, $totalSiswa - $totalSiswaS - $totalSiswaI - $totalSiswaA);
+            }
 
             foreach ($jadwals as $jadwal) {
                 $jam = substr($jadwal->jam_mulai, 0, 5);
@@ -80,19 +90,15 @@ class WaSendAttendanceRecap extends Command
                 $statusIcon = ($absensi && $absensi->absensi_time) ? '✅' : '❌';
 
                 $daftarRekap .= "{$jam} | {$guru} | {$mapel} | {$statusIcon}\n";
-
-                // Accumulate siswa attendance
-                if ($absensi) {
-                    $totalSiswaH += (int) ($absensi->siswa_hadir ?? 0);
-                    $totalSiswaI += (int) ($absensi->siswa_izin ?? 0);
-                    $totalSiswaS += (int) ($absensi->siswa_sakit ?? 0);
-                    $totalSiswaA += (int) ($absensi->siswa_alpha ?? 0);
-                }
             }
 
-            // Add line separator and siswa summary
-            $daftarRekap .= " | \n";
-            $daftarRekap .= "Siswa = H = {$totalSiswaH} | I = {$totalSiswaI} | S = {$totalSiswaS} | A = {$totalSiswaA}\n\n";
+            // Tambahkan summary siswa HANYA jika ini kelas reguler (bukan kegiatan ekstra/rutin)
+            if ($kelasId) {
+                $daftarRekap .= " | \n";
+                $daftarRekap .= "Siswa = H = {$totalSiswaH} | I = {$totalSiswaI} | S = {$totalSiswaS} | A = {$totalSiswaA}\n\n";
+            } else {
+                $daftarRekap .= "\n";
+            }
         }
 
         $message = $wa->renderTemplate('rekap_absensi', [

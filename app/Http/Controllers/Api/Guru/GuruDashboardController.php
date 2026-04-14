@@ -614,6 +614,7 @@ class GuruDashboardController extends Controller
                 if ($absensi->guru_status === 'H') {
                     $totalHadir++;
                 }
+                // Izin (I) dan Sakit (S) tidak dihitung hadir maupun belum di summary bar
             } elseif ($now->greaterThan($jamSelesai)) {
                 $status = 'terlewat';
                 $totalBelum++;

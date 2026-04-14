@@ -555,7 +555,17 @@ function Beranda() {
                                         terlewat: { bg: 'bg-red-100', text: 'text-red-700', label: 'Belum Absen', icon: 'fa-exclamation-circle' },
                                         belum_mulai: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Belum Mulai', icon: 'fa-hourglass-half' },
                                     };
-                                    const cfg = statusConfig[item.status] || statusConfig.belum_mulai;
+                                    let cfg = statusConfig[item.status] || statusConfig.belum_mulai;
+                                    // Override badge sesuai guru_status (Izin / Sakit / Alpha)
+                                    if (item.status === 'sudah_absen' && item.guru_status) {
+                                        if (item.guru_status === 'I') {
+                                            cfg = { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Izin', icon: 'fa-envelope-open-text' };
+                                        } else if (item.guru_status === 'S') {
+                                            cfg = { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sakit', icon: 'fa-briefcase-medical' };
+                                        } else if (item.guru_status === 'A') {
+                                            cfg = { bg: 'bg-red-100', text: 'text-red-700', label: 'Alpha', icon: 'fa-times-circle' };
+                                        }
+                                    }
                                     return (
                                         <div key={idx} className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm">
                                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">

@@ -4,6 +4,7 @@ import api from '../../../lib/axios';
 import { APP_BASE } from '../../../config/api';
 import SignatureCanvas from '../../../components/SignatureCanvas';
 import AiTextArea from '../../../components/AiTextArea';
+import { compressImage as compressImageFile } from '../../../utils/imageCompressor';
 
 // Helper to resolve photo URLs - handles both base64 (guru upload) and file paths (admin upload)
 const resolvePhotoUrl = (photo) => {
@@ -617,8 +618,9 @@ export function ModalAbsensiRapatPimpinan({ rapat, tanggal, onClose, onSuccess, 
         try {
             const uploadedPaths = [];
             for (const file of filesToProcess) {
+                const compressedFile = await compressImageFile(file, 1080, 0.8);
                 const formData = new FormData();
-                formData.append('foto', file);
+                formData.append('foto', compressedFile);
                 const response = await api.post('/guru-panel/rapat/upload-foto', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
@@ -1546,8 +1548,9 @@ export function ModalAbsensiRapatSekretaris({ rapat, tanggal, pimpinan, pesertaL
         try {
             const uploadedPaths = [];
             for (const file of filesToProcess) {
+                const compressedFile = await compressImageFile(file, 1080, 0.8);
                 const formData = new FormData();
-                formData.append('foto', file);
+                formData.append('foto', compressedFile);
                 const response = await api.post('/guru-panel/rapat/upload-foto', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });

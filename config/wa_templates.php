@@ -209,4 +209,24 @@ Wassalamu'alaikum warahmatullahi wabarakatuh.
 *NB.*
 Penanggung Jawab : {penanggung_jawab}
 TPL,
+
+    // Notifikasi izin/sakit mengajar - dikirim otomatis saat guru absen dengan status I/S
+    'izin_mengajar' => <<<'TPL'
+📢 *INFORMASI {jenis_izin} MENGAJAR*
+
+Sayang sekali, hari ini *{guru_nama}* tidak bisa berangkat karena *{jenis_izin}*.
+
+📚 *Mata Pelajaran:* {mapel}
+🏫 *Kelas:* {kelas}
+⏰ *Jam:* {jam}
+{keterangan_line}
+📝 *Tugas untuk Siswa:*
+{tugas_siswa}
+
+{guru_pengganti_line}
+📅 _{tanggal}_
+
+_Pesan otomatis dari MAHAKAM APP_
+TPL,
 ];
+
