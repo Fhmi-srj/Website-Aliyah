@@ -4,6 +4,7 @@ import { API_BASE, authFetch } from '../../../config/api';
 import Swal from 'sweetalert2';
 import SearchableDropdown from '../components/SearchableDropdown';
 import { formatRupiah, parseRupiah } from '../../../utils/currency';
+import { compressImage } from '../../../utils/imageCompressor';
 
 const formatTanggal = (d, mobile = false) => {
     if (!d) return '-';
@@ -38,8 +39,9 @@ export default function TabPengeluaran({ isMobile }) {
     const [showModal, setShowModal] = useState(false);
     const [mode, setMode] = useState('add');
     const [current, setCurrent] = useState(null);
-    const [form, setForm] = useState({ sumber_id: '', kategori_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0] });
+    const [form, setForm] = useState({ sumber_id: '', kategori_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0], foto: null });
     const [nominalDisplay, setNominalDisplay] = useState('');
+    const [fotoPreview, setFotoPreview] = useState(null);
     const [sumberList, setSumberList] = useState([]);
     const [kategoriList, setKategoriList] = useState([]);
 
@@ -81,13 +83,28 @@ export default function TabPengeluaran({ isMobile }) {
         setNominalDisplay(raw === '' ? '' : formatRupiah(raw));
     };
 
-    const openAdd = () => { setMode('add'); setForm({ sumber_id: '', kategori_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0] }); setNominalDisplay(''); setShowModal(true); };
-    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id ? Number(item.sumber_id) : (item.sumber?.id ? Number(item.sumber.id) : ''), kategori_id: item.kategori_id ? Number(item.kategori_id) : (item.kategori?.id ? Number(item.kategori.id) : ''), nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal ? item.tanggal.substring(0, 10) : new Date().toISOString().split('T')[0] }); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
+    const openAdd = () => { setMode('add'); setForm({ sumber_id: '', kategori_id: '', nominal: '', keterangan: '', tanggal: new Date().toISOString().split('T')[0], foto: null }); setFotoPreview(null); setNominalDisplay(''); setShowModal(true); };
+    const openEdit = (item) => { setMode('edit'); setCurrent(item); setForm({ sumber_id: item.sumber_id ? Number(item.sumber_id) : (item.sumber?.id ? Number(item.sumber.id) : ''), kategori_id: item.kategori_id ? Number(item.kategori_id) : (item.kategori?.id ? Number(item.kategori.id) : ''), nominal: item.nominal, keterangan: item.keterangan || '', tanggal: item.tanggal ? item.tanggal.substring(0, 10) : new Date().toISOString().split('T')[0], foto: null }); setFotoPreview(item.foto ? `/storage/${item.foto}` : null); setNominalDisplay(formatRupiah(item.nominal)); setShowModal(true); };
 
     const submit = async () => {
         try {
             const url = mode === 'add' ? `${API_BASE}/pengeluaran` : `${API_BASE}/pengeluaran/${current.id}`;
-            const r = await authFetch(url, { method: mode === 'add' ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(form) });
+            const formData = new FormData();
+            formData.append('sumber_id', form.sumber_id);
+            formData.append('kategori_id', form.kategori_id);
+            formData.append('nominal', form.nominal);
+            if (form.keterangan) formData.append('keterangan', form.keterangan);
+            formData.append('tanggal', form.tanggal);
+            
+            if (form.foto) {
+                const compressedFile = await compressImage(form.foto, 1080, 0.8);
+                formData.append('foto', compressedFile);
+            }
+            if (mode === 'edit') {
+                formData.append('_method', 'PUT');
+            }
+
+            const r = await authFetch(url, { method: 'POST', headers: { Accept: 'application/json' }, body: formData });
             if (r.ok) { setShowModal(false); fetchData(); Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false }); }
         } catch { Swal.fire({ icon: 'error', title: 'Gagal' }); }
     };
@@ -224,6 +241,9 @@ export default function TabPengeluaran({ isMobile }) {
                                             <td className={`py-2 ${isMobile ? 'px-1' : 'px-6'} align-middle text-center`}>
                                                 <div className="flex items-center justify-center gap-1">
                                                     <button onClick={() => openEdit(item)} className={`action-btn rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Edit"><i className={`fas fa-edit ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
+                                                    {item.foto && (
+                                                        <a href={`/storage/${item.foto}`} target="_blank" rel="noopener noreferrer" className={`action-btn rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Lihat Bukti Foto"><i className={`fas fa-image ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></a>
+                                                    )}
                                                     <button onClick={() => deleteItem(item.id)} className={`action-btn rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center justify-center hover:scale-110 active:scale-95 ${isMobile ? 'w-6 h-6' : 'w-8 h-8'}`} title="Hapus"><i className={`fas fa-trash ${isMobile ? 'text-[8px]' : 'text-[10px]'}`}></i></button>
                                                 </div>
                                             </td>
@@ -288,6 +308,27 @@ export default function TabPengeluaran({ isMobile }) {
                     <div className="space-y-1">
                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Keterangan</label>
                         <textarea value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400" rows={2} placeholder="Opsional..." />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Bukti Kwitansi (Opsional)</label>
+                        <input type="file" accept="image/*" onChange={e => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                setForm({ ...form, foto: file });
+                                setFotoPreview(URL.createObjectURL(file));
+                            } else {
+                                setForm({ ...form, foto: null });
+                                setFotoPreview(current?.foto ? `/storage/${current.foto}` : null);
+                            }
+                        }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                        {fotoPreview && (
+                            <div className="mt-2 relative inline-block">
+                                <img src={fotoPreview} alt="Preview Bukti" className="h-24 w-auto object-contain rounded-lg border border-gray-200" />
+                                <button type="button" onClick={() => { setForm({ ...form, foto: null }); setFotoPreview(null); }} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-rose-600">
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CrudModal>

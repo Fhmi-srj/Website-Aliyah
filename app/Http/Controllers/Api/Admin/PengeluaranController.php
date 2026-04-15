@@ -49,7 +49,12 @@ class PengeluaranController extends Controller
             'kategori_id' => 'required|exists:transaksi_kategori,id',
             'keterangan' => 'nullable|string',
             'tanggal' => 'required|date',
+            'foto' => 'nullable|image',
         ]);
+
+        if ($request->hasFile('foto')) {
+            $validated['foto'] = $request->file('foto')->store('pengeluaran', 'public');
+        }
 
         $validated['admin_id'] = $request->user()->id;
         $validated['tahun_ajaran_id'] = $request->user()->tahun_ajaran_id;
@@ -86,7 +91,15 @@ class PengeluaranController extends Controller
             'kategori_id' => 'sometimes|exists:transaksi_kategori,id',
             'keterangan' => 'nullable|string',
             'tanggal' => 'sometimes|date',
+            'foto' => 'nullable|image',
         ]);
+
+        if ($request->hasFile('foto')) {
+            if ($pengeluaran->foto) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pengeluaran->foto);
+            }
+            $validated['foto'] = $request->file('foto')->store('pengeluaran', 'public');
+        }
 
         $pengeluaran->update($validated);
 
@@ -103,6 +116,9 @@ class PengeluaranController extends Controller
     {
         $pengeluaran = Pengeluaran::findOrFail($id);
         ActivityLog::logDelete($pengeluaran, "Menghapus pengeluaran: Rp " . number_format($pengeluaran->nominal, 0, ',', '.'));
+        if ($pengeluaran->foto) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pengeluaran->foto);
+        }
         $pengeluaran->delete();
 
         return response()->json([

@@ -18,6 +18,7 @@ class Pemasukan extends Model
         'keterangan',
         'tanggal',
         'tahun_ajaran_id',
+        'foto',
     ];
 
     protected $casts = [

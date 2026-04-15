@@ -614,14 +614,15 @@ class GuruAbsensiController extends Controller
             if (!empty($validated['guru_tugas_id'])) {
                 $guruPengganti = Guru::find($validated['guru_tugas_id']);
                 if ($guruPengganti) {
-                    $guruPenggantiLine = "👨‍🏫 *Diserahkan kepada:* {$guruPengganti->nama}";
+                    $inisialPG = $guruPengganti->inisial ?: $guruPengganti->nama;
+                    $guruPenggantiLine = "Diserahkan kepada: {$inisialPG}\n";
                 }
             }
 
             // Keterangan izin/sakit jika ada
             $keteranganLine = '';
             if (!empty($validated['guru_keterangan'])) {
-                $keteranganLine = "💬 *Keterangan:* {$validated['guru_keterangan']}\n";
+                $keteranganLine = "Keterangan: {$validated['guru_keterangan']}\n";
             }
 
             // Tugas siswa
@@ -641,7 +642,7 @@ class GuruAbsensiController extends Controller
 
             $message = $wa->renderTemplate('izin_mengajar', [
                 'jenis_izin'         => $jenisIzin,
-                'guru_nama'          => $guru->nama,
+                'guru_inisial'       => $guru->inisial ?? $guru->nama,
                 'mapel'              => $mapel,
                 'kelas'              => $kelas,
                 'jam'                => $jam,

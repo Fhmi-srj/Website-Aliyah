@@ -50,7 +50,12 @@ class PemasukanController extends Controller
             'nominal' => 'required|numeric|min:0',
             'keterangan' => 'nullable|string',
             'tanggal' => 'required|date',
+            'foto' => 'nullable|image',
         ]);
+
+        if ($request->hasFile('foto')) {
+            $validated['foto'] = $request->file('foto')->store('pemasukan', 'public');
+        }
 
         $validated['admin_id'] = $request->user()->id;
         $validated['tahun_ajaran_id'] = $request->user()->tahun_ajaran_id;
@@ -86,7 +91,15 @@ class PemasukanController extends Controller
             'nominal' => 'sometimes|numeric|min:0',
             'keterangan' => 'nullable|string',
             'tanggal' => 'sometimes|date',
+            'foto' => 'nullable|image',
         ]);
+
+        if ($request->hasFile('foto')) {
+            if ($pemasukan->foto) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pemasukan->foto);
+            }
+            $validated['foto'] = $request->file('foto')->store('pemasukan', 'public');
+        }
 
         $pemasukan->update($validated);
 
@@ -103,6 +116,9 @@ class PemasukanController extends Controller
     {
         $pemasukan = Pemasukan::findOrFail($id);
         ActivityLog::logDelete($pemasukan, "Menghapus pemasukan: Rp " . number_format($pemasukan->nominal, 0, ',', '.'));
+        if ($pemasukan->foto) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pemasukan->foto);
+        }
         $pemasukan->delete();
 
         return response()->json([
