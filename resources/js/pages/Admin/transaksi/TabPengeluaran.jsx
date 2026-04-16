@@ -309,22 +309,40 @@ export default function TabPengeluaran({ isMobile }) {
                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Keterangan</label>
                         <textarea value={form.keterangan} onChange={e => setForm({ ...form, keterangan: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all placeholder-gray-400" rows={2} placeholder="Opsional..." />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-2 mt-4">
                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Bukti Kwitansi (Opsional)</label>
-                        <input type="file" accept="image/*" onChange={e => {
-                            const file = e.target.files[0];
-                            if (file) {
-                                setForm({ ...form, foto: file });
-                                setFotoPreview(URL.createObjectURL(file));
-                            } else {
-                                setForm({ ...form, foto: null });
-                                setFotoPreview(current?.foto ? `/storage/${current.foto}` : null);
-                            }
-                        }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                        <div className="grid grid-cols-2 gap-2">
+                            <label className="cursor-pointer bg-white border border-gray-200 hover:bg-gray-50 hover:border-primary/50 text-gray-600 hover:text-primary rounded-xl px-4 py-2.5 text-xs text-center transition-all group flex items-center justify-center gap-2 font-medium shadow-sm">
+                                <i className="fas fa-image text-gray-400 group-hover:text-primary"></i>Pilih File
+                                <input type="file" accept="image/*" className="hidden" onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        setForm({ ...form, foto: file });
+                                        setFotoPreview(URL.createObjectURL(file));
+                                    } else {
+                                        setForm({ ...form, foto: null });
+                                        setFotoPreview(current?.foto ? `/storage/${current.foto}` : null);
+                                    }
+                                }} />
+                            </label>
+                            <label className="cursor-pointer bg-primary/5 border border-primary/20 hover:bg-primary/10 text-primary rounded-xl px-4 py-2.5 text-xs text-center transition-all group flex items-center justify-center gap-2 font-bold shadow-sm">
+                                <i className="fas fa-camera"></i>Buka Kamera
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        setForm({ ...form, foto: file });
+                                        setFotoPreview(URL.createObjectURL(file));
+                                    } else {
+                                        setForm({ ...form, foto: null });
+                                        setFotoPreview(current?.foto ? `/storage/${current.foto}` : null);
+                                    }
+                                }} />
+                            </label>
+                        </div>
                         {fotoPreview && (
-                            <div className="mt-2 relative inline-block">
-                                <img src={fotoPreview} alt="Preview Bukti" className="h-24 w-auto object-contain rounded-lg border border-gray-200" />
-                                <button type="button" onClick={() => { setForm({ ...form, foto: null }); setFotoPreview(null); }} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] hover:bg-rose-600">
+                            <div className="mt-3 relative inline-block">
+                                <img src={fotoPreview} alt="Preview Bukti" className="h-32 w-auto object-contain rounded-xl border border-gray-200 shadow-sm" />
+                                <button type="button" onClick={() => { setForm({ ...form, foto: null }); setFotoPreview(null); }} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] hover:bg-rose-600 shadow-soft hover:scale-110 active:scale-95 transition-transform border-2 border-white">
                                     <i className="fas fa-times"></i>
                                 </button>
                             </div>
