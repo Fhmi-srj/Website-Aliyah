@@ -92,9 +92,15 @@ class PengeluaranController extends Controller
             'keterangan' => 'nullable|string',
             'tanggal' => 'sometimes|date',
             'foto' => 'nullable|image',
+            'hapus_foto' => 'nullable|boolean',
         ]);
 
-        if ($request->hasFile('foto')) {
+        if ($request->boolean('hapus_foto')) {
+            if ($pengeluaran->foto) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pengeluaran->foto);
+            }
+            $validated['foto'] = null;
+        } elseif ($request->hasFile('foto')) {
             if ($pengeluaran->foto) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($pengeluaran->foto);
             }

@@ -92,9 +92,15 @@ class PemasukanController extends Controller
             'keterangan' => 'nullable|string',
             'tanggal' => 'sometimes|date',
             'foto' => 'nullable|image',
+            'hapus_foto' => 'nullable|boolean',
         ]);
 
-        if ($request->hasFile('foto')) {
+        if ($request->boolean('hapus_foto')) {
+            if ($pemasukan->foto) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pemasukan->foto);
+            }
+            $validated['foto'] = null;
+        } elseif ($request->hasFile('foto')) {
             if ($pemasukan->foto) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($pemasukan->foto);
             }

@@ -94,6 +94,9 @@ export default function TabPemasukan({ isMobile }) {
                 const compressedFile = await compressImage(form.foto, 1080, 0.8);
                 formData.append('foto', compressedFile);
             }
+            if (mode === 'edit' && !form.foto && !fotoPreview && current.foto) {
+                formData.append('hapus_foto', '1');
+            }
             if (mode === 'edit') {
                 formData.append('_method', 'PUT');
             }
