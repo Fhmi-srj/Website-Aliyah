@@ -239,10 +239,23 @@ class TemplateSuratController extends Controller
             return new PhpWord(); // Return empty doc as fallback
         }
 
-        $guruList = Guru::whereIn('id', $guruIds)->get();
+        $guruList = Guru::with('user.roles')->whereIn('id', $guruIds)->get();
         $kepala = PrintService::getKepalaSekolah();
         $namaSekolah = PrintService::getSchoolName();
         $tanggalFormatted = PrintService::formatDate($tanggal, 'l, d F Y');
+
+        // Helper: get jabatan with fallback to role name
+        $resolveJabatan = function ($guru) {
+            if (!empty($guru->jabatan)) {
+                return $guru->jabatan;
+            }
+            // Fallback: use the user's first role display name
+            $role = optional($guru->user)->roles?->first();
+            if ($role) {
+                return ucfirst(str_replace('_', ' ', $role->name));
+            }
+            return 'Guru';
+        };
 
         $phpWord = new PhpWord();
         $phpWord->setDefaultFontName('Times New Roman');
@@ -291,7 +304,7 @@ class TemplateSuratController extends Controller
         foreach ($guruList as $guru) {
             $table->addRow();
             $table->addCell(3074)->addText($guru->nama, ['size' => 12], ['spaceAfter' => 0, 'lineHeight' => 1.5]);
-            $table->addCell(3000)->addText($guru->jabatan ?? '-', ['size' => 10], ['spaceAfter' => 0, 'lineHeight' => 1.5]);
+            $table->addCell(3000)->addText($resolveJabatan($guru), ['size' => 10], ['spaceAfter' => 0, 'lineHeight' => 1.5]);
             $table->addCell(2005)->addText($guru->nip ?? '-', ['size' => 10], ['spaceAfter' => 0, 'lineHeight' => 1.5]);
         }
 

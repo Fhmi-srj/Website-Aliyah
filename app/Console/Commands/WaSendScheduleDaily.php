@@ -64,7 +64,7 @@ class WaSendScheduleDaily extends Command
             $kelas = $jadwals->first()->kelas;
             $kelasNama = $kelas->nama_kelas ?? '-';
 
-            $daftarJadwal .= "*{$kelasNama}*\n\n";
+            $daftarJadwal .= "*{$kelasNama}*\n";
 
             foreach ($jadwals as $jadwal) {
                 $jam = substr($jadwal->jam_mulai, 0, 5);

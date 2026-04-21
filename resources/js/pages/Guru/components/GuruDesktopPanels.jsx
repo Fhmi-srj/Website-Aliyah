@@ -293,10 +293,12 @@ export function DesktopRightPanel({ dashboardData, upcomingEvents, loading, load
                 </h3>
                 <div className="grid grid-cols-4 gap-2.5">
                     {[
+                        { path: '/guru/kaldik', icon: 'fa-calendar-day', label: 'Kaldik' },
                         { path: '/guru/riwayat', icon: 'fa-history', label: 'Riwayat' },
                         { path: '/guru/pengaturan', icon: 'fa-cog', label: 'Pengaturan' },
                         { path: '/guru/profil', icon: 'fa-user', label: 'Profil' },
                         { path: '/guru/absensi/mengajar', icon: 'fa-chalkboard-teacher', label: 'Mengajar' },
+                        { path: '/guru/absensi/kegiatan', icon: 'fa-calendar-check', label: 'Kegiatan' },
                         { path: '/guru/absensi/rapat', icon: 'fa-users', label: 'Rapat' },
                         { path: '/guru/ulangan', icon: 'fa-file-signature', label: 'Penilaian' },
                         { path: '/guru/modul', icon: 'fa-book', label: 'Modul' },

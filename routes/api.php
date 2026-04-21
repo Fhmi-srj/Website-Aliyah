@@ -100,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('kegiatan', KegiatanController::class);
     Route::post('kegiatan/bulk-delete', [KegiatanController::class, 'bulkDelete']);
     Route::post('kegiatan/bulk-jenis', [KegiatanController::class, 'bulkUpdateJenis']);
-    
+
     Route::apiResource('kegiatan-rutin', KegiatanRutinController::class);
     Route::post('kegiatan-rutin/bulk-delete', [KegiatanRutinController::class, 'bulkDelete']);
     Route::post('kegiatan/bulk-jenis', [KegiatanController::class, 'bulkUpdateJenis']);
@@ -314,7 +314,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // CBT Routes (Siswa)
     Route::post('cbt/student/logout', [\App\Http\Controllers\Api\Siswa\CbtAuthController::class, 'logout']);
     Route::get('cbt/student/me', [\App\Http\Controllers\Api\Siswa\CbtAuthController::class, 'me']);
-    
+
     // Panel Siswa Routes
     Route::get('siswa-panel/me', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'me']);
     Route::post('siswa-panel/logout', [\App\Http\Controllers\Api\Siswa\AuthController::class, 'logout']);
@@ -343,6 +343,7 @@ Route::prefix('guru-panel')->middleware('auth:sanctum')->group(function () {
     Route::post('upload-ttd', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'uploadTtd']);
     Route::get('upcoming-events', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'upcomingEvents']);
     Route::get('live-attendance', [\App\Http\Controllers\Api\Guru\GuruDashboardController::class, 'liveAttendance']);
+    Route::get('kaldik', [\App\Http\Controllers\Api\Guru\GuruKalenderController::class, 'index']);
 
     // Absensi Mengajar
     Route::get('jadwal-hari-ini', [\App\Http\Controllers\Api\Guru\GuruAbsensiController::class, 'jadwalHariIni']);

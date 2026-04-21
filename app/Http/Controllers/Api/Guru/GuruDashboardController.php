@@ -1380,23 +1380,17 @@ class GuruDashboardController extends Controller
         $kegiatans = $kegiatanQuery->with('penanggungJawab')->get();
 
         foreach ($kegiatans as $kegiatan) {
-            // Check if this guru is related: penanggung_jawab_id OR in guru_pendamping array
-            $guruPendamping = $kegiatan->guru_pendamping ?? [];
-            $isRelated = $kegiatan->penanggung_jawab_id == $guru->id ||
-                in_array($guru->id, $guruPendamping);
-
-            if ($isRelated) {
-                $events[] = [
-                    'type' => 'kegiatan',
-                    'title' => $kegiatan->nama_kegiatan ?? $kegiatan->nama ?? 'Kegiatan',
-                    'subtitle' => $kegiatan->tempat ?? '',
-                    'koordinator' => $kegiatan->penanggungJawab->nama ?? null,
-                    'date' => Carbon::parse($kegiatan->waktu_mulai)->locale('id')->translatedFormat('l, d M'),
-                    'date_raw' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateString() : null,
-                    'time' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('H:i') : null,
-                    'sort_key' => ($kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateTimeString() : '9999-12-31'),
-                ];
-            }
+            // Semua guru dapat melihat kegiatan sebagai informasi
+            $events[] = [
+                'type' => 'kegiatan',
+                'title' => $kegiatan->nama_kegiatan ?? $kegiatan->nama ?? 'Kegiatan',
+                'subtitle' => $kegiatan->tempat ?? '',
+                'koordinator' => $kegiatan->penanggungJawab->nama ?? null,
+                'date' => Carbon::parse($kegiatan->waktu_mulai)->locale('id')->translatedFormat('l, d M'),
+                'date_raw' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateString() : null,
+                'time' => $kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->format('H:i') : null,
+                'sort_key' => ($kegiatan->waktu_mulai ? Carbon::parse($kegiatan->waktu_mulai)->toDateTimeString() : '9999-12-31'),
+            ];
         }
 
         // 3. Get rapat for next 7 days

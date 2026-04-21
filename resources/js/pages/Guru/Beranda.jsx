@@ -348,6 +348,15 @@ function Beranda() {
                     </h3>
                     <div className="grid grid-cols-4 gap-3">
                         <button
+                            onClick={() => navigate("/guru/kaldik")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-calendar-day text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Kaldik
+                            </span>
+                        </button>
+                        <button
                             onClick={() => navigate("/guru/absensi/mengajar")}
                             className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
                         >
@@ -372,6 +381,15 @@ function Beranda() {
                             <i className="fas fa-users text-xl"></i>
                             <span className="text-[10px] font-medium">
                                 Rapat
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => navigate("/guru/kaldik")}
+                            className="flex flex-col items-center gap-2 p-4 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl text-white cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                        >
+                            <i className="fas fa-calendar-day text-xl"></i>
+                            <span className="text-[10px] font-medium">
+                                Kaldik
                             </span>
                         </button>
                         <button

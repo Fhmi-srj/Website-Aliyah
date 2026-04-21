@@ -61,7 +61,7 @@ class WaSendAttendanceRecap extends Command
             $kelas = $jadwals->first()->kelas;
             $kelasNama = $kelas->nama_kelas ?? 'Kegiatan Ekstra / Rutin';
 
-            $daftarRekap .= "*{$kelasNama}*\n\n";
+            $daftarRekap .= "*{$kelasNama}*\n";
 
             // Ambil kehadiran siswa langsung dari tabel absensi_siswa (per kelas, per hari)
             // Sistem daily: hanya status S/I/A yang tersimpan — H tidak disimpan
@@ -94,7 +94,6 @@ class WaSendAttendanceRecap extends Command
 
             // Tambahkan summary siswa HANYA jika ini kelas reguler (bukan kegiatan ekstra/rutin)
             if ($kelasId) {
-                $daftarRekap .= " | \n";
                 $daftarRekap .= "Siswa = H = {$totalSiswaH} | I = {$totalSiswaI} | S = {$totalSiswaS} | A = {$totalSiswaA}\n\n";
             } else {
                 $daftarRekap .= "\n";
